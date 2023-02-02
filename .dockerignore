@@ -1,0 +1,95 @@
+# flyctl launch added from .gitignore
+**/fmtbench
+**/buildtable
+**/printpair
+**/.vscode
+**/bin/**
+**/.DS_Store
+
+# flyctl launch added from vendor/github.com/PuerkitoBio/goquery/.gitignore
+# editor temporary files
+vendor/github.com/PuerkitoBio/goquery/**/*.sublime-*
+vendor/github.com/PuerkitoBio/goquery/**/.DS_Store
+vendor/github.com/PuerkitoBio/goquery/**/*.swp
+#*.*#
+vendor/github.com/PuerkitoBio/goquery/**/tags
+
+# direnv config
+vendor/github.com/PuerkitoBio/goquery/**/.env*
+
+# test binaries
+vendor/github.com/PuerkitoBio/goquery/**/*.test
+
+# coverage and profilte outputs
+vendor/github.com/PuerkitoBio/goquery/**/*.out
+
+
+# flyctl launch added from vendor/github.com/gomarkdown/markdown/.gitignore
+vendor/github.com/gomarkdown/markdown/**/*.out
+vendor/github.com/gomarkdown/markdown/**/*.swp
+vendor/github.com/gomarkdown/markdown/**/*.8
+vendor/github.com/gomarkdown/markdown/**/*.6
+vendor/github.com/gomarkdown/markdown/**/_obj
+vendor/github.com/gomarkdown/markdown/**/_test*
+vendor/github.com/gomarkdown/markdown/**/markdown
+vendor/github.com/gomarkdown/markdown/**/tags
+vendor/github.com/gomarkdown/markdown/**/fuzz-workdir
+vendor/github.com/gomarkdown/markdown/**/markdown-fuzz.zip
+vendor/github.com/gomarkdown/markdown/**/coverage.txt
+vendor/github.com/gomarkdown/markdown/**/testdata/*_got.md
+vendor/github.com/gomarkdown/markdown/**/testdata/*_ast.txt
+
+# flyctl launch added from vendor/go.uber.org/atomic/.gitignore
+vendor/go.uber.org/atomic/bin
+vendor/go.uber.org/atomic/**/.DS_Store
+vendor/go.uber.org/atomic/vendor
+vendor/go.uber.org/atomic/**/cover.html
+vendor/go.uber.org/atomic/**/cover.out
+vendor/go.uber.org/atomic/**/lint.log
+
+# Binaries
+vendor/go.uber.org/atomic/**/*.test
+
+# Profiling output
+vendor/go.uber.org/atomic/**/*.prof
+
+# flyctl launch added from vendor/go.uber.org/multierr/.gitignore
+vendor/go.uber.org/multierr/vendor
+vendor/go.uber.org/multierr/**/cover.html
+vendor/go.uber.org/multierr/**/cover.out
+vendor/go.uber.org/multierr/bin
+
+# flyctl launch added from vendor/go.uber.org/zap/.gitignore
+# Compiled Object files, Static and Dynamic libs (Shared Objects)
+vendor/go.uber.org/zap/**/*.o
+vendor/go.uber.org/zap/**/*.a
+vendor/go.uber.org/zap/**/*.so
+
+# Folders
+vendor/go.uber.org/zap/**/_obj
+vendor/go.uber.org/zap/**/_test
+vendor/go.uber.org/zap/**/vendor
+
+# Architecture specific extensions/prefixes
+vendor/go.uber.org/zap/**/*.[568vq]
+vendor/go.uber.org/zap/**/[568vq].out
+
+vendor/go.uber.org/zap/**/*.cgo1.go
+vendor/go.uber.org/zap/**/*.cgo2.c
+vendor/go.uber.org/zap/**/_cgo_defun.c
+vendor/go.uber.org/zap/**/_cgo_gotypes.go
+vendor/go.uber.org/zap/**/_cgo_export.*
+
+vendor/go.uber.org/zap/**/_testmain.go
+
+vendor/go.uber.org/zap/**/*.exe
+vendor/go.uber.org/zap/**/*.test
+vendor/go.uber.org/zap/**/*.prof
+vendor/go.uber.org/zap/**/*.pprof
+vendor/go.uber.org/zap/**/*.out
+vendor/go.uber.org/zap/**/*.log
+
+vendor/go.uber.org/zap/bin
+vendor/go.uber.org/zap/**/cover.out
+vendor/go.uber.org/zap/**/cover.html
+fly.toml

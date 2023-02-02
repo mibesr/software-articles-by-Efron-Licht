@@ -1,0 +1,171 @@
+@font-face {
+  font-family: "Source Code Pro";
+  font-weight: 300;
+  src: local("Source Code Pro"), url("/SourceCodePro-Regular.tff.woff2"),
+    format("woff2");
+}
+@font-face {
+  font-family: "Open Sans";
+  font-weight: 400;
+  src: local("Open Sans"), local("OpenSans"),
+    url(https://fonts.gstatic.com/s/opensans/v13/cJZKeOuBrn4kERxqtaUH3T8E0i7KZn-EPnyo3HZu7kw.woff)
+      format("woff");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-weight: 400;
+  src: local('JetBrains Mono'),
+    url("/JetBrainsMono-Regular.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+body {
+  background-color: black;
+  background-image: repeating-radial-gradient(
+    (rgba(55, 6, 6, 0.75) 10%, black 20%, rgba(87, 32, 0, 0.75) 30%)
+  );
+  font-family: "Open Sans", "Monaco", "Helvetica";
+  color: rgb(136, 251, 245);
+  font-size: 15px;
+  text-shadow: 0 0 1px #c8c8c8;
+  max-width: 80ch;
+  line-height: 130%;
+}
+code {
+  color: rgb(61, 248, 123);
+  font-family: "JetBrains Mono", Menlo, Bitstream Vera Sans Mono,
+    DejaVu Sans Mono, Monaco, Consolas, monospace;
+}
+
+table {
+  font-family: "Source Code Pro";
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+  border: 3px solid pink;
+  font-variant: small-caps;
+}
+td {
+  border: 1px dashed;
+  border-color: #bac8f2;
+  width: max-content;
+}
+tr {
+  font-family: "Source Code Pro";
+  border-top: 1px dashed;
+  border-bottom: 1px dashed;
+  border-color: #bac8f2;
+}
+th {
+  font-family: "Source Code Pro";
+
+  border-bottom: 1px dashed;
+  border-color: #bac8f2;
+  table-layout: fixed;
+  text-align: center;
+  color: #ed88b7;
+  font-weight: bolder;
+}
+h1,
+h2,
+h3 {
+  font-variant: titling-caps;
+  color: rgb(208, 254, 248);
+  text-shadow: 0 0 3px #c8c8c8;
+}
+h1 {
+  font-size: 28px;
+}
+h2 {
+  font-size: 26px;
+}
+h3 {
+  font-size: 24px;
+}
+blockquote {
+  font-size: 15px;
+  color: #e06ca2;
+  font-variant: small-caps;
+}
+tr:nth-child(even) {
+  background-color: #3a3535;
+}
+
+pre {
+  font-size: 12px;
+  max-width: 120ch;
+  font-family: 'JetBrains Mono', Menlo, Bitstream Vera Sans Mono, DejaVu Sans Mono, Monaco,
+    Consolas, monospace;
+  border-top: dotted;
+  border-spacing: 15px;
+  border-bottom: dotted;
+  border-color: #c8c8c8;
+}
+.pln {
+  color: rgb(238, 135, 135);
+}
+ol.linenums {
+  margin-top: 0;
+  margin-bottom: 0;
+  color: #ccc;
+}
+li.L0,
+li.L1,
+li.L2,
+li.L3,
+li.L4,
+li.L5,
+li.L6,
+li.L7,
+li.L8,
+li.L9 {
+  padding-left: 1em;
+  background-color: #fff;
+  list-style-type: decimal;
+}
+@media screen {
+  .str {
+    color: #bac8f2;
+  }
+  .kwd {
+    color: #df3d89;
+  }
+  .com {
+    color: #c8c9c8;
+  }
+  .typ {
+    color: #40c0eb;
+  }
+  .lit {
+    color: #edaddf;
+  }
+  .pun {
+    color: rgb(201, 193, 193);
+  }
+  .opn {
+    color: rgb(211, 130, 130);
+  }
+  .clo {
+    color: rgb(211, 130, 130);
+  }
+  .tag {
+    color: rgb(157, 157, 227);
+  }
+  .atn {
+    color: #b592eb;
+  }
+  .atv {
+    color: #a2b2e4;
+  }
+  .dec {
+    color: rgb(237, 255, 255);
+  }
+  .var {
+    color: rgb(61, 248, 123);
+  }
+  .fun {
+    color: rgb(247, 210, 116);
+  }
+}
