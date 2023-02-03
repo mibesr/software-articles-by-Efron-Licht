@@ -2,13 +2,18 @@
 
 #### A Programming Article by Efron Licht
 
+## [more articles](https://eblog.fly.dev)
+
+- [bytehacking](./bytehacking.html)
+- [tale of two stacks](./faststack.html)
+
 #### Written Jan 2023
 
 Many junior & intermediate programmers can be a little skittish around around byte-level hacking. You shouldn't be. It's not as hard as it's made out to be, and getting comfortable with low-level programming can make for simpler, more efficient code, In this article, we'll take an example of a real-world problem with a solution that was best discovered and implemented with byte-level programming.
 
 We'll build a few command-line tools and benchmark results along the way.
 
-## Intro:
+## Intro
 
 At a previous job, we had a `mongoDB` database that was giving us some trouble by behaving differently between C# and Golang. We would serialize a struct containing a UUID on the C# end, but get a different UUID on the Golang end.
 
@@ -127,28 +132,28 @@ But how exactly are they permuted? Let's build a program that makes a lookup tab
 package main // buildtable.go
 
 import (
-	"fmt"
-	"os"
+ "fmt"
+ "os"
 
-	"github.com/google/uuid"
+ "github.com/google/uuid"
 )
 func main() {
-	csharp, golang := uuid.MustParse(os.Args[1]), uuid.MustParse(os.Args[2])
-	var c2g, g2c [16]byte
-	for i := range csharp {
-		for j := range golang {
-			if csharp[i] == golang[j] {
-				c2g[i] = byte(j)
-				g2c[j] = byte(i)
-			}
-		}
-	}
-	fmt.Printf("|i|c2g|g2c|\n")
-	fmt.Printf("|---|---|---|\n")
+ csharp, golang := uuid.MustParse(os.Args[1]), uuid.MustParse(os.Args[2])
+ var c2g, g2c [16]byte
+ for i := range csharp {
+  for j := range golang {
+   if csharp[i] == golang[j] {
+    c2g[i] = byte(j)
+    g2c[j] = byte(i)
+   }
+  }
+ }
+ fmt.Printf("|i|c2g|g2c|\n")
+ fmt.Printf("|---|---|---|\n")
 
-	for i := 0; i < 16; i++ {
-		fmt.Printf("|%x|%02x|%02x|\n", i, c2g[i], g2c[i])
-	}
+ for i := 0; i < 16; i++ {
+  fmt.Printf("|%x|%02x|%02x|\n", i, c2g[i], g2c[i])
+ }
 }
 ```
 
@@ -253,7 +258,7 @@ That is, the items are mapped as follows:
 | 6, 7       | 7, 6       |
 | 8..=15     | 8..=15     |
 
-### First golang solution: `swap16`.
+### First golang solution: `swap16`
 
 Let's convert this to Go code: since we'll use a 16-byte lookup table, let's call it `swap16`.
 
@@ -268,7 +273,7 @@ func swap16(src uuid.UUID) uuid.UUID {
 }
 ```
 
-## second golang solution: `swap8`.
+## second golang solution: `swap8`
 
 This seems slightly inefficent to me: after all, we never use the back half of the table! Let's omit that, saving some iteration and a whole 8 bytes of memory.
 
@@ -291,15 +296,15 @@ Just as I was ready to benchmark `swap8`, my co-worker came to me with a Go vers
 var removeExtras = strings.NewReplacer("{", "", "}", "", "-", "")
 import "encoding/hex"
 func swapJS(id string) uuid.UUID {
-	b16 := removeExtras.Replace(id)
-	a := b16[6:6+2] + b16[4:4+2] + b16[2:2+2] + b16[0:0+2]
-	b := b16[10:10+2] + b16[8:8+2]
-	c := b16[14:14+2] + b16[12:12+2]
-	d := b16[16:]
-	src, _ := hex.DecodeString(a + b + c + d)
-	var dst uuid.UUID
-	copy(dst[:], src)
-	return dst
+ b16 := removeExtras.Replace(id)
+ a := b16[6:6+2] + b16[4:4+2] + b16[2:2+2] + b16[0:0+2]
+ b := b16[10:10+2] + b16[8:8+2]
+ c := b16[14:14+2] + b16[12:12+2]
+ d := b16[16:]
+ src, _ := hex.DecodeString(a + b + c + d)
+ var dst uuid.UUID
+ copy(dst[:], src)
+ return dst
 }
 
 ```
@@ -323,30 +328,30 @@ The string-manipulation solution has a good idea: it _omits the lookup table ent
 
 ```go
 func swapDirect(u uuid.UUID) uuid.UUID {
-	u[0], u[1], u[2], u[3] = u[3], u[2], u[1], u[0]
-	u[4], u[5] = u[5], u[4]
-	u[6], u[7] = u[7], u[6]
-	return u
+ u[0], u[1], u[2], u[3] = u[3], u[2], u[1], u[0]
+ u[4], u[5] = u[5], u[4]
+ u[6], u[7] = u[7], u[6]
+ return u
 }
 ```
 
-### Sanity check: basic tests.
+### Sanity check: basic tests
 
 We have four solutions that seem equivalent. Let's quickly write some tests that make sure they are. In this case, we have a well-trusted function, `uuid.New()`, that will generate random test data. Let's lean on that to generate 20K or so tests:
 
 ```go
 func TestSwapEquivalence(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
-	for i := 0; i < 20_000; i++ {
-		u := uuid.New()
-		res8, res16, resDirect, resJS := swap8(u), swap16(u), swapDirect(u), swapJS(u.String())
-		if res8 != res16 || res8 != resDirect || res8 != resJS {
-			t.Errorf("expected all 4 to be equivalent: %s %s %s %s", res8, res16, resDirect, resJS)
-		}
-		if swap8(res8) != u || swap16(res16) != u || swapDirect(resDirect) != u || (swapJS(resJS.String())) != u {
-			t.Errorf("expected swap to be it's own inverse: %s %s %s %s", res8, res16, resDirect, resJS)
-		}
-	}
+ rand.Seed(time.Now().UnixNano())
+ for i := 0; i < 20_000; i++ {
+  u := uuid.New()
+  res8, res16, resDirect, resJS := swap8(u), swap16(u), swapDirect(u), swapJS(u.String())
+  if res8 != res16 || res8 != resDirect || res8 != resJS {
+   t.Errorf("expected all 4 to be equivalent: %s %s %s %s", res8, res16, resDirect, resJS)
+  }
+  if swap8(res8) != u || swap16(res16) != u || swapDirect(resDirect) != u || (swapJS(resJS.String())) != u {
+   t.Errorf("expected swap to be it's own inverse: %s %s %s %s", res8, res16, resDirect, resJS)
+  }
+ }
 }
 ```
 
@@ -358,12 +363,12 @@ We now have four equivalent solutions to the same problem: `swap8`, `swap16`, `s
 package bench_test // bench/bench_test.go
 
 import (
-	"encoding/hex"
-	"os"
-	"strings"
-	"testing"
+ "encoding/hex"
+ "os"
+ "strings"
+ "testing"
 
-	"github.com/google/uuid"
+ "github.com/google/uuid"
 )
 
 // go's compiler will try and optimize out functions that don't do anything,
@@ -378,59 +383,59 @@ var uuidStrings [128]string
 
 func TestMain(m *testing.M) {
 
-	for i := range uuids {
-		uuids[i] = uuid.New()
-	}
-	// preformat the UUIDs as strings for the "string" scenario
-	for i := range uuidStrings {
-		uuidStrings[i] = uuids[i].String()
-	}
-	os.Exit(m.Run())
+ for i := range uuids {
+  uuids[i] = uuid.New()
+ }
+ // preformat the UUIDs as strings for the "string" scenario
+ for i := range uuidStrings {
+  uuidStrings[i] = uuids[i].String()
+ }
+ os.Exit(m.Run())
 }
 func BenchmarkSwap8(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		_uid = swap8(uuids[b.N%128])
-	}
+ for i := 0; i < b.N; i++ {
+  _uid = swap8(uuids[b.N%128])
+ }
 }
 func BenchmarkSwap8String(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		_uid = swap8(uuid.MustParse(uuidStrings[b.N%128]))
-	}
+ for i := 0; i < b.N; i++ {
+  _uid = swap8(uuid.MustParse(uuidStrings[b.N%128]))
+ }
 }
 
 func BenchmarkSwap16(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		_uid = swap16(uuids[b.N%128])
-	}
+ for i := 0; i < b.N; i++ {
+  _uid = swap16(uuids[b.N%128])
+ }
 }
 func BenchmarkSwap16String(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		_uid = swap16(uuid.MustParse(uuidStrings[b.N%128]))
-	}
+ for i := 0; i < b.N; i++ {
+  _uid = swap16(uuid.MustParse(uuidStrings[b.N%128]))
+ }
 }
 
 func BenchmarkSwapDirect(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		_uid = swapDirect((uuids[b.N%128]))
-	}
+ for i := 0; i < b.N; i++ {
+  _uid = swapDirect((uuids[b.N%128]))
+ }
 }
 
 func BenchmarkSwapDirectString(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		_uid = swapDirect(uuid.MustParse(uuidStrings[b.N%128]))
-	}
+ for i := 0; i < b.N; i++ {
+  _uid = swapDirect(uuid.MustParse(uuidStrings[b.N%128]))
+ }
 }
 
 func BenchmarkSwapJS(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		_uid = swapJS((uuids[b.N%128].String()))
-	}
+ for i := 0; i < b.N; i++ {
+  _uid = swapJS((uuids[b.N%128].String()))
+ }
 }
 
 func BenchmarkSwapJSString(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		_uid = swapJS((uuidStrings[b.N%128]))
-	}
+ for i := 0; i < b.N; i++ {
+  _uid = swapJS((uuidStrings[b.N%128]))
+ }
 }
 ```
 
@@ -457,59 +462,59 @@ We'd like output like this:
 package main // fmtbench/main.go
 
 import (
-	"fmt"
-	"io"
-	"math"
-	"os"
-	"regexp"
-	"sort"
-	"strconv"
-	"strings"
+ "fmt"
+ "io"
+ "math"
+ "os"
+ "regexp"
+ "sort"
+ "strconv"
+ "strings"
 )
 
 type result struct {
-	name                    string
-	runs, ns, bytes, allocs float64
+ name                    string
+ runs, ns, bytes, allocs float64
 }
 
 func main() {
-	input := strings.TrimSpace(string(must(io.ReadAll(os.Stdin))))
-	lines := strings.Split(input, "\n")
-	goarch := strings.TrimPrefix(lines[0], "goarch: ")
-	goos := strings.TrimPrefix(lines[1], "goos: ")
-	pkg := strings.TrimPrefix(lines[2], "pkg: ")
-	fmt.Printf("## benchmark %s: %s/%s\n", pkg, goos, goarch)
-	fmt.Println(`|name|runs|ns/op|%/max|bytes|%/max|allocs|%/max|`)
-	fmt.Println(`|---|---|---|---|---|---|---|---|`)
-	// get results and min/max
-	var results []result
-	var maxNS, maxBytes, maxAllocs float64
-	{
-		// thank you
-		var re = regexp.MustCompile(`Benchmark(.+)(?:-\w)\s+(\d+)\s+(.+)ns/op\s+(\d+) B/op\s+(\d+)`)
+ input := strings.TrimSpace(string(must(io.ReadAll(os.Stdin))))
+ lines := strings.Split(input, "\n")
+ goarch := strings.TrimPrefix(lines[0], "goarch: ")
+ goos := strings.TrimPrefix(lines[1], "goos: ")
+ pkg := strings.TrimPrefix(lines[2], "pkg: ")
+ fmt.Printf("## benchmark %s: %s/%s\n", pkg, goos, goarch)
+ fmt.Println(`|name|runs|ns/op|%/max|bytes|%/max|allocs|%/max|`)
+ fmt.Println(`|---|---|---|---|---|---|---|---|`)
+ // get results and min/max
+ var results []result
+ var maxNS, maxBytes, maxAllocs float64
+ {
+  // thank you
+  var re = regexp.MustCompile(`Benchmark(.+)(?:-\w)\s+(\d+)\s+(.+)ns/op\s+(\d+) B/op\s+(\d+)`)
 
-		for _, line := range lines {
-			match := re.FindStringSubmatch(line)
-			if match == nil {
-				continue
-			}
-			atof := func(i int) float64 { return must(strconv.ParseFloat(strings.TrimSpace(match[i]), 64)) }
-			res := result{name: match[1], runs: atof(2), ns: atof(3), bytes: atof(4), allocs: atof(5)}
-			results = append(results, res)
-			maxNS, maxBytes, maxAllocs = math.Max(maxNS, res.ns), math.Max(maxBytes, res.bytes), math.Max(maxAllocs, res.allocs)
-		}
-	}
-	sort.SliceStable(results, func(i, j int) bool { return results[i].ns < results[j].ns })
-	for _, res := range results {
-		fmt.Printf("|%s|%.3g|%.3g|%0.3g|%.3g|%0.3g|%.3g|%0.3g|\n", res.name, res.runs, res.ns, (res.ns/maxNS)*100, res.bytes, (res.bytes/maxBytes)*100, res.allocs, (res.allocs/maxAllocs)*100)
-	}
+  for _, line := range lines {
+   match := re.FindStringSubmatch(line)
+   if match == nil {
+    continue
+   }
+   atof := func(i int) float64 { return must(strconv.ParseFloat(strings.TrimSpace(match[i]), 64)) }
+   res := result{name: match[1], runs: atof(2), ns: atof(3), bytes: atof(4), allocs: atof(5)}
+   results = append(results, res)
+   maxNS, maxBytes, maxAllocs = math.Max(maxNS, res.ns), math.Max(maxBytes, res.bytes), math.Max(maxAllocs, res.allocs)
+  }
+ }
+ sort.SliceStable(results, func(i, j int) bool { return results[i].ns < results[j].ns })
+ for _, res := range results {
+  fmt.Printf("|%s|%.3g|%.3g|%0.3g|%.3g|%0.3g|%.3g|%0.3g|\n", res.name, res.runs, res.ns, (res.ns/maxNS)*100, res.bytes, (res.bytes/maxBytes)*100, res.allocs, (res.allocs/maxAllocs)*100)
+ }
 }
 
 func must[T any](t T, err error) T {
-	if err != nil {
-		panic(err)
-	}
-	return t
+ if err != nil {
+  panic(err)
+ }
+ return t
 }
 ```
 

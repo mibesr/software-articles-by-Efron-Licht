@@ -1,5 +1,13 @@
 
-# optimizing gin's stack
+# a tale of two stacks: optimizing gin's panic recovery handler
+
+#### A Programming Article by Efron Licht
+
+## [more articles](./index.html)
+- [bytehacking](./bytehacking.html)
+- [tale of two stacks](./faststack.html)
+
+## blog source: [gitlab.com/efronlicht/blog](https://gitlab.com/efronlicht/blog)
 
 ## gin's panic handler
 
@@ -597,77 +605,97 @@ We'll run the benchmarks on the same computer under four different circumstances
 
 linux (wsl), source code on SSD
 linux (wsl), source code on SSD, compiled with `-trimpath`
-windows, source on SSD
-windows, source on HDD
 
-Please see the [benchmark_results.md](benchmark_results.md) and the source code in [bench_test.go](bench_test.go), `[ping_test.go]`(ping_test.go), and `[pong_test.go]`(pong_test.go) for additional details.
+Please see the source code in [bench_test.go](bench_test.go), `[ping_test.go]`(ping_test.go), and `[pong_test.go]`(pong_test.go) for additional details.
 
-Caveat: These benchmarks are somewhat unfair to `slowstack`, since they're constructed to attack a known worst-case for it's performance, and _should not be taken as definitive conclusions_.
+
+### benchmark caveats
+
+These are _synthetic benchmarks_ and probably don't reflect real-world performance.
+
+- These benchmarks are somewhat unfair to `slowstack`, since they're constructed to attack a known worst-case for it's performance.
+- It's always hard to measure filesystem performance, since modern filesystems cache recent reads in memory.
+- We artificially cap `faststack` at a depth of 64.
 
 Let's examine the first case:
 
+(These benchmarks are formatted using `[fmtbench]`, a tool I created for my [simple byte hacking](https://eblog.fly.dev/bytehacking.html) article)
 ## linux(wsl): SSD
 
-BenchmarkPing/depth=1/faststack-24             14306      78653 ns/op     8849 B/op       92 allocs/op
-BenchmarkPing/depth=1/slowstack-24             12033     105193 ns/op   220315 B/op      101 allocs/op
-BenchmarkPing/depth=5/faststack-24             10000     101501 ns/op    10835 B/op      132 allocs/op
-BenchmarkPing/depth=5/slowstack-24              7717     135690 ns/op   302127 B/op      157 allocs/op
-BenchmarkPing/depth=25/faststack-24             6556     180071 ns/op    20765 B/op      332 allocs/op
-BenchmarkPing/depth=25/slowstack-24             3907     313058 ns/op   719256 B/op      440 allocs/op
-BenchmarkPing/depth=125/faststack-24            4456     260204 ns/op    44900 B/op      651 allocs/op
-BenchmarkPing/depth=125/slowstack-24             921    1341206 ns/op  2797236 B/op     1846 allocs/op
-BenchmarkPing/depth=625/faststack-24            3972     264099 ns/op    44901 B/op      651 allocs/op
-BenchmarkPing/depth=625/slowstack-24             100   10104571 ns/op 13171325 B/op     8863 allocs/op
-BenchmarkPing/depth=3125/faststack-24           4537     265868 ns/op    44900 B/op      651 allocs/op
-BenchmarkPing/depth=3125/slowstack-24              8  140203673 ns/op 64903352 B/op    43949 allocs/op
-
+|name|runs|ns/op|%/max|bytes|%/max|allocs|%/max|
+|---|---|---|---|---|---|---|---|
+|FastStack/depth=16-24             |7.76e+03|1.42e+05|0.0624|1.66e+04|0.0194|242|0.42|
+|FastStack/depth=32-24             |4.93e+03|2.18e+05|0.0959|3.3e+04|0.0385|403|0.7|
+|FastStack/depth=64-24             |4.21e+03|3.04e+05|0.133|4.59e+04|0.0536|651|1.13|
+|FastStack/depth=128-24            |3.85e+03|2.98e+05|0.131|4.59e+04|0.0536|651|1.13|
+|FastStack/depth=256-24            |4.3e+03|2.77e+05|0.122|4.59e+04|0.0536|651|1.13|
+|FastStack/depth=512-24            |4.31e+03|2.75e+05|0.121|4.59e+04|0.0536|651|1.13|
+|FastStack/depth=1024-24           |4.19e+03|3.06e+05|0.134|4.59e+04|0.0536|651|1.13|
+|FastStack/depth=2048-24           |3.45e+03|2.92e+05|0.128|4.59e+04|0.0536|651|1.13|
+|FastStack/depth=4096-24           |4.03e+03|2.98e+05|0.131|4.59e+04|0.0536|651|1.13|
+|SlowStack/depth=0016-24           |4.95e+03|2.42e+05|0.106|5.32e+05|0.62|313|0.543|
+|SlowStack/depth=0032-24           |2.74e+03|3.99e+05|0.175|8.66e+05|1.01|538|0.934|
+|SlowStack/depth=0064-24           |1.72e+03|7.07e+05|0.311|1.53e+06|1.79|988|1.71|
+|SlowStack/depth=0128-24            |814|1.44e+06|0.631|2.87e+06|3.35|1.89e+03|3.28|
+|SlowStack/depth=0256-24            |384|3.29e+06|1.44|5.54e+06|6.46|3.68e+03|6.4|
+|SlowStack/depth=0512-24            |152|7.44e+06|3.27|1.09e+07|12.7|7.28e+03|12.6|
+|SlowStack/depth=1024-24             |52|2.07e+07|9.1|2.16e+07|25.2|1.45e+04|25.1|
+|SlowStack/depth=2048-24             |18|6.6e+07|29|4.29e+07|50.1|2.88e+04|50.1|
+|SlowStack/depth=4096-24              |5|2.28e+08|100|8.57e+07|100|5.76e+04|100|
 We note the following:
 
-- `faststack` is always faster than `slowstack`, but not by as much as we might expect
+- `faststack` is always faster than `slowstack`; it starts out roughly 40% faster and gets better from there.
 - `faststack` always uses  _significantly_ less memory.
 - faststack's resource usage stops  increasing after depth 64, as we'd expect (since we hard-limited the callstack).
-- slowstack's memory usage increases linearly with the depth of the stack, but it's runtime increases super-linearly as the stack gets larger. Why? I'm not sure, but my guess is that it's GC or fighting with the OS over the number of syscalls.
+- slowstack's memory usage and runtime increase linearly with the depth of the callstack, using nearly a MiB per call for even a 32-deep callstack.
 
-On a HDD, the difference is exaggerated,  but _neither_ implementation performs that well: 47 miliseconds for even the most trivial implementation. Even a 25-depth stack would produce a noticable pause (>180ms) from both `faststack` and `slowstack`.
+## let's compare it to windows on a HDD (same processor)
 
-goarch: amd64
-pkg: gitlab.com/efronlicht/gin-ex
-cpu: AMD Ryzen 9 5900 12-Core Processor
-BenchmarkPing/depth=1/faststack-24              2294     476571 ns/op    14329 B/op      100 allocs/op
-BenchmarkPing/depth=1/slowstack-24              2394     509789 ns/op   223090 B/op      105 allocs/op
-BenchmarkPing/depth=5/faststack-24              1602     710711 ns/op    18492 B/op      140 allocs/op
-BenchmarkPing/depth=5/slowstack-24              1381     813649 ns/op   306680 B/op      161 allocs/op
-BenchmarkPing/depth=25/faststack-24              571    1878803 ns/op    39315 B/op      340 allocs/op
-BenchmarkPing/depth=25/slowstack-24              500    2340672 ns/op   730874 B/op      444 allocs/op
-BenchmarkPing/depth=125/faststack-24             324    3701402 ns/op    80024 B/op      653 allocs/op
-BenchmarkPing/depth=125/slowstack-24             100   10164412 ns/op  2845715 B/op     1850 allocs/op
-BenchmarkPing/depth=625/faststack-24             309    3739220 ns/op    80048 B/op      653 allocs/op
-BenchmarkPing/depth=625/slowstack-24              22   51105918 ns/op 13394559 B/op     8870 allocs/op
-BenchmarkPing/depth=3125/faststack-24            316    3756325 ns/op    80027 B/op      653 allocs/op
-BenchmarkPing/depth=3125/slowstack-24              3  334763167 ns/op 66048874 B/op    43968 allocs/op
+|name|runs|ns/op|%/max|bytes|%/max|allocs|%/max|
+|---|---|---|---|---|---|---|---|
+|FastStack/depth=16-24              |861|1.34e+06|0.29|3e+04|0.0346|250|0.434|
+|FastStack/depth=32-24              |532|2.25e+06|0.487|4.66e+04|0.0538|410|0.711|
+|FastStack/depth=64-24              |322|3.63e+06|0.784|8e+04|0.0922|653|1.13|
+|FastStack/depth=128-24             |324|3.61e+06|0.78|8e+04|0.0923|653|1.13|
+|FastStack/depth=256-24             |328|3.69e+06|0.798|8e+04|0.0923|653|1.13|
+|FastStack/depth=512-24             |326|3.58e+06|0.774|8e+04|0.0923|653|1.13|
+|FastStack/depth=1024-24            |338|3.61e+06|0.78|8e+04|0.0923|653|1.13|
+|FastStack/depth=2048-24            |322|3.64e+06|0.786|8e+04|0.0923|653|1.13|
+|FastStack/depth=4096-24            |327|3.67e+06|0.794|8e+04|0.0923|653|1.13|
+|SlowStack/depth=0016-24            |752|1.6e+06|0.346|5.38e+05|0.621|317|0.55|
+|SlowStack/depth=0032-24            |427|2.84e+06|0.613|8.76e+05|1.01|542|0.94|
+|SlowStack/depth=0064-24            |232|5.11e+06|1.11|1.55e+06|1.79|992|1.72|
+|SlowStack/depth=0128-24            |120|1.02e+07|2.22|2.9e+06|3.35|1.89e+03|3.28|
+|SlowStack/depth=0256-24             |57|2.02e+07|4.37|5.61e+06|6.47|3.69e+03|6.4|
+|SlowStack/depth=0512-24             |31|4e+07|8.66|1.1e+07|12.7|7.28e+03|12.6|
+|SlowStack/depth=1024-24             |13|8.56e+07|18.5|2.18e+07|25.2|1.45e+04|25.1|
+|SlowStack/depth=2048-24              |6|1.93e+08|41.8|4.35e+07|50.1|2.89e+04|50.1|
+|SlowStack/depth=4096-24              |3|4.62e+08|100|8.68e+07|100|5.76e+04|100|
 
-OK, what if we _can't_ find the source, like if we compiled with -trimpath?
-c## Is this worth it?
+This is slower, but not by as much as we might expect. Probably the operating system's in-memory read cache is doing the heavy lifting here.
 
-There's two ways to frame this question: First, Is it worth optimizing a panic recovery handler? If so, should we be diving into the source code at all?
+Only the truly deep calls start taking nearly a second (though that's _really_ slow for a http response!)
+
 
 ### Is it worth optimizing a panic recovery handler?
 
 Everything comes at a cost. In this case, `faststack` cuts down on the memory usage and clock time significantly by using a more efficient algorithm and limiting the total stack depth, at the cost of doubling the length of the code and increasing it's complexity. `slowstack` was trivial to understand, and `faststack` is definitely not; it requires a new data structure, global variables, lazy initialization, it's _own_ panic recovery handler, and two separate sorts.
 
 Why do we have a panic recovery handler in the first place?  To provide continuous service, even in the presence of software bugs. That is, a panic recovery handler is supposed to be a last-ditch protection against a bug that never should have made it into production.
-These panics are _supposed_ to be rare; prevented by a suite of tests, CI, etc. In practice, well, all software is buggy, and Go programs can panic a lot. When I worked at an ISP, I had production bugs that triggered 20K recovery handlers, per minute, per server (on ~5 servers). If those stacks have 20 frames each, on average, and the files those frames came from average 20K, _8GiB_ of allocations a minute per server, or 40GiB of allocations per minute: - that's enough to bring most containers to a crawl, and even a relatively beefy modern PC might struggle to clean up all that garbage.
+These panics are _supposed_ to be rare; prevented by a suite of tests, CI, etc. In practice, well, all software is buggy, and Go programs can panic a lot. When I worked at an ISP, I had production bugs that triggered 20K recovery handlers, per minute, per server (on ~5 servers). If those stacks have 20 frames each, on average, and the files those frames came from average 20K, _8GiB_ of allocations a minute per server, or 40GiB of allocations per minute: - that's enough to bring most containers to a crawl, and even a relatively beefy modern PC might struggle to clean up all that garbage. **This** server only has 256MiB of RAM (as of my last edit.) Admittedly, that's a pretty niche scenario.
 
- While `faststack` cuts down on the memory usage and clock time significantly by using a more efficient algorithm and limiting the total stack depth, this comes at a cost: it doubled the length of the code and significantly increased it's complexity. `slowstack` was trivial to understand, but `faststack` is definitely not; it requires a new data structure, global variables, lazy initialization, it's _own_ panic recovery handler, and two separate sorts.
+More worryingly, there's two performance problems that _faststack_ can't help with: first, most storage mediums can't do concurrent IO. If _something else_ on the server needs to touch the disks the panic handler is reading, then they'll block each other for as long as those reads take.
 
-More worryingly, there's two performance problems that _faststack_ can't help with: first, reading from disk is a fundamentally slow operation; disks are slower than memory, and syscalls, such as the ones to read files, are expensive.  If the PC is reading from a HDD, both `faststack` and `slowstack` are actively slow. Secondly, most operating systems place a limit on the number of file handles a single process can open (`1024` by default on linux, iirc). Concurrent calls to `faststack()` might quickly eat up this limit. While these conditions are rare, they're likely to occur for at least some of Gin's users, who may struggle to diagnose the problem.
+Secondly, most operating systems place a limit on the number of file handles a single process can open (`1024` by default on linux, iirc). Concurrent calls to `faststack()` might quickly eat up this limit. While these conditions are rare, they're likely to occur for at least some of Gin's users, who may struggle to diagnose the problem.
 
 There are technical solutions for _those_ problems: for example, you could cut down on IO by havin a concurrency-safe cache for common file:line couples, and you could limit the total memory usage of _that_ by having it be a LRU cache, but that's adding _even more complexity_.
 
-At some point, it's important to take a step back and ask yourself _whether or not all this work is worth it in the first place_.
+Which leads us to an important question: what benefit are we getting?
 
 ### Is having a single line of source code annotation really helpful?
 
 How much benefit are we really getting from this implementation? How likely is a single line of source code to help us to fix a bug, if we already have the **file**, **line**, and **function name**? Generally speaking, we'll need more context than a single line to diagnose the bug: we'll have to look at the source itself, not just a pinhole window into it. While it's a cool trick, this source code annotation is just that: a neat parlor trick, not a particularly helpful debugging tool. And there's one corner case where it could be really damaging: if the source code present on the host system differs from the version used to compile the executable, the source code annotations will be _wrong_.
 
-Honestly, I think the Gin project would be better server by just using `runtime.Stack()` and forgetting about source code annotation. Sometimes simpler is better.
+At some point, it's important to take a step back and ask yourself _whether or not all this work is worth it in the first place_. I don't think `slowstack` or `faststack` solve a problem that needs to be solved. I think think the Gin project would be better served by just using `runtime.Stack()` and forgetting about source code annotation. Sometimes simpler is better.
+
+Gin allows you to hook in your own panic handlers. We'll talk about panicking, logging, and recovery more in a later article: stay tuned.

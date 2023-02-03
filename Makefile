@@ -10,14 +10,15 @@ generate: # make generate
 	git rev-parse HEAD > server/commit.txt
 	go run ./cmd/rendermd . ./server/static # generate static html from markdown
 
-deps: generate 
+deps:  generate
 	# --- make deps ----
 	go mod tidy
 	go mod download
 	go mod vendor
 
 
-test:
+
+test: deps
 	# --- make test ---
 	go test -v ./...
 	go build ./... # check that everything can build w/out compiler errors
