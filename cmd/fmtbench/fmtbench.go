@@ -25,6 +25,7 @@ func mustTrimPrefix(s, prefix string) string {
 	}
 	return after
 }
+
 func main() {
 	input := strings.TrimSpace(string(must(io.ReadAll(os.Stdin))))
 	lines := strings.Split(input, "\n")
@@ -39,7 +40,7 @@ func main() {
 	var maxNS, maxBytes, maxAllocs float64
 	{
 		// thank you
-		var re = regexp.MustCompile(`Benchmark(.+)(?:-\w)\s+(\d+)\s+(.+)ns/op\s+(\d+) B/op\s+(\d+)`)
+		re := regexp.MustCompile(`Benchmark(.+)(?:-\w)\s+(\d+)\s+(.+)ns/op\s+(\d+) B/op\s+(\d+)`)
 
 		for _, line := range lines {
 			match := re.FindStringSubmatch(line)

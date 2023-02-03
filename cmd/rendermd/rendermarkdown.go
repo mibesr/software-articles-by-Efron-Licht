@@ -52,7 +52,6 @@ func main() {
 	const format = "rendermd\t%s\t->\t%s\n"
 	log.Println("scanning...")
 	{
-
 	}
 	var wg sync.WaitGroup
 	type res struct {
@@ -110,7 +109,6 @@ func main() {
 		fmt.Fprintf(tw, format, r.md, r.html)
 		fmt.Fprintf(tw, format, r.md, r.mermaid)
 	}
-
 }
 
 func renderMarkdown(path string) []byte {

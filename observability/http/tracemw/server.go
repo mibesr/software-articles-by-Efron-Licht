@@ -16,7 +16,6 @@ import (
 // A missing or invalid trace will generate a new trace instead.
 // logError is an optional parameter for when FromHttpHeader returns an error; if nil, it's a no-op.
 func Server(h http.Handler, logger *zap.Logger) http.HandlerFunc {
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		t, err := trace.FromHttpHeader(r.Header)

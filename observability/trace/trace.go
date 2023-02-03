@@ -30,8 +30,10 @@ type Trace struct {
 	RequestIDs []uuid.UUID `json:"request_ids,omitempty"`
 }
 
-const TraceIDHeader = "E-Trace-Id"
-const ReqIDHeader = "E-Req-Id"
+const (
+	TraceIDHeader = "E-Trace-Id"
+	ReqIDHeader   = "E-Req-Id"
+)
 
 // PopulateRequestHeaders adds the traceID and RequestIDs to the request headers.
 // In general, this function should not be used directly: use the HTTPClientWrapper instead.
@@ -52,7 +54,7 @@ var ErrNoReqIDHeader = errors.New("no E-Req-ID header")
 
 // FromHttpReq decodes a Trace from the request's headers. In eneral, this function should not be used directly: use the ServerMiddleware instead.
 func FromHttpHeader(h http.Header) (Trace, error) {
-	var rawTrace = h.Get(TraceIDHeader)
+	rawTrace := h.Get(TraceIDHeader)
 	traceID, err := uuid.Parse(rawTrace)
 	if err != nil {
 		return Trace{}, fmt.Errorf("E-Trace-Id header had invalid value %q expected a UUID: %w", rawTrace, err)

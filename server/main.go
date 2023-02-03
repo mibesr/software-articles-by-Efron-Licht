@@ -69,8 +69,8 @@ func setupLogger() *zap.Logger {
 		&zapcore.BufferedWriteSyncer{WS: os.Stderr, FlushInterval: time.Second},
 		zapcore.DebugLevel,
 	))
-
 }
+
 func Run() (err error) {
 	// initialize logger.
 

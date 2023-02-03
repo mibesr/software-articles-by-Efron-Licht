@@ -106,7 +106,6 @@ import "testing"
 //go:noinline
 func Pong(b *testing.B, stack func(skip int) []byte, n int) []byte {
 	return Ping(b, stack, n)
-
 }
 
 // this is one of 100 lines of comments after a function Pong() //

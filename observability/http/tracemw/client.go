@@ -91,9 +91,9 @@ func Client(
 
 		log.Debug(prefix+"end: ok", zap.Duration("elapsed", time.Since(start)), zap.Int("status_code", resp.StatusCode), zap.Stringer("trace_id", t.TraceID), zap.Stringers("request_id", t.RequestIDs))
 		return resp, err
-
 	})
 }
+
 func (cf ClientFunc) Do(req *http.Request) (*http.Response, error) {
 	return cf(req)
 }

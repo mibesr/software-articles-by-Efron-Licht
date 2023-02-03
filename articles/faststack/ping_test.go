@@ -111,7 +111,6 @@ func Ping(b *testing.B, stack func(skip int) []byte, n int) []byte {
 	} else {
 		return Pong(b, stack, n-1)
 	}
-
 }
 
 // this is one of 100 lines of comments after a function Ping() //

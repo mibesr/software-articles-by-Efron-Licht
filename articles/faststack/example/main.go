@@ -15,6 +15,7 @@ func main() {
 	})
 	http.ListenAndServe(":8080", engine)
 }
+
 func f() string {
 	panic("this function panics!")
 }

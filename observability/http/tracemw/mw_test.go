@@ -76,7 +76,6 @@ func TestThreadTraceClientServerClient(t *testing.T) {
 			}
 		}
 	}
-
 }
 
 func TestTraceFromServerOnly(t *testing.T) {
@@ -96,5 +95,4 @@ func TestTraceFromServerOnly(t *testing.T) {
 			t.Fatalf("expected logs to contain %s, but didn't", s)
 		}
 	}
-
 }

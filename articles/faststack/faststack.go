@@ -27,7 +27,6 @@ func localSourceUnavailable() bool {
 		if _, err := os.Lstat(file); err != nil {
 			localSourceNotFound = true
 		}
-
 	})
 	return localSourceNotFound
 }
@@ -87,7 +86,6 @@ func FastStack(skip int) (formatted []byte) {
 				log.Println("panic while formatting stack: too many empty lines in sourcefile?", p, debug.Stack())
 				f.Close()
 			}
-
 		}()
 
 		scanner := bufio.NewScanner(f)
@@ -127,7 +125,6 @@ func FastStack(skip int) (formatted []byte) {
 	out := bytes.NewBuffer(buf[:0])
 	for i := range di {
 		fmt.Fprintf(out, "%s:%d (0x%x)\t%s:%s\n", di[i].File, di[i].Line, di[i].PC, trimFunction(di[i].Function), strings.TrimSpace(di[i].Source))
-
 	}
 
 	return out.Bytes()
