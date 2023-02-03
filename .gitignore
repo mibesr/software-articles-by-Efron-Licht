@@ -1,6 +1,3 @@
-fmtbench
-buildtable
-printpair
 .vscode
 bin/**
 .DS_Store

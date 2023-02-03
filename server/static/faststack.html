@@ -1,0 +1,683 @@
+<!DOCTYPE html><html><head>
+  <title>faststack</title>
+  <meta name="GENERATOR" content="github.com/gomarkdown/markdown markdown processor for Go"/>
+  <meta charset="utf-8"/>
+  <link rel="stylesheet" type="text/css" href="/s.css"/>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
+</head>
+<body>
+
+<h1>optimizing gin’s stack</h1>
+
+<h2>gin’s panic handler</h2>
+
+<p>The popular go web framework Gin has a middleware that allows you to recover from and log panics while serving HTTP.</p>
+
+<p>Here’s an example program that will panic whenever we hit the route GET /panic</p>
+
+<pre><code class="language-go"><span class="kwd">package</span> <span class="pln">main</span>
+
+<span class="kwd">import</span> <span class="pun">(</span>
+   <span class="str">&#34;fmt&#34;</span>
+   <span class="str">&#34;net/http&#34;</span>
+
+   <span class="str">&#34;github.com/gin-gonic/gin&#34;</span>
+<span class="pun">)</span>
+
+<span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
+   <span class="pln">engine</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">gin</span><span class="pun">.</span><span class="typ">New</span><span class="pun">(</span><span class="pun">)</span>
+   <span class="pln">engine</span><span class="pun">.</span><span class="typ">Use</span><span class="pun">(</span><span class="pln">gin</span><span class="pun">.</span><span class="typ">Recovery</span><span class="pun">(</span><span class="pun">)</span><span class="pun">)</span>
+   <span class="pln">engine</span><span class="pun">.</span><span class="typ">GET</span><span class="pun">(</span><span class="str">&#34;/panic&#34;</span><span class="pun">,</span> <span class="kwd">func</span><span class="pun">(</span><span class="pln">c</span> <span class="pun">*</span><span class="pln">gin</span><span class="pun">.</span><span class="typ">Context</span><span class="pun">)</span> <span class="pun">{</span><span class="pln">fmt</span><span class="pun">.</span><span class="typ">Fprintf</span><span class="pun">(</span><span class="pln">c</span><span class="pun">.</span><span class="typ">Writer</span><span class="pun">,</span> <span class="str">&#34;%s&#34;</span><span class="pun">,</span> <span class="pln">f</span><span class="pun">(</span><span class="pun">)</span><span class="pun">)</span><span class="pun">}</span><span class="pun">)</span>
+   <span class="pln">http</span><span class="pun">.</span><span class="typ">ListenAndServe</span><span class="pun">(</span><span class="str">&#34;:8080&#34;</span><span class="pun">,</span> <span class="pln">engine</span><span class="pun">)</span>
+<span class="pun">}</span>
+<span class="kwd">func</span> <span class="pln">f</span><span class="pun">(</span><span class="pun">)</span> <span class="pln">string</span> <span class="pun">{</span>
+    <span class="pln">panic</span><span class="pun">(</span><span class="str">&#34;this function panics!&#34;</span><span class="pun">)</span>
+<span class="pun">}</span>
+</code></pre>
+
+<p>We run the program:</p>
+
+<pre><code class="language-sh"><span class="pln">go</span> <span class="pln">run</span> <span class="pln">main</span><span class="pun">.</span><span class="pln">go</span>
+</code></pre>
+
+<p>and in another shell provoke the panic:</p>
+
+<pre><code class="language-sh"><span class="pln">curl</span> <span class="pln">http</span><span class="pun">:</span><span class="com">//localhost:8080</span>
+</code></pre>
+
+<p>Getting this nicely formatted result:</p>
+
+<pre><code>2023/01/17 13:45:01 [Recovery] 2023/01/17 - 13:45:01 panic recovered:
+GET /panic HTTP/1.1
+Host: localhost:8080
+Accept: */*
+User-Agent: curl/7.81.0
+
+
+this function panics!
+/home/efron/go/src/gitlab.com/efronlicht/gin-ex/main.go:19 (0x7200a6)
+        f: panic(&#34;this function panics!&#34;)
+/home/efron/go/src/gitlab.com/efronlicht/gin-ex/main.go:14 (0x720094)
+        main.func1: fmt.Fprintf(c.Writer, &#34;%s&#34;, f())
+/home/efron/go/pkg/mod/github.com/gin-gonic/gin@v1.8.2/context.go:173 (0x71a601)
+        (*Context).Next: c.handlers[c.index](c)
+/home/efron/go/pkg/mod/github.com/gin-gonic/gin@v1.8.2/recovery.go:101 (0x71a5ec)
+        CustomRecoveryWithWriter.func1: c.Next()
+/home/efron/go/pkg/mod/github.com/gin-gonic/gin@v1.8.2/context.go:173 (0x719470)
+        (*Context).Next: c.handlers[c.index](c)
+/home/efron/go/pkg/mod/github.com/gin-gonic/gin@v1.8.2/gin.go:616 (0x7190d8)
+        (*Engine).handleHTTPRequest: c.Next()
+/home/efron/go/pkg/mod/github.com/gin-gonic/gin@v1.8.2/gin.go:572 (0x718d9c)
+        (*Engine).ServeHTTP: engine.handleHTTPRequest(c)
+/usr/local/go/src/net/http/server.go:2947 (0x620a6b)
+        serverHandler.ServeHTTP: handler.ServeHTTP(rw, req)
+/usr/local/go/src/net/http/server.go:1991 (0x61d366)
+        (*conn).serve: serverHandler{c.server}.ServeHTTP(w, w.req)
+/usr/local/go/src/runtime/asm_amd64.s:1594 (0x4672e0)
+        goexit: BYTE    $0x90   // NOP
+</code></pre>
+
+<p>As well as the usual elements of a stack trace: file, line, program counter, function name; Gin’s recovery handler somehow gives you the <strong>actual line of the source code</strong> where that frame of the stack trace happened.</p>
+
+<p>For programmers more used to dynamic languages, this seems pretty natural: you need the source code to run the file. But Go is a statically compiled language that doesn’t carry around it’s source code.</p>
+
+<p>I had two thoughts when I saw this:</p>
+
+<ul>
+<li>“wow, cool!”</li>
+<li>“this is probably incredibly slow”.</li>
+</ul>
+
+<p>Let’s take a look into the implementation to find out <em>how</em> Gin does it, and see if we can do it better. When we’re done, let’s run some benchmarks to compare the solutions, and then talk about if this source-code magic is a good idea in the first place.</p>
+
+<h2>Investigating Gin</h2>
+
+<p>Luckily, the stack trace itself gives us nearly all the clues we need:</p>
+
+<blockquote>
+<p><code>/home/efron/go/pkg/mod/github.com/gin-gonic/gin@v1.8.2/recovery.go:101 (0x71a5ec)
+        CustomRecoveryWithWriter.func1: c.Next()</code></p>
+</blockquote>
+
+<p>which contains a function <code>stack()</code>, which is simple and clearly documented. From now on, I’m going to call it <code>slowstack()</code>, and we’ll call our eventual optimized version <code>faststack()</code>.
+Starting at <code>skip</code>, we walk frame-by-frame up the stack.</p>
+
+<p>for each frame, we use <code>runtime.Caller</code> to get the stack information for each one, using the <code>file</code> name to look up up a file with the same name on the host system.</p>
+
+<p>We read the entire file into memory, caching the most-recent file, so multiple calls to the same function don’t have to re-read the file, and print out the annotated stack frame.</p>
+
+<pre><code class="language-go"><span class="com">// stack returns a nicely formatted stack frame, skipping skip frames.</span>
+<span class="kwd">func</span> <span class="pln">stack</span><span class="pun">(</span><span class="pln">skip</span> <span class="kwd">int</span><span class="pun">)</span> <span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span> <span class="pun">{</span> <span class="com">// from now on, called `slowstack()`</span>
+ <span class="com">// As we loop, we open files and read them. These variables record the currently</span>
+ <span class="com">// loaded file.</span>
+ <span class="kwd">var</span> <span class="pln">lines</span> <span class="pun">[</span><span class="pun">]</span><span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span>
+ <span class="kwd">var</span> <span class="pln">lastFile</span> <span class="pln">string</span>
+ <span class="kwd">for</span> <span class="pln">i</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">skip</span><span class="pun">;</span> <span class="pun">;</span> <span class="pln">i</span><span class="pun">+</span><span class="pun">+</span> <span class="pun">{</span> <span class="com">// Skip the expected number of frames</span>
+  <span class="pln">pc</span><span class="pun">,</span> <span class="pln">file</span><span class="pun">,</span> <span class="pln">line</span><span class="pun">,</span> <span class="pln">ok</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">runtime</span><span class="pun">.</span><span class="typ">Caller</span><span class="pun">(</span><span class="pln">i</span><span class="pun">)</span>
+  <span class="kwd">if</span> <span class="pun">!</span><span class="pln">ok</span> <span class="pun">{</span>
+   <span class="kwd">break</span>
+  <span class="pun">}</span>
+  <span class="com">// Print this much at least.  If we can&#39;t find the source, it won&#39;t show.</span>
+  <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Fprintf</span><span class="pun">(</span><span class="pln">buf</span><span class="pun">,</span> <span class="str">&#34;%s:%d (0x%x)\n&#34;</span><span class="pun">,</span> <span class="pln">file</span><span class="pun">,</span> <span class="pln">line</span><span class="pun">,</span> <span class="pln">pc</span><span class="pun">)</span>
+  <span class="kwd">if</span> <span class="pln">file</span> <span class="pun">!</span><span class="pun">=</span> <span class="pln">lastFile</span> <span class="pun">{</span>
+   <span class="pln">data</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">os</span><span class="pun">.</span><span class="typ">ReadFile</span><span class="pun">(</span><span class="pln">file</span><span class="pun">)</span>
+   <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+    <span class="kwd">continue</span>
+   <span class="pun">}</span>
+   <span class="pln">lines</span> <span class="pun">=</span> <span class="pln">bytes</span><span class="pun">.</span><span class="typ">Split</span><span class="pun">(</span><span class="pln">data</span><span class="pun">,</span> <span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span><span class="pun">{</span><span class="str">&#39;\n&#39;</span><span class="pun">}</span><span class="pun">)</span>
+   <span class="pln">lastFile</span> <span class="pun">=</span> <span class="pln">file</span>
+  <span class="pun">}</span>
+  <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Fprintf</span><span class="pun">(</span><span class="pln">buf</span><span class="pun">,</span> <span class="str">&#34;\t%s: %s\n&#34;</span><span class="pun">,</span> <span class="kwd">function</span><span class="pun">(</span><span class="pln">pc</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">source</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">,</span> <span class="pln">line</span><span class="pun">)</span><span class="pun">)</span>
+ <span class="pun">}</span>
+ <span class="kwd">return</span> <span class="pln">buf</span><span class="pun">.</span><span class="typ">Bytes</span><span class="pun">(</span><span class="pun">)</span>
+<span class="pun">}</span>
+
+<span class="kwd">func</span> <span class="pln">source</span><span class="pun">(</span><span class="pln">lines</span> <span class="pun">[</span><span class="pun">]</span><span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span><span class="pun">,</span> <span class="pln">n</span> <span class="kwd">int</span><span class="pun">)</span> <span class="pun">{</span>
+ <span class="pln">n</span><span class="pun">-</span><span class="pun">-</span> <span class="com">// in stack trace, lines are 1-indexed but our array is 0-indexed</span>
+ <span class="kwd">if</span> <span class="pln">n</span> <span class="pun">&lt;</span> <span class="dec">0</span> <span class="pun">|</span><span class="pun">|</span> <span class="pln">n</span> <span class="pun">&gt;</span><span class="pun">=</span> <span class="pln">len</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">)</span> <span class="pun">{</span>
+  <span class="kwd">return</span> <span class="pln">dunno</span>
+ <span class="pun">}</span>
+ <span class="kwd">return</span> <span class="pln">bytes</span><span class="pun">.</span><span class="typ">TrimSpace</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">[</span><span class="pln">n</span><span class="pun">]</span><span class="pun">)</span>
+<span class="pun">}</span>
+<span class="com">// function returns, if possible, the name of the function containing the PC.</span>
+<span class="kwd">func</span> <span class="kwd">function</span><span class="pun">(</span><span class="pln">pc</span> <span class="pln">uintptr</span><span class="pun">)</span> <span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span><span class="pun">{</span> <span class="com">// body omitted</span>
+<span class="pun">}</span>
+
+</code></pre>
+
+<p>What are the performance limitations of <code>slowstack</code>?</p>
+
+<ul>
+<li>unnecessary work in the <code>runtime</code> package</li>
+<li>always reads a whole file instead of a single line</li>
+<li>can re-read the same file multiple times</li>
+<li>opens many file handles</li>
+<li>unbounded allocations</li>
+<li>always attemps to read files even if it’s impossible</li>
+</ul>
+
+<h3>unbounded memory usage</h3>
+
+<h3>unnecessary work in the <code>runtime</code> package</h3>
+
+<p><code>runtime.Caller()</code> is a specalized invocation of runtime.CallersFrames for a single function: it ascends the callstack to <code>skip</code> using runtime magic, builds a <code>runtime.Frame</code> struct, and gives you a couple of that struct’s fields:</p>
+
+<p>Let’s look at the source:</p>
+
+<pre><code class="language-go"><span class="kwd">type</span> <span class="typ">Frame</span> <span class="kwd">struct</span> <span class="pun">{</span>
+ <span class="com">// PC is the program counter for the location in this frame.</span>
+ <span class="com">// For a frame that calls another frame, this will be the</span>
+ <span class="com">// program counter of a call instruction. Because of inlining,</span>
+ <span class="com">// multiple frames may have the same PC value, but different</span>
+ <span class="com">// symbolic information.</span>
+ <span class="typ">PC</span> <span class="pln">uintptr</span>
+
+ <span class="com">// Func is the Func value of this call frame. This may be nil</span>
+ <span class="com">// for non-Go code or fully inlined functions.</span>
+ <span class="typ">Func</span> <span class="pun">*</span><span class="typ">Func</span>
+
+ <span class="com">// Function is the package path-qualified function name of</span>
+ <span class="com">// this call frame. If non-empty, this string uniquely</span>
+ <span class="com">// identifies a single function in the program.</span>
+ <span class="com">// This may be the empty string if not known.</span>
+ <span class="com">// If Func is not nil then Function == Func.Name().</span>
+ <span class="typ">Function</span> <span class="pln">string</span>
+
+ <span class="com">// File and Line are the file name and line number of the</span>
+ <span class="com">// location in this frame. For non-leaf frames, this will be</span>
+ <span class="com">// the location of a call. These may be the empty string and</span>
+ <span class="com">// zero, respectively, if not known.</span>
+ <span class="typ">File</span> <span class="pln">string</span>
+ <span class="typ">Line</span> <span class="kwd">int</span>
+
+ <span class="com">// Entry point program counter for the function; may be zero</span>
+ <span class="com">// if not known. If Func is not nil then Entry ==</span>
+ <span class="com">// Func.Entry().</span>
+ <span class="typ">Entry</span> <span class="pln">uintptr</span>
+ <span class="com">// contains filtered or unexported fields</span>
+<span class="pun">}</span>
+<span class="com">// package runtime</span>
+<span class="kwd">func</span> <span class="typ">Caller</span><span class="pun">(</span><span class="pln">skip</span> <span class="kwd">int</span><span class="pun">)</span> <span class="pun">(</span><span class="pln">pc</span> <span class="pln">uintptr</span><span class="pun">,</span> <span class="pln">file</span> <span class="pln">string</span><span class="pun">,</span> <span class="pln">line</span> <span class="kwd">int</span><span class="pun">,</span> <span class="pln">ok</span> <span class="kwd">bool</span><span class="pun">)</span> <span class="pun">{</span>
+ <span class="pln">rpc</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">make</span><span class="pun">(</span><span class="pun">[</span><span class="pun">]</span><span class="pln">uintptr</span><span class="pun">,</span> <span class="dec">1</span><span class="pun">)</span>
+ <span class="pln">n</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">callers</span><span class="pun">(</span><span class="pln">skip</span><span class="pun">+</span><span class="dec">1</span><span class="pun">,</span> <span class="pln">rpc</span><span class="pun">[</span><span class="pun">:</span><span class="pun">]</span><span class="pun">)</span>
+ <span class="kwd">if</span> <span class="pln">n</span> <span class="pun">&lt;</span> <span class="dec">1</span> <span class="pun">{</span>
+  <span class="kwd">return</span>
+ <span class="pun">}</span>
+ <span class="pln">frame</span><span class="pun">,</span> <span class="pln">_</span> <span class="pun">:</span><span class="pun">=</span> <span class="typ">CallersFrames</span><span class="pun">(</span><span class="pln">rpc</span><span class="pun">)</span><span class="pun">.</span><span class="typ">Next</span><span class="pun">(</span><span class="pun">)</span> <span class="com">// a runtime.Frame</span>
+ <span class="kwd">return</span> <span class="pln">frame</span><span class="pun">.</span><span class="typ">PC</span><span class="pun">,</span> <span class="pln">frame</span><span class="pun">.</span><span class="typ">File</span><span class="pun">,</span> <span class="pln">frame</span><span class="pun">.</span><span class="typ">Line</span><span class="pun">,</span> <span class="pln">frame</span><span class="pun">.</span><span class="typ">PC</span> <span class="pun">!</span><span class="pun">=</span> <span class="dec">0</span>
+<span class="pun">}</span>
+</code></pre>
+
+<p><code>slowstack</code> then calls <code>function(pc)</code> on the retuned program counter to lookup the <code>*runtime.Func</code>, then get it’s <code>Name</code>.</p>
+
+<p>We could could simply grab the <code>(runtime.Frame).Function</code> field directly. Better yet, we can call <code>runtime.Callers()</code> and <code>runtime.CallersFrames()</code> exactly once and ascend the callstack by repeatedly calling <code>frames.Next()</code>, which avoids having to repeatedly jump up and down the stack.</p>
+
+<pre><code class="language-go"><span class="com">// stack returns a nicely formatted stack frame, skipping skip frames.</span>
+<span class="kwd">func</span> <span class="pln">stack_01</span><span class="pun">(</span><span class="pln">skip</span> <span class="kwd">int</span><span class="pun">)</span> <span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span> <span class="pun">{</span>
+    <span class="com">// grab the stack frame</span>
+    <span class="pln">pc</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">make</span><span class="pun">(</span><span class="pun">[</span><span class="pun">]</span><span class="pln">uintptr</span><span class="pun">,</span> <span class="dec">64</span><span class="pun">)</span>
+    <span class="pln">n</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">runtime</span><span class="pun">.</span><span class="typ">Callers</span><span class="pun">(</span><span class="pln">skip</span><span class="pun">,</span> <span class="pln">pc</span><span class="pun">)</span>
+    <span class="kwd">if</span> <span class="pln">n</span> <span class="pun">=</span><span class="pun">=</span> <span class="dec">0</span> <span class="pun">{</span> <span class="com">// no callers: e.g, skip &gt; len(callstack).</span>
+        <span class="kwd">return</span> <span class="kwd">nil</span>
+    <span class="pun">}</span>
+    <span class="pln">pc</span> <span class="pun">=</span> <span class="pln">pc</span><span class="pun">[</span><span class="pun">:</span><span class="pln">n</span><span class="pun">]</span> <span class="com">// pass only valid pcs to runtime.Caller</span>
+    <span class="pln">buf</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">new</span><span class="pun">(</span><span class="pln">bytes</span><span class="pun">.</span><span class="typ">Buffer</span><span class="pun">)</span>
+    <span class="pln">frames</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">runtime</span><span class="pun">.</span><span class="typ">CallersFrames</span><span class="pun">(</span><span class="pln">pc</span><span class="pun">)</span>
+    <span class="kwd">for</span> <span class="pun">{</span>
+        <span class="pln">frame</span><span class="pun">,</span> <span class="pln">more</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">frames</span><span class="pun">.</span><span class="typ">Next</span><span class="pun">(</span><span class="pun">)</span>
+        <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Fprintf</span><span class="pun">(</span><span class="pln">buf</span><span class="pun">,</span> <span class="str">&#34;%s:%d (0x%x)\n&#34;</span><span class="pun">,</span> <span class="pln">frame</span><span class="pun">.</span><span class="typ">File</span><span class="pun">,</span> <span class="pln">frame</span><span class="pun">.</span><span class="typ">Line</span><span class="pun">,</span> <span class="pln">frame</span><span class="pun">.</span><span class="typ">PC</span><span class="pun">)</span>
+    <span class="kwd">if</span> <span class="pln">file</span> <span class="pun">!</span><span class="pun">=</span> <span class="pln">lastFile</span> <span class="pun">{</span>
+        <span class="pln">data</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">os</span><span class="pun">.</span><span class="typ">ReadFile</span><span class="pun">(</span><span class="pln">file</span><span class="pun">)</span>
+        <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+            <span class="kwd">continue</span>
+        <span class="pun">}</span>
+        <span class="pln">lines</span> <span class="pun">=</span> <span class="pln">bytes</span><span class="pun">.</span><span class="typ">Split</span><span class="pun">(</span><span class="pln">data</span><span class="pun">,</span> <span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span><span class="pun">{</span><span class="str">&#39;\n&#39;</span><span class="pun">}</span><span class="pun">)</span>
+        <span class="pln">lastFile</span> <span class="pun">=</span> <span class="pln">file</span>
+         <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Fprintf</span><span class="pun">(</span><span class="pln">buf</span><span class="pun">,</span> <span class="str">&#34;\t%s: %s\n&#34;</span><span class="pun">,</span> <span class="pln">frame</span><span class="pun">.</span><span class="typ">Function</span><span class="pun">,</span> <span class="pln">source</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">,</span> <span class="pln">line</span><span class="pun">)</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="kwd">if</span> <span class="pun">!</span><span class="pln">more</span> <span class="pun">{</span>
+        <span class="kwd">return</span> <span class="pln">buf</span><span class="pun">.</span><span class="typ">Bytes</span><span class="pun">(</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="pun">}</span>
+    <span class="pln">panic</span><span class="pun">(</span><span class="str">&#34;unreachable!)
+</span><span class="pun">}</span>
+</code></pre>
+
+<p>This approach has one limitation: we have to specify a max stack size to pass to <code>runtime.Callers</code>. I think this is a <em>good thing</em>, since it places bounds on the resources this function can use, but it <em>is</em> a limitation. You could mitigate this by making the max depth a parameter of the function and configuring, but 64 seems like a good number to me.</p>
+
+<h2>always reads a whole file instead of a single line</h2>
+
+<p>Even with an incredibly simple handler, like ours, <code>slowstack</code> reads 7 files into memory, totalling 276KiB.</p>
+
+<ul>
+<li>main.go (.3 KiB)</li>
+<li>gin/context.go (37 KiB)</li>
+<li>gin/recovery.go (6 Kib)</li>
+<li>gin/context.go again (37 KiB)</li>
+<li>gin/gin.go (23 KiB)</li>
+<li>net/http/server.go (114 KiB)</li>
+<li>asm_amd64.s (59KiB)</li>
+</ul>
+
+<p>The longest lines of a <code>.go</code> or <code>.s</code> file are roughly 200 bytes, so this is using  roughly 1,300 times the memory it needs to.</p>
+
+<h2>reading a line at a time</h2>
+
+<p>We can read one line at a time instead by using <code>bufio.Scanner</code>. We’ll need a new scanner per file, but we can share a buffer between them.
+This has two benefits: first, we allocate less memory. Secondly, we can <em>stop</em> reading a file once we’ve hit the appropriate line without having to read to the end.</p>
+
+<pre><code class="language-go"><span class="kwd">func</span> <span class="pln">stack_02</span><span class="pun">(</span><span class="pln">skip</span> <span class="kwd">int</span><span class="pun">)</span> <span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span> <span class="pun">{</span>
+    <span class="com">// grab the stack frame</span>
+    <span class="pln">pc</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">make</span><span class="pun">(</span><span class="pun">[</span><span class="pun">]</span><span class="pln">uintptr</span><span class="pun">,</span> <span class="dec">64</span><span class="pun">)</span>
+    <span class="pln">n</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">runtime</span><span class="pun">.</span><span class="typ">Callers</span><span class="pun">(</span><span class="pln">skip</span><span class="pun">,</span> <span class="pln">pc</span><span class="pun">)</span>
+    <span class="kwd">if</span> <span class="pln">n</span> <span class="pun">=</span><span class="pun">=</span> <span class="dec">0</span> <span class="pun">{</span> <span class="com">// no callers: e.g, skip &gt; len(callstack).</span>
+        <span class="kwd">return</span> <span class="kwd">nil</span>
+    <span class="pun">}</span>
+    <span class="pln">pc</span> <span class="pun">=</span> <span class="pln">pc</span><span class="pun">[</span><span class="pun">:</span><span class="pln">n</span><span class="pun">]</span> <span class="com">// pass only valid pcs to runtime.Caller</span>
+    <span class="pln">buf</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">new</span><span class="pun">(</span><span class="pln">bytes</span><span class="pun">.</span><span class="typ">Buffer</span><span class="pun">)</span>
+    <span class="pln">frames</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">runtime</span><span class="pun">.</span><span class="typ">CallersFrames</span><span class="pun">(</span><span class="pln">pc</span><span class="pun">)</span>
+    <span class="pln">scanBuf</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">make</span><span class="pun">(</span><span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span><span class="pun">,</span> <span class="dec">0</span><span class="pun">,</span> <span class="dec">256</span><span class="pun">)</span>
+    <span class="typ">FRAME</span><span class="pun">:</span>
+    <span class="kwd">for</span> <span class="pun">{</span>
+        <span class="pln">frame</span><span class="pun">,</span> <span class="pln">more</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">frames</span><span class="pun">.</span><span class="typ">Next</span><span class="pun">(</span><span class="pun">)</span>
+        <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Fprintf</span><span class="pun">(</span><span class="pln">buf</span><span class="pun">,</span> <span class="str">&#34;%s:%d (0x%x)\n&#34;</span><span class="pun">,</span> <span class="pln">file</span><span class="pun">,</span> <span class="pln">line</span><span class="pun">,</span> <span class="pln">pc</span><span class="pun">)</span>
+        <span class="pln">f</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">os</span><span class="pun">.</span><span class="typ">Open</span><span class="pun">(</span><span class="pln">file</span><span class="pun">)</span>
+        <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+            <span class="kwd">continue</span>
+        <span class="pun">}</span>
+        <span class="pln">f</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">os</span><span class="pun">.</span><span class="typ">Open</span><span class="pun">(</span><span class="pln">frame</span><span class="pun">.</span><span class="typ">File</span><span class="pun">)</span>
+        <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+            <span class="kwd">continue</span> <span class="typ">FRAME</span>
+        <span class="pun">}</span>
+        <span class="pln">scanner</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">bufio</span><span class="pun">.</span><span class="typ">NewScanner</span><span class="pun">(</span><span class="pln">f</span><span class="pun">)</span>
+        <span class="pln">scanner</span><span class="pun">.</span><span class="typ">Buffer</span><span class="pun">(</span><span class="pln">scanBuf</span><span class="pun">[</span><span class="pun">:</span><span class="dec">0</span><span class="pun">]</span><span class="pun">,</span> <span class="pln">bufio</span><span class="pun">.</span><span class="typ">MaxScanTokenSize</span><span class="pun">)</span>
+        <span class="kwd">var</span> <span class="pln">source</span> <span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span>
+        <span class="kwd">for</span> <span class="pln">i</span> <span class="pun">:</span><span class="pun">=</span> <span class="dec">0</span><span class="pun">;</span> <span class="pln">scanner</span><span class="pun">.</span><span class="typ">Scan</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">&amp;</span><span class="pun">&amp;</span> <span class="pln">i</span> <span class="pun">&lt;</span> <span class="typ">Line</span><span class="pun">;</span> <span class="pln">i</span><span class="pun">+</span><span class="pun">+</span> <span class="pun">{</span>
+            <span class="kwd">if</span> <span class="pln">i</span> <span class="pun">=</span><span class="pun">=</span> <span class="pln">line</span> <span class="pun">{</span>
+                <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Fprintf</span><span class="pun">(</span><span class="pln">buf</span><span class="pun">,</span> <span class="str">&#34;\t%s: %s\n&#34;</span><span class="pun">,</span> <span class="kwd">function</span><span class="pun">(</span><span class="pln">pc</span><span class="pun">)</span><span class="pun">,</span>  <span class="pln">bytes</span><span class="pun">.</span><span class="typ">TrimSpace</span><span class="pun">(</span><span class="pln">scanner</span><span class="pun">.</span><span class="typ">Bytes</span><span class="pun">(</span><span class="pun">)</span><span class="pun">)</span>
+                <span class="pln">f</span><span class="pun">.</span><span class="typ">Close</span><span class="pun">(</span><span class="pun">)</span>
+                <span class="kwd">continue</span> <span class="typ">FRAME</span>
+            <span class="pun">}</span>
+        <span class="pun">}</span>
+        <span class="com">// hit EOF early:</span>
+        <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Fprintf</span><span class="pun">(</span><span class="pln">buf</span><span class="pun">,</span> <span class="str">&#34;\t%s: %s\n&#34;</span><span class="pun">,</span> <span class="kwd">function</span><span class="pun">(</span><span class="pln">pc</span><span class="pun">)</span><span class="pun">,</span>  <span class="str">&#34;???&#34;</span><span class="pun">)</span>
+        <span class="pln">f</span><span class="pun">.</span><span class="typ">Close</span><span class="pun">(</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="kwd">return</span> <span class="pln">buf</span><span class="pun">.</span><span class="typ">Bytes</span><span class="pun">(</span><span class="pun">)</span>
+<span class="pun">}</span>
+</code></pre>
+
+<p>Two caveats: while <code>stack_02</code> uses less memory <em>per file</em> than <code>stack_01</code> or <code>slowstack</code> we still have to open the same file each time it appears on the callstack. <code>slowstack</code> had an optimization for a common case: if the same file appeared twice in a row on the callstack, it would re-use the memory it had previously read.</p>
+
+<p>Second, <code>stack_02</code> has a hidden if unlikely bug: a <code>bufio.Scanner</code> can panic if it hits too many empty tokens in a row (in this case, dozens of newlines). In our next iteration, we’ll wrap this in a <code>recover()</code> to protect ourselves from weird sourcefiles: we don’t want to panic during a panic recovery handler! We’ll handle this in our final solution.</p>
+
+<h2>reading each file <em>exactly once</em></h2>
+
+<p>While our solution uses less memory <em>per file</em>, we still have to open the same file each time it appears on the callstack. Pretty bad if we hit a recursive function:</p>
+
+<pre><code class="language-go">
+<span class="kwd">func</span> <span class="typ">FibStack</span><span class="pun">(</span><span class="pln">n</span> <span class="kwd">int</span><span class="pun">)</span> <span class="kwd">int</span> <span class="pun">{</span>
+    <span class="kwd">if</span> <span class="pln">n</span> <span class="pun">&lt;</span> <span class="dec">0</span> <span class="pun">{</span>
+        <span class="pln">panic</span><span class="pun">(</span><span class="str">&#34;expected n &gt;= 0&#34;</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="kwd">if</span> <span class="pln">n</span> <span class="pun">=</span><span class="pun">=</span> <span class="dec">0</span> <span class="pun">|</span><span class="pun">|</span> <span class="pln">n</span> <span class="pun">=</span><span class="pun">=</span> <span class="dec">1</span> <span class="pun">{</span>
+        <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">string</span><span class="pun">(</span><span class="pln">stack</span><span class="pun">(</span><span class="dec">0</span><span class="pun">)</span><span class="pun">)</span><span class="pun">)</span>
+        <span class="kwd">return</span> <span class="dec">1</span>
+    <span class="pun">}</span> <span class="kwd">else</span> <span class="pun">{</span>
+        <span class="kwd">return</span> <span class="typ">FibStack</span><span class="pun">(</span><span class="pln">n</span><span class="pun">-</span><span class="dec">1</span><span class="pun">)</span> <span class="pun">+</span> <span class="typ">FibStack</span><span class="pun">(</span><span class="pln">n</span><span class="pun">-</span><span class="dec">2</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="kwd">default</span><span class="pun">:</span>
+        <span class="kwd">return</span>
+    <span class="pun">}</span>
+</code></pre>
+
+<p>But <code>slowstack</code>’s solution was no prize, either: callstacks that rapidly bounce between the same files with at least one different file in-between get no savings from that approach.</p>
+
+<p>We can build our own pathological example (we’ll use this for benchmarking later)</p>
+
+<pre><code class="language-go"><span class="com">// ping.go</span>
+<span class="kwd">func</span> <span class="typ">PingStack</span><span class="pun">(</span><span class="pln">n</span> <span class="kwd">int</span><span class="pun">)</span> <span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span> <span class="pun">{</span>
+    <span class="kwd">if</span> <span class="pln">n</span> <span class="pun">&lt;</span> <span class="dec">0</span> <span class="pun">{</span>
+        <span class="pln">panic</span><span class="pun">(</span><span class="str">&#34;expected n &gt;= 0&#34;</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="kwd">if</span> <span class="pln">n</span> <span class="pun">=</span><span class="pun">=</span> <span class="dec">0</span> <span class="pun">{</span>
+        <span class="kwd">return</span> <span class="pln">stack</span><span class="pun">(</span><span class="dec">0</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="kwd">return</span> <span class="typ">Pong</span><span class="pun">(</span><span class="pln">n</span><span class="pun">-</span><span class="dec">1</span><span class="pun">)</span>
+<span class="pun">}</span>
+<span class="kwd">func</span> <span class="typ">Pong</span><span class="pun">(</span><span class="pln">n</span> <span class="kwd">int</span><span class="pun">)</span> <span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span> <span class="pun">{</span><span class="kwd">return</span> <span class="typ">Ping</span><span class="pun">(</span><span class="pln">n</span><span class="pun">)</span><span class="pun">}</span>
+</code></pre>
+
+<p>We’d like to open each file exactly once, which means grouping our stack frames by filename. There’s a few approaches you could use, but I prefer this one:
+If we sort the frames by file-and-line, we can populate each frame with the source in exactly one pass thorough each file. We can then format the annotated frames.</p>
+
+<p>This will require a new datastructure:</p>
+
+<pre><code class="language-go"><span class="kwd">type</span> <span class="pln">debugInfo</span> <span class="kwd">struct</span> <span class="pun">{</span>
+        <span class="pun">*</span><span class="pln">runtime</span><span class="pun">.</span><span class="typ">Frame</span> <span class="com">// hold a pointer rather than allocate a new one</span>
+        <span class="typ">Source</span> <span class="pln">string</span> <span class="com">// the line of source code holding the frame</span>
+        <span class="typ">Depth</span> <span class="kwd">int</span> <span class="com">// the frame&#39;s original depth in the stack</span>
+<span class="pun">}</span>
+</code></pre>
+
+<p>This requires a few structural changes: rather than formatting the frames as we ascend the callstack, we put them all in a slice, populate them all, resort-them with their original order, and <em>then</em> format them into our output buffer.</p>
+
+<p>If there are few or no repeated files, this will use more peak memory than the previous approach,  but it’s a solid solution that saves us from the pathological cases we outlined above. And since our minimal test case proves <em>any</em> Gin handler will have some repeated cases, we always save <em>some</em> work.</p>
+
+<pre><code class="language-go"><span class="kwd">func</span> <span class="pln">stack_03</span><span class="pun">(</span><span class="pln">skip</span> <span class="kwd">int</span><span class="pun">)</span> <span class="pun">(</span><span class="pln">formatted</span> <span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span><span class="pun">)</span> <span class="pun">{</span>
+    <span class="com">// grab the stack frame</span>
+    <span class="pln">pc</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">make</span><span class="pun">(</span><span class="pun">[</span><span class="pun">]</span><span class="pln">uintptr</span><span class="pun">,</span> <span class="dec">64</span><span class="pun">)</span>
+    <span class="pln">n</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">runtime</span><span class="pun">.</span><span class="typ">Callers</span><span class="pun">(</span><span class="pln">skip</span><span class="pun">,</span> <span class="pln">pc</span><span class="pun">)</span>
+    <span class="kwd">if</span> <span class="pln">n</span> <span class="pun">=</span><span class="pun">=</span> <span class="dec">0</span> <span class="pun">{</span> <span class="com">// no callers: e.g, skip &gt; len(callstack).</span>
+        <span class="kwd">return</span> <span class="kwd">nil</span>
+    <span class="pun">}</span>
+    <span class="pln">pc</span> <span class="pun">=</span> <span class="pln">pc</span><span class="pun">[</span><span class="pun">:</span><span class="pln">n</span><span class="pun">]</span> <span class="com">// pass only valid pcs to runtime.Caller</span>
+    <span class="pln">frames</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">runtime</span><span class="pun">.</span><span class="typ">CallersFrames</span><span class="pun">(</span><span class="pln">pc</span><span class="pun">)</span>
+    <span class="com">// allocate a 4KiB reusable buffer, exactly once. we will use this both to read the input and format the output.</span>
+    <span class="pln">buf</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">make</span><span class="pun">(</span><span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span><span class="pun">,</span> <span class="dec">0</span><span class="pun">,</span> <span class="dec">4096</span><span class="pun">)</span>
+    <span class="kwd">type</span> <span class="pln">debugInfo</span> <span class="kwd">struct</span> <span class="pun">{</span>
+        <span class="pun">*</span><span class="pln">runtime</span><span class="pun">.</span><span class="typ">Frame</span>
+        <span class="typ">Source</span> <span class="pln">string</span>
+        <span class="typ">Depth</span> <span class="kwd">int</span>
+    <span class="pun">}</span>
+    <span class="com">// populate the debuginfo with the lines of code that appear in the stack  trace.</span>
+    <span class="pln">di</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">make</span><span class="pun">(</span><span class="pun">[</span><span class="pun">]</span><span class="pln">debugInfo</span><span class="pun">,</span> <span class="dec">0</span><span class="pun">,</span> <span class="pln">n</span><span class="pun">)</span>
+    <span class="kwd">for</span> <span class="pln">depth</span> <span class="pun">:</span><span class="pun">=</span> <span class="dec">0</span><span class="pun">;</span> <span class="pun">;</span> <span class="pln">depth</span><span class="pun">+</span><span class="pun">+</span> <span class="pun">{</span>
+        <span class="pln">frame</span><span class="pun">,</span> <span class="pln">more</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">frames</span><span class="pun">.</span><span class="typ">Next</span><span class="pun">(</span><span class="pun">)</span>
+        <span class="pln">di</span> <span class="pun">=</span> <span class="kwd">append</span><span class="pun">(</span><span class="pln">di</span><span class="pun">,</span> <span class="pln">debugInfo</span><span class="pun">{</span><span class="typ">Frame</span><span class="pun">:</span> <span class="pun">&amp;</span><span class="pln">frame</span><span class="pun">,</span> <span class="typ">Depth</span><span class="pun">:</span> <span class="pln">depth</span><span class="pun">}</span><span class="pun">)</span>
+        <span class="kwd">if</span> <span class="pun">!</span><span class="pln">more</span> <span class="pun">{</span>
+            <span class="kwd">break</span>
+        <span class="pun">}</span>
+    <span class="pun">}</span>
+
+    <span class="com">// group the debuginfo by file and line: we&#39;ll resort them by depth later.</span>
+    <span class="pln">sort</span><span class="pun">.</span><span class="typ">Slice</span><span class="pun">(</span><span class="pln">di</span><span class="pun">,</span> <span class="kwd">func</span><span class="pun">(</span><span class="pln">i</span><span class="pun">,</span> <span class="pln">j</span> <span class="kwd">int</span><span class="pun">)</span> <span class="kwd">bool</span> <span class="pun">{</span>
+        <span class="kwd">return</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">File</span> <span class="pun">&lt;</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">j</span><span class="pun">]</span><span class="pun">.</span><span class="typ">File</span> <span class="pun">|</span><span class="pun">|</span> <span class="pun">(</span><span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">File</span> <span class="pun">=</span><span class="pun">=</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">j</span><span class="pun">]</span><span class="pun">.</span><span class="typ">File</span> <span class="pun">&amp;</span><span class="pun">&amp;</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">Line</span> <span class="pun">&lt;</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">j</span><span class="pun">]</span><span class="pun">.</span><span class="typ">Line</span><span class="pun">)</span>
+    <span class="pun">}</span><span class="pun">)</span>
+    <span class="com">// populate debug info with source.</span>
+    <span class="kwd">func</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
+        <span class="pln">line</span> <span class="pun">:</span><span class="pun">=</span> <span class="dec">0</span>
+        <span class="pln">lastFile</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">di</span><span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="pun">.</span><span class="typ">File</span>
+        <span class="pln">f</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">os</span><span class="pun">.</span><span class="typ">Open</span><span class="pun">(</span><span class="pln">lastFile</span><span class="pun">)</span>
+        <span class="pln">defer</span> <span class="kwd">func</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
+            <span class="com">// scanner.Scan() can panic if it hits too many newlines.</span>
+            <span class="com">// in that case, we immediately abandon trying to get more sourceInfo and just write as much as we can.</span>
+            <span class="kwd">if</span> <span class="pln">p</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">recover</span><span class="pun">(</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">p</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+                <span class="pln">log</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="str">&#34;panic while formatting stack: too many empty lines in sourcefile?&#34;</span><span class="pun">,</span> <span class="pln">p</span><span class="pun">,</span> <span class="pln">debug</span><span class="pun">.</span><span class="typ">Stack</span><span class="pun">(</span><span class="pun">)</span><span class="pun">)</span>
+                <span class="pln">f</span><span class="pun">.</span><span class="typ">Close</span><span class="pun">(</span><span class="pun">)</span>
+            <span class="pun">}</span>
+
+        <span class="pun">}</span><span class="pun">(</span><span class="pun">)</span>
+
+        <span class="pln">scanner</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">bufio</span><span class="pun">.</span><span class="typ">NewScanner</span><span class="pun">(</span><span class="pln">f</span><span class="pun">)</span>
+        <span class="pln">scanner</span><span class="pun">.</span><span class="typ">Buffer</span><span class="pun">(</span><span class="pln">buf</span><span class="pun">[</span><span class="pun">:</span><span class="dec">0</span><span class="pun">]</span><span class="pun">,</span> <span class="pln">bufio</span><span class="pun">.</span><span class="typ">MaxScanTokenSize</span><span class="pun">)</span>
+        <span class="kwd">for</span> <span class="pln">i</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">range</span> <span class="pln">di</span> <span class="pun">{</span>
+            <span class="kwd">if</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">File</span> <span class="pun">!</span><span class="pun">=</span> <span class="pln">lastFile</span> <span class="pun">{</span>
+                <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">=</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+                    <span class="pln">f</span><span class="pun">.</span><span class="typ">Close</span><span class="pun">(</span><span class="pun">)</span>
+                <span class="pun">}</span>
+                <span class="com">// reset: we&#39;re at the beginning of a new file</span>
+                <span class="pln">line</span> <span class="pun">=</span> <span class="dec">0</span>
+                <span class="pln">f</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">=</span> <span class="pln">os</span><span class="pun">.</span><span class="typ">Open</span><span class="pun">(</span><span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">File</span><span class="pun">)</span>
+                <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+                    <span class="kwd">continue</span>
+                <span class="pun">}</span>
+                <span class="pln">scanner</span> <span class="pun">=</span> <span class="pln">bufio</span><span class="pun">.</span><span class="typ">NewScanner</span><span class="pun">(</span><span class="pln">f</span><span class="pun">)</span>
+                <span class="pln">scanner</span><span class="pun">.</span><span class="typ">Buffer</span><span class="pun">(</span><span class="pln">buf</span><span class="pun">[</span><span class="pun">:</span><span class="dec">0</span><span class="pun">]</span><span class="pun">,</span> <span class="pln">bufio</span><span class="pun">.</span><span class="typ">MaxScanTokenSize</span><span class="pun">)</span>
+            <span class="pun">}</span>
+            <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+                <span class="kwd">continue</span>
+            <span class="pun">}</span>
+            <span class="com">// it&#39;s possible that we have multiple calls to the same function in the stack, such as during recursion,</span>
+            <span class="com">// so we check that we haven&#39;t gone past BEFORE we advance the scanner.</span>
+            <span class="kwd">for</span> <span class="pun">;</span> <span class="pln">line</span> <span class="pun">&lt;</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">Line</span><span class="pun">;</span> <span class="pln">line</span><span class="pun">+</span><span class="pun">+</span> <span class="pun">{</span>
+                <span class="pln">scanner</span><span class="pun">.</span><span class="typ">Scan</span><span class="pun">(</span><span class="pun">)</span>
+            <span class="pun">}</span>
+            <span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">Source</span> <span class="pun">=</span> <span class="pln">scanner</span><span class="pun">.</span><span class="typ">Text</span><span class="pun">(</span><span class="pun">)</span>
+
+            <span class="pln">i</span><span class="pun">+</span><span class="pun">+</span>
+        <span class="pun">}</span>
+        <span class="pln">_</span> <span class="pun">=</span> <span class="pln">f</span><span class="pun">.</span><span class="typ">Close</span><span class="pun">(</span><span class="pun">)</span>
+    <span class="pun">}</span><span class="pun">(</span><span class="pun">)</span>
+
+    <span class="com">// put the debuginfo back in depth-first order</span>
+    <span class="pln">sort</span><span class="pun">.</span><span class="typ">Slice</span><span class="pun">(</span><span class="pln">di</span><span class="pun">,</span> <span class="kwd">func</span><span class="pun">(</span><span class="pln">i</span><span class="pun">,</span> <span class="pln">j</span> <span class="kwd">int</span><span class="pun">)</span> <span class="kwd">bool</span> <span class="pun">{</span> <span class="kwd">return</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">Depth</span> <span class="pun">&lt;</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">j</span><span class="pun">]</span><span class="pun">.</span><span class="typ">Depth</span> <span class="pun">}</span><span class="pun">)</span>
+    <span class="com">// format it all into the buffer. we&#39;re safe to reuse buf, since we&#39;re done with all the scanners.</span>
+    <span class="pln">out</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">bytes</span><span class="pun">.</span><span class="typ">NewBuffer</span><span class="pun">(</span><span class="pln">buf</span><span class="pun">[</span><span class="pun">:</span><span class="dec">0</span><span class="pun">]</span><span class="pun">)</span>
+    <span class="kwd">for</span> <span class="pln">i</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">range</span> <span class="pln">di</span> <span class="pun">{</span>
+        <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Fprintf</span><span class="pun">(</span><span class="pln">out</span><span class="pun">,</span> <span class="str">&#34;%s:%d (0x%x)\t%s:%s\n&#34;</span><span class="pun">,</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">File</span><span class="pun">,</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">Line</span><span class="pun">,</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">PC</span><span class="pun">,</span> <span class="pln">trimFunction</span><span class="pun">(</span><span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">Function</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">TrimSpace</span><span class="pun">(</span><span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">Source</span><span class="pun">)</span><span class="pun">)</span>
+
+    <span class="pun">}</span>
+
+    <span class="kwd">return</span> <span class="pln">out</span><span class="pun">.</span><span class="typ">Bytes</span><span class="pun">(</span><span class="pun">)</span>
+<span class="pun">}</span>
+</code></pre>
+
+<p>Pretty good! We’re nearly done. When there are files to read, we read them efficiently.</p>
+
+<h2>what if we can’t read the files?</h2>
+
+<p>There’s plenty of situations where we can’t read the files at all. Off the top of my head:</p>
+
+<ul>
+<li>The executable was built with <code>go build -trimpath</code>.</li>
+<li>It’s running in a binary without access to the source, like a minimal container.</li>
+<li>The running user doesn’t have permission to access the source.</li>
+</ul>
+
+<p>In this case, our implementation does a ton of work that’s completely unneccessary, juggling around a ton of data just before it’s inevitable failure.</p>
+
+<p>If we had some kind of heuristic for “can read source files”, we’d know whther or not it was worth the attempt. We could then build an fast-path for that case.</p>
+
+<p>Here, we use a <code>sync.Once</code> to lazily-check whether or not we can access the file where we defined <code>faststack</code>():</p>
+
+<pre><code class="language-go"><span class="com">// local source is not always available. for example, the executable may be running on a system without the source</span>
+ <span class="com">// or the -trimpath buildflag could have been provided to go tool.</span>
+ <span class="com">// if we can&#39;t find the source for THIS file, we are unlikely to be able to find it for any file.  </span>
+<span class="kwd">var</span> <span class="pln">localSourceOnce</span> <span class="pln">sync</span><span class="pun">.</span><span class="typ">Once</span>
+<span class="kwd">var</span> <span class="pln">localSourceNotFound</span> <span class="kwd">bool</span>
+<span class="kwd">func</span> <span class="pln">localSourceUnavailable</span><span class="pun">(</span><span class="pun">)</span> <span class="kwd">bool</span> <span class="pun">{</span>
+        <span class="pln">localSourceOnce</span><span class="pun">.</span><span class="typ">Do</span><span class="pun">(</span><span class="kwd">func</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
+            <span class="pln">_</span><span class="pun">,</span> <span class="pln">file</span><span class="pun">,</span> <span class="pln">_</span><span class="pun">,</span> <span class="pln">_</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">runtime</span><span class="pun">.</span><span class="typ">Caller</span><span class="pun">(</span><span class="dec">3</span><span class="pun">)</span>
+            <span class="kwd">if</span> <span class="pln">_</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">os</span><span class="pun">.</span><span class="typ">Lstat</span><span class="pun">(</span><span class="pln">file</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+                <span class="pln">localSourceNotFound</span> <span class="pun">=</span> <span class="kwd">true</span>
+            <span class="pun">}</span>
+
+        <span class="pun">}</span><span class="pun">)</span>
+        <span class="kwd">return</span> <span class="pln">localSourceNotFound</span>
+    <span class="pun">}</span>
+</code></pre>
+
+<p>and then we can put it all together:</p>
+
+<h2>finished faststack</h2>
+
+<pre><code class="language-go"><span class="com">// stack returns a formatted stack frame, skipping debug frames</span>
+<span class="kwd">func</span> <span class="pln">faststack</span><span class="pun">(</span><span class="pln">skip</span> <span class="kwd">int</span><span class="pun">)</span> <span class="pun">(</span><span class="pln">formatted</span> <span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span><span class="pun">)</span> <span class="pun">{</span>
+    <span class="com">// grab the stack frame</span>
+    <span class="pln">pc</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">make</span><span class="pun">(</span><span class="pun">[</span><span class="pun">]</span><span class="pln">uintptr</span><span class="pun">,</span> <span class="dec">64</span><span class="pun">)</span>
+    <span class="pln">n</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">runtime</span><span class="pun">.</span><span class="typ">Callers</span><span class="pun">(</span><span class="pln">skip</span><span class="pun">,</span> <span class="pln">pc</span><span class="pun">)</span>
+    <span class="kwd">if</span> <span class="pln">n</span> <span class="pun">=</span><span class="pun">=</span> <span class="dec">0</span> <span class="pun">{</span> <span class="com">// no callers: e.g, skip &gt; len(callstack).</span>
+        <span class="kwd">return</span> <span class="kwd">nil</span>
+    <span class="pun">}</span>
+    <span class="pln">pc</span> <span class="pun">=</span> <span class="pln">pc</span><span class="pun">[</span><span class="pun">:</span><span class="pln">n</span><span class="pun">]</span> <span class="com">// pass only valid pcs to runtime.Caller</span>
+    <span class="pln">frames</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">runtime</span><span class="pun">.</span><span class="typ">CallersFrames</span><span class="pun">(</span><span class="pln">pc</span><span class="pun">)</span>
+    <span class="com">// allocate a 4KiB reusable buffer, exactly once. we will use this both to read the input and format the output.</span>
+    <span class="pln">buf</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">make</span><span class="pun">(</span><span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span><span class="pun">,</span> <span class="dec">0</span><span class="pun">,</span> <span class="dec">4096</span><span class="pun">)</span>
+    <span class="kwd">if</span> <span class="pln">localSourceUnavailable</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
+        <span class="com">// fast path: just format the frames in the order they occur without looking up the source.</span>
+        <span class="pln">out</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">bytes</span><span class="pun">.</span><span class="typ">NewBuffer</span><span class="pun">(</span><span class="pln">buf</span><span class="pun">)</span>
+        <span class="kwd">for</span> <span class="pun">{</span>
+            <span class="pln">frame</span><span class="pun">,</span> <span class="pln">more</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">frames</span><span class="pun">.</span><span class="typ">Next</span><span class="pun">(</span><span class="pun">)</span>
+            <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Fprintf</span><span class="pun">(</span><span class="pln">out</span><span class="pun">,</span> <span class="str">&#34;%s:%d (0x%x)\t%s:%s\n&#34;</span><span class="pun">,</span> <span class="pln">frame</span><span class="pun">.</span><span class="typ">File</span><span class="pun">,</span> <span class="pln">frame</span><span class="pun">.</span><span class="typ">Line</span><span class="pun">,</span> <span class="pln">frame</span><span class="pun">.</span><span class="typ">PC</span><span class="pun">,</span> <span class="pln">trimFunction</span><span class="pun">(</span><span class="pln">frame</span><span class="pun">.</span><span class="typ">Function</span><span class="pun">)</span><span class="pun">,</span> <span class="str">&#34;&#34;</span><span class="pun">)</span>
+            <span class="kwd">if</span> <span class="pun">!</span><span class="pln">more</span> <span class="pun">{</span>
+                <span class="kwd">return</span> <span class="pln">out</span><span class="pun">.</span><span class="typ">Bytes</span><span class="pun">(</span><span class="pun">)</span>
+            <span class="pun">}</span>
+        <span class="pun">}</span>
+    <span class="pun">}</span>
+    <span class="com">// slow path: at least some local source is available, so we want to populate the debuginfo with the lines of code that appear in the stack  trace.</span>
+    <span class="pln">di</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">make</span><span class="pun">(</span><span class="pun">[</span><span class="pun">]</span><span class="pln">debugInfo</span><span class="pun">,</span> <span class="dec">0</span><span class="pun">,</span> <span class="pln">n</span><span class="pun">)</span>
+    <span class="kwd">for</span> <span class="pln">depth</span> <span class="pun">:</span><span class="pun">=</span> <span class="dec">0</span><span class="pun">;</span> <span class="pun">;</span> <span class="pln">depth</span><span class="pun">+</span><span class="pun">+</span> <span class="pun">{</span>
+        <span class="pln">frame</span><span class="pun">,</span> <span class="pln">more</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">frames</span><span class="pun">.</span><span class="typ">Next</span><span class="pun">(</span><span class="pun">)</span>
+        <span class="pln">di</span> <span class="pun">=</span> <span class="kwd">append</span><span class="pun">(</span><span class="pln">di</span><span class="pun">,</span> <span class="kwd">struct</span> <span class="pun">{</span>
+            <span class="pun">*</span><span class="pln">runtime</span><span class="pun">.</span><span class="typ">Frame</span>
+            <span class="typ">Source</span> <span class="pln">string</span> <span class="com">// line of code where the call appeared</span>
+            <span class="typ">Depth</span>  <span class="kwd">int</span>
+        <span class="pun">}</span><span class="pun">{</span><span class="typ">Frame</span><span class="pun">:</span> <span class="pun">&amp;</span><span class="pln">frame</span><span class="pun">,</span> <span class="typ">Depth</span><span class="pun">:</span> <span class="pln">depth</span><span class="pun">}</span><span class="pun">)</span>
+        <span class="kwd">if</span> <span class="pun">!</span><span class="pln">more</span> <span class="pun">{</span>
+            <span class="kwd">break</span>
+        <span class="pun">}</span>
+    <span class="pun">}</span>
+
+    <span class="com">// group the debuginfo by file and line: we&#39;ll resort them by depth later.</span>
+    <span class="pln">sort</span><span class="pun">.</span><span class="typ">Slice</span><span class="pun">(</span><span class="pln">di</span><span class="pun">,</span> <span class="kwd">func</span><span class="pun">(</span><span class="pln">i</span><span class="pun">,</span> <span class="pln">j</span> <span class="kwd">int</span><span class="pun">)</span> <span class="kwd">bool</span> <span class="pun">{</span>
+        <span class="kwd">return</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">File</span> <span class="pun">&lt;</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">j</span><span class="pun">]</span><span class="pun">.</span><span class="typ">File</span> <span class="pun">|</span><span class="pun">|</span> <span class="pun">(</span><span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">File</span> <span class="pun">=</span><span class="pun">=</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">j</span><span class="pun">]</span><span class="pun">.</span><span class="typ">File</span> <span class="pun">&amp;</span><span class="pun">&amp;</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">Line</span> <span class="pun">&lt;</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">j</span><span class="pun">]</span><span class="pun">.</span><span class="typ">Line</span><span class="pun">)</span>
+    <span class="pun">}</span><span class="pun">)</span>
+    <span class="com">// populate debug info with source.</span>
+    <span class="kwd">func</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
+        <span class="pln">line</span> <span class="pun">:</span><span class="pun">=</span> <span class="dec">0</span>
+        <span class="pln">lastFile</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">di</span><span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="pun">.</span><span class="typ">File</span>
+        <span class="pln">f</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">os</span><span class="pun">.</span><span class="typ">Open</span><span class="pun">(</span><span class="pln">lastFile</span><span class="pun">)</span>
+        <span class="pln">defer</span> <span class="kwd">func</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
+            <span class="com">// scanner.Scan() can panic if it hits too many newlines.</span>
+            <span class="com">// in that case, we immediately abandon trying to get more sourceInfo and just write as much as we can.</span>
+            <span class="kwd">if</span> <span class="pln">p</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">recover</span><span class="pun">(</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">p</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+                <span class="pln">log</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="str">&#34;panic while formatting stack: too many empty lines in sourcefile?&#34;</span><span class="pun">,</span> <span class="pln">p</span><span class="pun">,</span> <span class="pln">debug</span><span class="pun">.</span><span class="typ">Stack</span><span class="pun">(</span><span class="pun">)</span><span class="pun">)</span>
+                <span class="pln">f</span><span class="pun">.</span><span class="typ">Close</span><span class="pun">(</span><span class="pun">)</span>
+            <span class="pun">}</span>
+
+        <span class="pun">}</span><span class="pun">(</span><span class="pun">)</span>
+
+        <span class="pln">scanner</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">bufio</span><span class="pun">.</span><span class="typ">NewScanner</span><span class="pun">(</span><span class="pln">f</span><span class="pun">)</span>
+        <span class="pln">scanner</span><span class="pun">.</span><span class="typ">Buffer</span><span class="pun">(</span><span class="pln">buf</span><span class="pun">[</span><span class="pun">:</span><span class="dec">0</span><span class="pun">]</span><span class="pun">,</span> <span class="pln">bufio</span><span class="pun">.</span><span class="typ">MaxScanTokenSize</span><span class="pun">)</span>
+        <span class="kwd">for</span> <span class="pln">i</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">range</span> <span class="pln">di</span> <span class="pun">{</span>
+            <span class="kwd">if</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">File</span> <span class="pun">!</span><span class="pun">=</span> <span class="pln">lastFile</span> <span class="pun">{</span>
+                <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">=</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+                    <span class="pln">f</span><span class="pun">.</span><span class="typ">Close</span><span class="pun">(</span><span class="pun">)</span>
+                <span class="pun">}</span>
+                <span class="com">// reset: we&#39;re at the beginning of a new file</span>
+                <span class="pln">line</span> <span class="pun">=</span> <span class="dec">0</span>
+                <span class="pln">f</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">=</span> <span class="pln">os</span><span class="pun">.</span><span class="typ">Open</span><span class="pun">(</span><span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">File</span><span class="pun">)</span>
+                <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+                    <span class="kwd">continue</span>
+                <span class="pun">}</span>
+                <span class="pln">scanner</span> <span class="pun">=</span> <span class="pln">bufio</span><span class="pun">.</span><span class="typ">NewScanner</span><span class="pun">(</span><span class="pln">f</span><span class="pun">)</span>
+                <span class="pln">scanner</span><span class="pun">.</span><span class="typ">Buffer</span><span class="pun">(</span><span class="pln">buf</span><span class="pun">[</span><span class="pun">:</span><span class="dec">0</span><span class="pun">]</span><span class="pun">,</span> <span class="pln">bufio</span><span class="pun">.</span><span class="typ">MaxScanTokenSize</span><span class="pun">)</span>
+            <span class="pun">}</span>
+            <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+                <span class="kwd">continue</span>
+            <span class="pun">}</span>
+            <span class="com">// it&#39;s possible that we have multiple calls to the same function in the stack, such as during recursion,</span>
+            <span class="com">// so we check that we haven&#39;t gone past BEFORE we advance the scanner.</span>
+            <span class="kwd">for</span> <span class="pun">;</span> <span class="pln">line</span> <span class="pun">&lt;</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">Line</span><span class="pun">;</span> <span class="pln">line</span><span class="pun">+</span><span class="pun">+</span> <span class="pun">{</span>
+                <span class="pln">scanner</span><span class="pun">.</span><span class="typ">Scan</span><span class="pun">(</span><span class="pun">)</span>
+            <span class="pun">}</span>
+            <span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">Source</span> <span class="pun">=</span> <span class="pln">scanner</span><span class="pun">.</span><span class="typ">Text</span><span class="pun">(</span><span class="pun">)</span>
+
+            <span class="pln">i</span><span class="pun">+</span><span class="pun">+</span>
+        <span class="pun">}</span>
+        <span class="pln">_</span> <span class="pun">=</span> <span class="pln">f</span><span class="pun">.</span><span class="typ">Close</span><span class="pun">(</span><span class="pun">)</span>
+    <span class="pun">}</span><span class="pun">(</span><span class="pun">)</span>
+
+    <span class="com">// put the debuginfo back in depth-first order</span>
+    <span class="pln">sort</span><span class="pun">.</span><span class="typ">Slice</span><span class="pun">(</span><span class="pln">di</span><span class="pun">,</span> <span class="kwd">func</span><span class="pun">(</span><span class="pln">i</span><span class="pun">,</span> <span class="pln">j</span> <span class="kwd">int</span><span class="pun">)</span> <span class="kwd">bool</span> <span class="pun">{</span> <span class="kwd">return</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">Depth</span> <span class="pun">&lt;</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">j</span><span class="pun">]</span><span class="pun">.</span><span class="typ">Depth</span> <span class="pun">}</span><span class="pun">)</span>
+    <span class="com">// format it all into the buffer. we&#39;re safe to reuse buf, since we&#39;re done with all the scanners.</span>
+    <span class="pln">out</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">bytes</span><span class="pun">.</span><span class="typ">NewBuffer</span><span class="pun">(</span><span class="pln">buf</span><span class="pun">[</span><span class="pun">:</span><span class="dec">0</span><span class="pun">]</span><span class="pun">)</span>
+    <span class="kwd">for</span> <span class="pln">i</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">range</span> <span class="pln">di</span> <span class="pun">{</span>
+        <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Fprintf</span><span class="pun">(</span><span class="pln">out</span><span class="pun">,</span> <span class="str">&#34;%s:%d (0x%x)\t%s:%s\n&#34;</span><span class="pun">,</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">File</span><span class="pun">,</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">Line</span><span class="pun">,</span> <span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">PC</span><span class="pun">,</span> <span class="pln">trimFunction</span><span class="pun">(</span><span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">Function</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">TrimSpace</span><span class="pun">(</span><span class="pln">di</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="typ">Source</span><span class="pun">)</span><span class="pun">)</span>
+
+    <span class="pun">}</span>
+
+    <span class="kwd">return</span> <span class="pln">out</span><span class="pun">.</span><span class="typ">Bytes</span><span class="pun">(</span><span class="pun">)</span>
+<span class="pun">}</span>
+</code></pre>
+
+<h2>benchmarks</h2>
+
+<p>This behavior is hard to benchmark, since how it performs depends wildly on the structure of the callstack and actual files it’s reading, which could be wildly different. Ideally, we’d collect a wide sample set of real Go code, insert calls to <code>faststack</code> and <code>slowstack</code>, and run it on dozens or hundreds of combinations of hardware, operating system, etc, etc.</p>
+
+<p>I’m way too lazy for that and this article’s already taken eight hours longer than I thought it would, so instead we’ll make a couple simple synthetic benchmarks at a variety of stack depths and try and draw some conclusions.</p>
+
+<p>We’ll run the benchmarks on the same computer under four different circumstances:</p>
+
+<p>linux (wsl), source code on SSD
+linux (wsl), source code on SSD, compiled with <code>-trimpath</code>
+windows, source on SSD
+windows, source on HDD</p>
+
+<p>Please see the <a href="benchmark_results.md">benchmark_results.md</a> and the source code in <a href="bench_test.go">bench_test.go</a>, <code>[ping_test.go]</code>(ping_test.go), and <code>[pong_test.go]</code>(pong_test.go) for additional details.</p>
+
+<p>Caveat: These benchmarks are somewhat unfair to <code>slowstack</code>, since they’re constructed to attack a known worst-case for it’s performance, and <em>should not be taken as definitive conclusions</em>.</p>
+
+<p>Let’s examine the first case:</p>
+
+<h2>linux(wsl): SSD</h2>
+
+<p>BenchmarkPing/depth=1/faststack-24             14306      78653 ns/op     8849 B/op       92 allocs/op
+BenchmarkPing/depth=1/slowstack-24             12033     105193 ns/op   220315 B/op      101 allocs/op
+BenchmarkPing/depth=5/faststack-24             10000     101501 ns/op    10835 B/op      132 allocs/op
+BenchmarkPing/depth=5/slowstack-24              7717     135690 ns/op   302127 B/op      157 allocs/op
+BenchmarkPing/depth=25/faststack-24             6556     180071 ns/op    20765 B/op      332 allocs/op
+BenchmarkPing/depth=25/slowstack-24             3907     313058 ns/op   719256 B/op      440 allocs/op
+BenchmarkPing/depth=125/faststack-24            4456     260204 ns/op    44900 B/op      651 allocs/op
+BenchmarkPing/depth=125/slowstack-24             921    1341206 ns/op  2797236 B/op     1846 allocs/op
+BenchmarkPing/depth=625/faststack-24            3972     264099 ns/op    44901 B/op      651 allocs/op
+BenchmarkPing/depth=625/slowstack-24             100   10104571 ns/op 13171325 B/op     8863 allocs/op
+BenchmarkPing/depth=3125/faststack-24           4537     265868 ns/op    44900 B/op      651 allocs/op
+BenchmarkPing/depth=3125/slowstack-24              8  140203673 ns/op 64903352 B/op    43949 allocs/op</p>
+
+<p>We note the following:</p>
+
+<ul>
+<li><code>faststack</code> is always faster than <code>slowstack</code>, but not by as much as we might expect</li>
+<li><code>faststack</code> always uses  <em>significantly</em> less memory.</li>
+<li>faststack’s resource usage stops  increasing after depth 64, as we’d expect (since we hard-limited the callstack).</li>
+<li>slowstack’s memory usage increases linearly with the depth of the stack, but it’s runtime increases super-linearly as the stack gets larger. Why? I’m not sure, but my guess is that it’s GC or fighting with the OS over the number of syscalls.</li>
+</ul>
+
+<p>On a HDD, the difference is exaggerated,  but <em>neither</em> implementation performs that well: 47 miliseconds for even the most trivial implementation. Even a 25-depth stack would produce a noticable pause (&gt;180ms) from both <code>faststack</code> and <code>slowstack</code>.</p>
+
+<p>goarch: amd64
+pkg: gitlab.com/efronlicht/gin-ex
+cpu: AMD Ryzen 9 5900 12-Core Processor
+BenchmarkPing/depth=1/faststack-24              2294     476571 ns/op    14329 B/op      100 allocs/op
+BenchmarkPing/depth=1/slowstack-24              2394     509789 ns/op   223090 B/op      105 allocs/op
+BenchmarkPing/depth=5/faststack-24              1602     710711 ns/op    18492 B/op      140 allocs/op
+BenchmarkPing/depth=5/slowstack-24              1381     813649 ns/op   306680 B/op      161 allocs/op
+BenchmarkPing/depth=25/faststack-24              571    1878803 ns/op    39315 B/op      340 allocs/op
+BenchmarkPing/depth=25/slowstack-24              500    2340672 ns/op   730874 B/op      444 allocs/op
+BenchmarkPing/depth=125/faststack-24             324    3701402 ns/op    80024 B/op      653 allocs/op
+BenchmarkPing/depth=125/slowstack-24             100   10164412 ns/op  2845715 B/op     1850 allocs/op
+BenchmarkPing/depth=625/faststack-24             309    3739220 ns/op    80048 B/op      653 allocs/op
+BenchmarkPing/depth=625/slowstack-24              22   51105918 ns/op 13394559 B/op     8870 allocs/op
+BenchmarkPing/depth=3125/faststack-24            316    3756325 ns/op    80027 B/op      653 allocs/op
+BenchmarkPing/depth=3125/slowstack-24              3  334763167 ns/op 66048874 B/op    43968 allocs/op</p>
+
+<p>OK, what if we <em>can’t</em> find the source, like if we compiled with -trimpath?
+c## Is this worth it?</p>
+
+<p>There’s two ways to frame this question: First, Is it worth optimizing a panic recovery handler? If so, should we be diving into the source code at all?</p>
+
+<h3>Is it worth optimizing a panic recovery handler?</h3>
+
+<p>Everything comes at a cost. In this case, <code>faststack</code> cuts down on the memory usage and clock time significantly by using a more efficient algorithm and limiting the total stack depth, at the cost of doubling the length of the code and increasing it’s complexity. <code>slowstack</code> was trivial to understand, and <code>faststack</code> is definitely not; it requires a new data structure, global variables, lazy initialization, it’s <em>own</em> panic recovery handler, and two separate sorts.</p>
+
+<p>Why do we have a panic recovery handler in the first place?  To provide continuous service, even in the presence of software bugs. That is, a panic recovery handler is supposed to be a last-ditch protection against a bug that never should have made it into production.
+These panics are <em>supposed</em> to be rare; prevented by a suite of tests, CI, etc. In practice, well, all software is buggy, and Go programs can panic a lot. When I worked at an ISP, I had production bugs that triggered 20K recovery handlers, per minute, per server (on ~5 servers). If those stacks have 20 frames each, on average, and the files those frames came from average 20K, <em>8GiB</em> of allocations a minute per server, or 40GiB of allocations per minute: - that’s enough to bring most containers to a crawl, and even a relatively beefy modern PC might struggle to clean up all that garbage.</p>
+
+<p>While <code>faststack</code> cuts down on the memory usage and clock time significantly by using a more efficient algorithm and limiting the total stack depth, this comes at a cost: it doubled the length of the code and significantly increased it’s complexity. <code>slowstack</code> was trivial to understand, but <code>faststack</code> is definitely not; it requires a new data structure, global variables, lazy initialization, it’s <em>own</em> panic recovery handler, and two separate sorts.</p>
+
+<p>More worryingly, there’s two performance problems that <em>faststack</em> can’t help with: first, reading from disk is a fundamentally slow operation; disks are slower than memory, and syscalls, such as the ones to read files, are expensive.  If the PC is reading from a HDD, both <code>faststack</code> and <code>slowstack</code> are actively slow. Secondly, most operating systems place a limit on the number of file handles a single process can open (<code>1024</code> by default on linux, iirc). Concurrent calls to <code>faststack()</code> might quickly eat up this limit. While these conditions are rare, they’re likely to occur for at least some of Gin’s users, who may struggle to diagnose the problem.</p>
+
+<p>There are technical solutions for <em>those</em> problems: for example, you could cut down on IO by havin a concurrency-safe cache for common file:line couples, and you could limit the total memory usage of <em>that</em> by having it be a LRU cache, but that’s adding <em>even more complexity</em>.</p>
+
+<p>At some point, it’s important to take a step back and ask yourself <em>whether or not all this work is worth it in the first place</em>.</p>
+
+<h3>Is having a single line of source code annotation really helpful?</h3>
+
+<p>How much benefit are we really getting from this implementation? How likely is a single line of source code to help us to fix a bug, if we already have the <strong>file</strong>, <strong>line</strong>, and <strong>function name</strong>? Generally speaking, we’ll need more context than a single line to diagnose the bug: we’ll have to look at the source itself, not just a pinhole window into it. While it’s a cool trick, this source code annotation is just that: a neat parlor trick, not a particularly helpful debugging tool. And there’s one corner case where it could be really damaging: if the source code present on the host system differs from the version used to compile the executable, the source code annotations will be <em>wrong</em>.</p>
+
+<p>Honestly, I think the Gin project would be better server by just using <code>runtime.Stack()</code> and forgetting about source code annotation. Sometimes simpler is better.</p>
+
+
+

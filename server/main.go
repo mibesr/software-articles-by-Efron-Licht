@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/signal"
 	"os/user"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"syscall"
@@ -39,31 +40,19 @@ func buildIndex(fs embed.FS) []byte {
 	<!DOCTYPE html><html><head>
 	<title>index.html</title>
 	<meta charset="utf-8"/>
-	<link rel="stylesheet" type="text/css" href="/static/s.css"/>
+	<link rel="stylesheet" type="text/css" href="/s.css"/>
 	</head>
 	<body>
+	<h1> articles </h1>
 `)
-	addlink := func(s string) {
-		html = fmt.Appendf(html, `<a href="/static/%s">%s</a>\n`, s, s)
-	}
-	addlink("index.html")
+
 	for _, e := range must(fs.ReadDir(".")) {
-		addlink(e.Name())
+		if n := e.Name(); strings.Contains(filepath.Ext(n), "html") {
+			html = fmt.Appendf(html, `<h4><a href="/%s">%s</a>`+"\n</h4>", n, n)
+		}
 	}
 	html = append(html, "</body>"...)
 	return html
-}
-
-type dynWriteSyncer struct {
-	write func(b []byte) (n int, err error)
-	sync  func() error
-}
-
-func (d dynWriteSyncer) Write(b []byte) (n int, err error) {
-	return d.write(b)
-}
-func (d dynWriteSyncer) Sync() error {
-	return d.sync()
 }
 
 func setupLogger() *zap.Logger {
@@ -101,7 +90,7 @@ func Run() (err error) {
 
 		case r.Method != "GET":
 			w.WriteHeader(http.StatusMethodNotAllowed)
-		case p == "/" || p == "/index.html":
+		case p == "" || p == "/" || p == "/index.html":
 			w.Write(index)
 		case p == "/debug/uptime":
 			elapsed := time.Since(Meta.StartTime)

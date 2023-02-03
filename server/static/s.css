@@ -1,15 +1,16 @@
+/* fonts */
 @font-face {
   font-family: "Source Code Pro";
   font-weight: 300;
   src: local("Source Code Pro"), url("/SourceCodePro-Regular.tff.woff2"),
     format("woff2");
 }
+
 @font-face {
   font-family: "Open Sans";
   font-weight: 400;
   src: local("Open Sans"), local("OpenSans"),
-    url(https://fonts.gstatic.com/s/opensans/v13/cJZKeOuBrn4kERxqtaUH3T8E0i7KZn-EPnyo3HZu7kw.woff)
-      format("woff");
+    url(https://fonts.gstatic.com/s/opensans/v13/cJZKeOuBrn4kERxqtaUH3T8E0i7KZn-EPnyo3HZu7kw.woff) format("woff");
 }
 
 @font-face {
@@ -21,11 +22,11 @@
     U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
     U+FEFF, U+FFFD;
 }
+
+/* formatting: non syntax-highlighting */
 body {
   background-color: black;
-  background-image: repeating-radial-gradient(
-    (rgba(55, 6, 6, 0.75) 10%, black 20%, rgba(87, 32, 0, 0.75) 30%)
-  );
+  background-image: repeating-radial-gradient((rgba(55, 6, 6, 0.75) 10%, black 20%, rgba(87, 32, 0, 0.75) 30%));
   font-family: "Open Sans", "Monaco", "Helvetica";
   color: rgb(136, 251, 245);
   font-size: 15px;
@@ -33,12 +34,19 @@ body {
   max-width: 80ch;
   line-height: 130%;
 }
+
 code {
   color: rgb(61, 248, 123);
   font-family: "JetBrains Mono", Menlo, Bitstream Vera Sans Mono,
     DejaVu Sans Mono, Monaco, Consolas, monospace;
 }
+blockquote {
+  font-size: 15px;
+  color: #478eba;
+  font-variant: small-caps;
+}
 
+/* tables */
 table {
   font-family: "Source Code Pro";
   table-layout: fixed;
@@ -47,17 +55,25 @@ table {
   border: 3px solid pink;
   font-variant: small-caps;
 }
+
 td {
   border: 1px dashed;
   border-color: #bac8f2;
   width: max-content;
 }
+
 tr {
   font-family: "Source Code Pro";
   border-top: 1px dashed;
   border-bottom: 1px dashed;
   border-color: #bac8f2;
 }
+
+tr:nth-child(even) {
+  /* table zebra-striping */
+  background-color: #3a3535;
+}
+
 th {
   font-family: "Source Code Pro";
 
@@ -68,30 +84,39 @@ th {
   color: #ed88b7;
   font-weight: bolder;
 }
+
+/* headers */
 h1,
 h2,
 h3 {
   font-variant: titling-caps;
   color: rgb(208, 254, 248);
-  text-shadow: 0 0 3px #c8c8c8;
+  text-shadow: 0 0 1px #c8c8c8;
 }
+
 h1 {
   font-size: 28px;
 }
+
 h2 {
   font-size: 26px;
 }
+
 h3 {
   font-size: 24px;
 }
-blockquote {
-  font-size: 15px;
-  color: #e06ca2;
-  font-variant: small-caps;
+
+a:link {
+  color: #4695c7
 }
-tr:nth-child(even) {
-  background-color: #3a3535;
+
+a:visited {
+  color: rgb(157, 157, 227)
 }
+
+
+
+
 
 pre {
   font-size: 12px;
@@ -103,14 +128,17 @@ pre {
   border-bottom: dotted;
   border-color: #c8c8c8;
 }
+
 .pln {
   color: rgb(238, 135, 135);
 }
+
 ol.linenums {
   margin-top: 0;
   margin-bottom: 0;
   color: #ccc;
 }
+
 li.L0,
 li.L1,
 li.L2,
@@ -125,46 +153,61 @@ li.L9 {
   background-color: #fff;
   list-style-type: decimal;
 }
+
+/* syntax highlighting */
 @media screen {
   .str {
     color: #bac8f2;
   }
+
   .kwd {
     color: #df3d89;
   }
+
   .com {
     color: #c8c9c8;
   }
+
   .typ {
     color: #40c0eb;
   }
+
   .lit {
     color: #edaddf;
   }
+
   .pun {
     color: rgb(201, 193, 193);
   }
+
   .opn {
     color: rgb(211, 130, 130);
   }
+
   .clo {
     color: rgb(211, 130, 130);
   }
+
   .tag {
     color: rgb(157, 157, 227);
   }
+
   .atn {
     color: #b592eb;
   }
+
   .atv {
     color: #a2b2e4;
   }
+
   .dec {
     color: rgb(237, 255, 255);
   }
+
   .var {
     color: rgb(61, 248, 123);
   }
+
   .fun {
     color: rgb(247, 210, 116);
   }

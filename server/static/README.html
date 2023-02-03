@@ -1,0 +1,43 @@
+<!DOCTYPE html><html><head>
+  <title>README</title>
+  <meta name="GENERATOR" content="github.com/gomarkdown/markdown markdown processor for Go"/>
+  <meta charset="utf-8"/>
+  <link rel="stylesheet" type="text/css" href="/s.css"/>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
+</head>
+<body>
+
+<h1>efron’s blog source</h1>
+
+<h2><a href="./cmd">cmd</a></h2>
+
+<p>command-line tools</p>
+
+<h2><a href="./articles">articles</a></h2>
+
+<p>raw markdown articles</p>
+
+<h2>getting the source</h2>
+
+<pre><code class="language-sh"><span class="pln">git</span> <span class="pln">clone</span> <span class="pln">https</span><span class="pun">:</span><span class="com">//gitlab.com/efronlicht/blog</span>
+</code></pre>
+
+<h2>running the server (docker)</h2>
+
+<pre><code class="language-sh"><span class="pun">#</span> <span class="kwd">in</span> <span class="pln">the</span> <span class="pln">efronlicht</span><span class="pun">/</span><span class="pln">blog</span> <span class="pln">directory</span><span class="pun">:</span>
+<span class="pln">docker</span> <span class="pln">build</span> <span class="pun">-</span><span class="pln">t</span> <span class="pln">efronlicht</span><span class="pun">:</span><span class="pln">latest</span>
+<span class="pln">docker</span> <span class="pln">run</span> <span class="pun">-</span><span class="typ">P</span> <span class="dec">8080</span> <span class="pln">efronlicht</span><span class="pun">:</span><span class="pln">latest</span>
+</code></pre>
+
+<h2>running the server (local)</h2>
+
+<h3>requirements:</h3>
+
+<ul>
+<li>go &gt;= 1.19</li>
+<li>mermaid CLI</li>
+<li>docker</li>
+</ul>
+
+
+
