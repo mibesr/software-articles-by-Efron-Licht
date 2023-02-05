@@ -32,14 +32,16 @@ run: test # make run
 	go run ./server
 
 deploy: deps test # make deploy
-	fly apps destroy -y eblog
+	fly apps destroy -y eblog # remove the old app
+	# deploy the new one
 	fly launch \
 	--auto-confirm \
 	--copy-config \
 	--name eblog \
+	--local-only \
 	--now \
 	--region lax \
-	--strategy immediate
+	--strategy immediate \
 	--verbose
 
 

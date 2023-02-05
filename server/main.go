@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/signal"
 	"os/user"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -87,7 +88,6 @@ func Run() (err error) {
 		p := strings.TrimSuffix(r.URL.Path, "/")
 		r.Header.Add("cache-control", "no-cache")
 		switch {
-
 		case r.Method != "GET":
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		case p == "" || p == "/" || p == "/index.html":
@@ -102,6 +102,9 @@ func Run() (err error) {
 				r.Header.Add("cache-control", "immutable")
 				r.Header.Add("cache-control", "max-age=604800")
 				r.Header.Add("cache-control", "public")
+			}
+			if path.Ext(r.URL.Path) == "" {
+				r.URL.Path += ".html"
 			}
 			static.Server.ServeHTTP(w, r)
 		}

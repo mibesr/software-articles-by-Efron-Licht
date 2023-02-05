@@ -1,14 +1,12 @@
 
 # a tale of two stacks: optimizing gin's panic recovery handler
 
-#### A Programming Article by Efron Licht
 
 ## [more articles](./index.html)
+
 - [bytehacking](./bytehacking.html)
 - [tale of two stacks](./faststack.html)
-
-## blog source: [gitlab.com/efronlicht/blog](https://gitlab.com/efronlicht/blog)
-
+- [go quirks & tricks](./quirks.md)
 ## gin's panic handler
 
 The popular go web framework Gin has a middleware that allows you to recover from and log panics while serving HTTP.
@@ -154,8 +152,6 @@ What are the performance limitations of `slowstack`?
 - unbounded allocations
 - always attemps to read files even if it's impossible
 
-### unbounded memory usage
-
 ### unnecessary work in the `runtime` package
 
 `runtime.Caller()` is a specalized invocation of runtime.CallersFrames for a single function: it ascends the callstack to `skip` using runtime magic, builds a `runtime.Frame` struct, and gives you a couple of that struct's fields:
@@ -243,9 +239,9 @@ func stack_01(skip int) []byte {
 }
 ```
 
-This approach has one limitation: we have to specify a max stack size to pass to `runtime.Callers`. I think this is a _good thing_, since it places bounds on the resources this function can use, but it _is_ a limitation. You could mitigate this by making the max depth a parameter of the function and configuring, but 64 seems like a good number to me.
+This approach has one limitation: we have to specify a max stack size to pass to `runtime.Callers`. I think this is a _good thing_, since it places bounds on the resources this function can use, but it _is_ a limitation. You could mitigate this by making the max depth a parameter of the function and configuring it at runtime, e.g, via an environment variable, but 64 seems like a good number to me.
 
-## always reads a whole file instead of a single line
+### always reads a whole file instead of a single line
 
  Even with an incredibly simple handler, like ours, `slowstack` reads 7 files into memory, totalling 276KiB.
 
@@ -257,9 +253,9 @@ This approach has one limitation: we have to specify a max stack size to pass to
 - net/http/server.go (114 KiB)
 - asm_amd64.s (59KiB)
 
-The longest lines of a `.go` or `.s` file are roughly 200 bytes, so this is using  roughly 1,300 times the memory it needs to.
+The longest lines of a `.go` or `.s` file are roughly 200 bytes, so this is using  roughly 1300x the bytes it needs to.
 
-## reading a line at a time
+### reading a line at a time
 
 We can read one line at a time instead by using `bufio.Scanner`. We'll need a new scanner per file, but we can share a buffer between them.
 This has two benefits: first, we allocate less memory. Secondly, we can _stop_ reading a file once we've hit the appropriate line without having to read to the end.
@@ -346,6 +342,7 @@ func PingStack(n int) []byte {
     }
     return Pong(n-1)
 }
+// in pong.go
 func Pong(n int) []byte {return Ping(n)}
 ```
 
@@ -458,7 +455,7 @@ func stack_03(skip int) (formatted []byte) {
 
 Pretty good! We're nearly done. When there are files to read, we read them efficiently.
 
-## what if we can't read the files?
+### what if we can't read the files?
 
 There's plenty of situations where we can't read the files at all. Off the top of my head:
 
@@ -608,8 +605,7 @@ linux (wsl), source code on SSD, compiled with `-trimpath`
 
 Please see the source code in [bench_test.go](bench_test.go), `[ping_test.go]`(ping_test.go), and `[pong_test.go]`(pong_test.go) for additional details.
 
-
-### benchmark caveats
+### bench: caveats
 
 These are _synthetic benchmarks_ and probably don't reflect real-world performance.
 
@@ -620,7 +616,8 @@ These are _synthetic benchmarks_ and probably don't reflect real-world performan
 Let's examine the first case:
 
 (These benchmarks are formatted using `[fmtbench]`, a tool I created for my [simple byte hacking](https://eblog.fly.dev/bytehacking.html) article)
-## linux(wsl): SSD
+
+### bench: linux(wsl): SSD
 
 |name|runs|ns/op|%/max|bytes|%/max|allocs|%/max|
 |---|---|---|---|---|---|---|---|
@@ -649,7 +646,7 @@ We note the following:
 - faststack's resource usage stops  increasing after depth 64, as we'd expect (since we hard-limited the callstack).
 - slowstack's memory usage and runtime increase linearly with the depth of the callstack, using nearly a MiB per call for even a 32-deep callstack.
 
-## let's compare it to windows on a HDD (same processor)
+### bench: Windows (HDD)
 
 |name|runs|ns/op|%/max|bytes|%/max|allocs|%/max|
 |---|---|---|---|---|---|---|---|
@@ -676,8 +673,7 @@ This is slower, but not by as much as we might expect. Probably the operating sy
 
 Only the truly deep calls start taking nearly a second (though that's _really_ slow for a http response!)
 
-
-### Is it worth optimizing a panic recovery handler?
+## Is it worth optimizing a panic recovery handler?
 
 Everything comes at a cost. In this case, `faststack` cuts down on the memory usage and clock time significantly by using a more efficient algorithm and limiting the total stack depth, at the cost of doubling the length of the code and increasing it's complexity. `slowstack` was trivial to understand, and `faststack` is definitely not; it requires a new data structure, global variables, lazy initialization, it's _own_ panic recovery handler, and two separate sorts.
 
@@ -691,11 +687,12 @@ Secondly, most operating systems place a limit on the number of file handles a s
 There are technical solutions for _those_ problems: for example, you could cut down on IO by havin a concurrency-safe cache for common file:line couples, and you could limit the total memory usage of _that_ by having it be a LRU cache, but that's adding _even more complexity_.
 
 Which leads us to an important question: what benefit are we getting?
+**Is having a single line of source code annotation really helpful?**
 
-### Is having a single line of source code annotation really helpful?
+## closing thoughts
 
 How much benefit are we really getting from this implementation? How likely is a single line of source code to help us to fix a bug, if we already have the **file**, **line**, and **function name**? Generally speaking, we'll need more context than a single line to diagnose the bug: we'll have to look at the source itself, not just a pinhole window into it. While it's a cool trick, this source code annotation is just that: a neat parlor trick, not a particularly helpful debugging tool. And there's one corner case where it could be really damaging: if the source code present on the host system differs from the version used to compile the executable, the source code annotations will be _wrong_.
 
 At some point, it's important to take a step back and ask yourself _whether or not all this work is worth it in the first place_. I don't think `slowstack` or `faststack` solve a problem that needs to be solved. I think think the Gin project would be better served by just using `runtime.Stack()` and forgetting about source code annotation. Sometimes simpler is better.
 
-Gin allows you to hook in your own panic handlers. We'll talk about panicking, logging, and recovery more in a later article: stay tuned.
+We'll talk about panics, logging, and recovery more in a later article: stay tuned.

@@ -1,13 +1,15 @@
 # Simple Byte Hacking
 
 #### A Programming Article by Efron Licht
+#### Written Jan 2023
+#### On: Performance, Low-Level Programming, Problem-Solving, Command-Line Tools
+#### Languages: Go
 
 ## [more articles](https://eblog.fly.dev)
 
 - [bytehacking](./bytehacking.html)
 - [tale of two stacks](./faststack.html)
-
-#### Written Jan 2023
+- [go quirks & tricks](./quirks.md)
 
 Many junior & intermediate programmers can be a little skittish around around byte-level hacking. You shouldn't be. It's not as hard as it's made out to be, and getting comfortable with low-level programming can make for simpler, more efficient code, In this article, we'll take an example of a real-world problem with a solution that was best discovered and implemented with byte-level programming.
 

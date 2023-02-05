@@ -9,18 +9,17 @@
 
 <h1>a tale of two stacks: optimizing gin’s panic recovery handler</h1>
 
-<h4>A Programming Article by Efron Licht</h4>
-
 <h2><a href="./index.html">more articles</a></h2>
 
 <ul>
-<li><a href="./bytehacking.html">bytehacking</a></li>
-<li><a href="./faststack.html">tale of two stacks</a></li>
+<li><p><a href="./bytehacking.html">bytehacking</a></p></li>
+
+<li><p><a href="./faststack.html">tale of two stacks</a></p></li>
+
+<li><p><a href="./quirks.md">go quirks &amp; tricks</a></p>
+
+<h2>gin’s panic handler</h2></li>
 </ul>
-
-<h2>blog source: <a href="https://gitlab.com/efronlicht/blog">gitlab.com/efronlicht/blog</a></h2>
-
-<h2>gin’s panic handler</h2>
 
 <p>The popular go web framework Gin has a middleware that allows you to recover from and log panics while serving HTTP.</p>
 
@@ -167,8 +166,6 @@ Starting at <code>skip</code>, we walk frame-by-frame up the stack.</p>
 <li>always attemps to read files even if it’s impossible</li>
 </ul>
 
-<h3>unbounded memory usage</h3>
-
 <h3>unnecessary work in the <code>runtime</code> package</h3>
 
 <p><code>runtime.Caller()</code> is a specalized invocation of runtime.CallersFrames for a single function: it ascends the callstack to <code>skip</code> using runtime magic, builds a <code>runtime.Frame</code> struct, and gives you a couple of that struct’s fields:</p>
@@ -254,9 +251,9 @@ Starting at <code>skip</code>, we walk frame-by-frame up the stack.</p>
 </span><span class="pun">}</span>
 </code></pre>
 
-<p>This approach has one limitation: we have to specify a max stack size to pass to <code>runtime.Callers</code>. I think this is a <em>good thing</em>, since it places bounds on the resources this function can use, but it <em>is</em> a limitation. You could mitigate this by making the max depth a parameter of the function and configuring, but 64 seems like a good number to me.</p>
+<p>This approach has one limitation: we have to specify a max stack size to pass to <code>runtime.Callers</code>. I think this is a <em>good thing</em>, since it places bounds on the resources this function can use, but it <em>is</em> a limitation. You could mitigate this by making the max depth a parameter of the function and configuring it at runtime, e.g, via an environment variable, but 64 seems like a good number to me.</p>
 
-<h2>always reads a whole file instead of a single line</h2>
+<h3>always reads a whole file instead of a single line</h3>
 
 <p>Even with an incredibly simple handler, like ours, <code>slowstack</code> reads 7 files into memory, totalling 276KiB.</p>
 
@@ -270,9 +267,9 @@ Starting at <code>skip</code>, we walk frame-by-frame up the stack.</p>
 <li>asm_amd64.s (59KiB)</li>
 </ul>
 
-<p>The longest lines of a <code>.go</code> or <code>.s</code> file are roughly 200 bytes, so this is using  roughly 1,300 times the memory it needs to.</p>
+<p>The longest lines of a <code>.go</code> or <code>.s</code> file are roughly 200 bytes, so this is using  roughly 1300x the bytes it needs to.</p>
 
-<h2>reading a line at a time</h2>
+<h3>reading a line at a time</h3>
 
 <p>We can read one line at a time instead by using <code>bufio.Scanner</code>. We’ll need a new scanner per file, but we can share a buffer between them.
 This has two benefits: first, we allocate less memory. Secondly, we can <em>stop</em> reading a file once we’ve hit the appropriate line without having to read to the end.</p>
@@ -356,6 +353,7 @@ This has two benefits: first, we allocate less memory. Secondly, we can <em>stop
     <span class="pun">}</span>
     <span class="kwd">return</span> <span class="typ">Pong</span><span class="pun">(</span><span class="pln">n</span><span class="pun">-</span><span class="dec">1</span><span class="pun">)</span>
 <span class="pun">}</span>
+<span class="com">// in pong.go</span>
 <span class="kwd">func</span> <span class="typ">Pong</span><span class="pun">(</span><span class="pln">n</span> <span class="kwd">int</span><span class="pun">)</span> <span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span> <span class="pun">{</span><span class="kwd">return</span> <span class="typ">Ping</span><span class="pun">(</span><span class="pln">n</span><span class="pun">)</span><span class="pun">}</span>
 </code></pre>
 
@@ -466,7 +464,7 @@ If we sort the frames by file-and-line, we can populate each frame with the sour
 
 <p>Pretty good! We’re nearly done. When there are files to read, we read them efficiently.</p>
 
-<h2>what if we can’t read the files?</h2>
+<h3>what if we can’t read the files?</h3>
 
 <p>There’s plenty of situations where we can’t read the files at all. Off the top of my head:</p>
 
@@ -616,7 +614,7 @@ linux (wsl), source code on SSD, compiled with <code>-trimpath</code></p>
 
 <p>Please see the source code in <a href="bench_test.go">bench_test.go</a>, <code>[ping_test.go]</code>(ping_test.go), and <code>[pong_test.go]</code>(pong_test.go) for additional details.</p>
 
-<h3>benchmark caveats</h3>
+<h3>bench: caveats</h3>
 
 <p>These are <em>synthetic benchmarks</em> and probably don’t reflect real-world performance.</p>
 
@@ -630,7 +628,7 @@ linux (wsl), source code on SSD, compiled with <code>-trimpath</code></p>
 
 <p>(These benchmarks are formatted using <code>[fmtbench]</code>, a tool I created for my <a href="https://eblog.fly.dev/bytehacking.html">simple byte hacking</a> article)</p>
 
-<h2>linux(wsl): SSD</h2>
+<h3>bench: linux(wsl): SSD</h3>
 
 <table>
 <thead>
@@ -855,7 +853,7 @@ linux (wsl), source code on SSD, compiled with <code>-trimpath</code></p>
 <li>slowstack’s memory usage and runtime increase linearly with the depth of the callstack, using nearly a MiB per call for even a 32-deep callstack.</li>
 </ul>
 
-<h2>let’s compare it to windows on a HDD (same processor)</h2>
+<h3>bench: Windows (HDD)</h3>
 
 <table>
 <thead>
@@ -1075,7 +1073,7 @@ linux (wsl), source code on SSD, compiled with <code>-trimpath</code></p>
 
 <p>Only the truly deep calls start taking nearly a second (though that’s <em>really</em> slow for a http response!)</p>
 
-<h3>Is it worth optimizing a panic recovery handler?</h3>
+<h2>Is it worth optimizing a panic recovery handler?</h2>
 
 <p>Everything comes at a cost. In this case, <code>faststack</code> cuts down on the memory usage and clock time significantly by using a more efficient algorithm and limiting the total stack depth, at the cost of doubling the length of the code and increasing it’s complexity. <code>slowstack</code> was trivial to understand, and <code>faststack</code> is definitely not; it requires a new data structure, global variables, lazy initialization, it’s <em>own</em> panic recovery handler, and two separate sorts.</p>
 
@@ -1088,15 +1086,16 @@ These panics are <em>supposed</em> to be rare; prevented by a suite of tests, CI
 
 <p>There are technical solutions for <em>those</em> problems: for example, you could cut down on IO by havin a concurrency-safe cache for common file:line couples, and you could limit the total memory usage of <em>that</em> by having it be a LRU cache, but that’s adding <em>even more complexity</em>.</p>
 
-<p>Which leads us to an important question: what benefit are we getting?</p>
+<p>Which leads us to an important question: what benefit are we getting?
+<strong>Is having a single line of source code annotation really helpful?</strong></p>
 
-<h3>Is having a single line of source code annotation really helpful?</h3>
+<h2>closing thoughts</h2>
 
 <p>How much benefit are we really getting from this implementation? How likely is a single line of source code to help us to fix a bug, if we already have the <strong>file</strong>, <strong>line</strong>, and <strong>function name</strong>? Generally speaking, we’ll need more context than a single line to diagnose the bug: we’ll have to look at the source itself, not just a pinhole window into it. While it’s a cool trick, this source code annotation is just that: a neat parlor trick, not a particularly helpful debugging tool. And there’s one corner case where it could be really damaging: if the source code present on the host system differs from the version used to compile the executable, the source code annotations will be <em>wrong</em>.</p>
 
 <p>At some point, it’s important to take a step back and ask yourself <em>whether or not all this work is worth it in the first place</em>. I don’t think <code>slowstack</code> or <code>faststack</code> solve a problem that needs to be solved. I think think the Gin project would be better served by just using <code>runtime.Stack()</code> and forgetting about source code annotation. Sometimes simpler is better.</p>
 
-<p>Gin allows you to hook in your own panic handlers. We’ll talk about panicking, logging, and recovery more in a later article: stay tuned.</p>
+<p>We’ll talk about panics, logging, and recovery more in a later article: stay tuned.</p>
 
 
 
