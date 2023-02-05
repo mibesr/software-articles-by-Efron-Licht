@@ -2,17 +2,21 @@
 
 #### A programming article by Efron Licht
 
-#### Written Feb 2023
+#### Feb 2023
+
 ## [more articles](https://eblog.fly.dev)
 
-- [bytehacking](./bytehacking.html)
-- [tale of two stacks](./faststack.html)
-- [go quirks & tricks](./quirks.md)
+- bytehacking [html](./bytehacking.html) [markdown](./bytehacking.md)
+- [tale of two stacks](./faststack.html) [markdown] (./faststack.md)
+- [go quirks & tricks](./quirks.html) [markdown] (./quirks.md)
+
 #### On: Go, Programming Languages
 
 Go is generally considered a 'simple' language, but it has more edge cases and tricks than most might expect.
 
-You can be a productive go programmer without knowing about or using most or any of these tricks, but some of them are pretty handy. This is part 1 of what I hope to be a continuing series.
+You can be a productive go programmer without knowing about or using most or any of these tricks, but some of them are pretty handy. I'll link to the [go spec](https://go.dev/ref/spec) where appropriate throughout the article.
+
+This is part 1 of what I hope to be a continuing series.
 
 ## multi-statement lines with semicolons
 
@@ -112,8 +116,7 @@ fmt.Println(structOfArrays)
 
 > missing type in composite literal
 
-This implies that you always need to provide the types of composite literals, but that's just not true:
-
+This implies that you always need to provide the types of composite literals, but that's just not true:\
 Go is happy to compile this without me spelling out the type of each item on the right-hand side:
 
 ```go
@@ -137,6 +140,56 @@ The actual rule is this: go will infer the types of composite literals if they'r
 
 There's a long-open [issue (#12584)](https://github.com/golang/go/issues/12854) hoping to address this inconsitency. I'd love to see more permissive composite literals.
 
+## simple expressions in switch statements
+
+A switch statement [can be proceeded by a simple statement](https://go.dev/ref/spec#Switch_statements):
+
+```go
+// b is a *math/big.Int*
+switch n, acc := b.Uint64(); acc {
+    case big.Below:
+        fmt.Println("< 0"),
+    case big.Above:
+        fmt.Println("> 18446744073709551615")
+    case big.Exact:
+        fmt.Println(n)
+}
+```
+
+This works for expression switches and type switches:
+
+```go
+switch a, err := f(); err.(type) {
+}
+```
+
+If you omit the _second_ part of the switch, you can do a "normal" boolean-value switch statement:
+
+ ```go
+// some kind of low-level networking call:
+var try int
+var packets []Packet
+READ:
+for {
+    switch packet, err := readPacket(ctx, conn, buf);  { // note semicolon
+        case errors.Is(io.EOF): 
+            packets = append(packets, packet)
+            break READ
+        case err == nil:
+            packets = append(packets, packet)
+            try = 0
+        case errors.As(err, fatalErr) || try == maxTries:
+            return fmt.Errorf("fatal error after %d retries: %v", i, err)
+        default:
+            try++
+            time.Sleep(100*time.Millisecond)
+    }
+}
+
+```
+
+I like the look of these: they allow very terse, expressive code, but they're rare & unusual enough to probably cause confusion. Most of the time you're better off with a chain of `if`.
+
 ## GOTO exists
 
 The oft-maligned GOTO is an excellent piece of kit.
@@ -158,13 +211,17 @@ You don't need an `if`, `for`, `func`, or any other keyword to make a block.
 
 ```
 
-I find this useful for complicated variable initialization:
+I find this useful for complicated variable initialization. Here's an example from the `fmtbench` tool I wrote in [the last article](./bytehacking.html)
 
 ```go
 // fmtbench.go
 // context: the variable sortBy is a command-line flag specifying the sort order. we've already validated it.
-
- { // sort results
+// results is a []struct{
+//     name                    string
+//  runs, ns, bytes, allocs float64
+// }
+{
+ // sort results
   var less func(i, j int) bool
   switch *sortBy {
   default:
@@ -219,7 +276,6 @@ There's basically only two uses for IIFE's instead of blocks:
 - if you need a function scope to use `defer()` or `recover()`, since
 
 If you're going to use an IIFE with a return value, use the `var` declaration instead of `:=` - it makes it easier for the reader to understand the flow. And don't overdo it - you can always just define a closure and call it on the next line.
-
 
 ## you can declare types inside blocks
 
@@ -335,9 +391,11 @@ I think the anonymous interface is actually _clearer_ than the named one for mos
 
 Both anonymous structs and interfaces can be generic, too.
 
-## zero-sized type
+## zero-sized type ("ZST")
 
-Empty structs or arrays with length zero take up no memory. These are most often used as handles to an interface, like `io.Discard`:
+The empty struct `struct{}` and arrays of length zero (like `[0]int`) take up no memory, as do structs and arrays comprised entirely of zero-sized types.
+
+A zero-sized type ("ZST") is most often used as an interface handle, like `io.Discard`.
 
 ```go
 
@@ -353,33 +411,35 @@ func (discard) Write(p []byte) (int, error) { return len(p), nil}
 func (discard) WriteString(s string) (int, error) { return len(s), nil}
 ```
 
-You can also use them as the value type in a map to make a set without allocating extra memory for values:
+You can also use a ZST as a map value type to save space rather than using `map[string]bool`
 
 ```go
-var set = make(map[string][0]int)
+var set = make(map[string]struct{})
 ```
 
-but _don't do this_: `map[string]bool` is just as fast and has a much cleaner api.
+but _don't_: `map[string]bool` is just as fast and has a much cleaner api.
 
 You can get kind of silly with this:
 
 ```go
-type cursed = [0]map[struct{}]struct{} // still zero-sized! don't do this.
+type cursedZST = [0]map[struct{}]struct{} // don't do this.
 ```
 
-## unreachable struct members
+Zero-sized types have a third use, but we'll need to talk about blank struct fields first.
 
-Structs can have unreachable member variables, specified using `_`. This has a few uses.
+## blank struct fields
 
-- You can use them to pad a struct to a specific size or alignment.
+Struct types can have unreachable fields using the [blank identifier](https://go.dev/ref/spec#Blank_identifier), `_` as the field name. You can use blank fields:
 
-    This is occasionally handy for cool `unsafe` stuff like serializing or deserializing stuff straight from a bytestream without worrying about pesky stuff like 'safety'.
+- To pad a struct to a specific size or alignment.
+
+    This is occasionally handy for cool `unsafe` stuff like serializing or deserializing stuff straight from a bytestream.
 
     ```go
     type Point struct{ X, Y, Z uint16 }
     type PaddedPoint struct {
     X, Y, Z uint16
-    _       uint16
+    _       uint16 
     }
     const format = "%12v\t%v\t%v\n"
     fmt.Printf(format, "type", "size", "align")
@@ -393,33 +453,25 @@ Structs can have unreachable member variables, specified using `_`. This has a f
         PaddedPoint  8    2
     ```
 
-- An unreachable member variable means you have to use the key-value notation to make a literal of that struct, _even within it's own package_.
-
-    This means that if you add a field to the struct later, it's not a breaking change for users.  So as not to waste space, use a [`zero-sized type`](#zero-sized-type) for this.
+- A blank field makes it difficult to initialize a struct without specifying key names. So as not to waste space, use a [`zero-sized type`](#zero-sized-type) for this.
+  
+    This means that if you add a field to the struct later, it's not a breaking change for users.
 
     ```go
     type LogOptions struct {
         Level int8
         LogTime, LogFile, LogLine bool
-        _ [0]int
+        _ [0]int // reserve space to expand the struct
     }
     ```
 
-    Be careful with this: sometimes you _want_ changes to the API to be breaking changes, and changing the size of commonly-used types can have unforseen performance ramifications. It's best used for quality-of-life structs like the logging configuration above.
+    Be careful with this: sometimes you _want_ changes to the API to be breaking changes, and changing the size of commonly-used types can have unforseen performance ramifications.
+    Blank fields should be used sparingly, but can be nice for configuration.
+
 - Adding a field of uncomparable type makes the entire struct uncomparable.
-    Structs comprised only of [comparable](https://go.dev/ref/spec#Comparison_operators) types (that is, ones where you can use the `==` operator) are themselves comparable. You may not want this to happen. Additionaly, the compiler has to generate a comparison function for each struct of this kind, which bloats the binary and increases compilation times. You can avoid this by having an unreachable member variable of an uncomparable type: the usual candidate is `[0]func()`, since it's zero-sized.
+    Structs comprised only of [comparable](https://go.dev/ref/spec#Comparison_operators) types (that is, ones where you can use the `==` operator) are themselves comparable, and can be used as keys in hashmaps or compared using `==`. The compiler implements these by generating comparison and hash functions for each comparable type in your code. This (very slightly) bloats the binary & compilation time. You may not want this to happen. Prevent this having a blank field of uncomparable type (the usual candidate is the ZST `[0]func()`). If you have the kind of performance requirements that need this, you'll know. Don't do it "just because"; it's confusing.
 
-    ```go
-        type NotComparable struct {
-            N, M int
-            _ [0]func()
-        }
-        var a, b NotComparable
-        a == b
-    ```
-
-    >  invalid operation: a == b (struct containing [0]func() cannot be compared)
-- Unreachable member variables can provide hints to tooling about how a type should be used. The most famous example of this is `copylock`. See [go issue #8005](https://github.com/golang/go/issues/8005#issuecomment-190753527) for more details.
+- Blank fields can provide hints to tooling like `go vet` about how a type should be used. The most famous example of this is `copylock`. See [go issue #8005](https://github.com/golang/go/issues/8005#issuecomment-190753527) for more details.
 
 ### Putting it together: A generic zero-sized type
 
@@ -466,8 +518,8 @@ That's right: this ugly SOB has a
 - zero-sized type
 - containing an anonymous `struct`
 - with an unreachable member containing a function so it's not comparable
-- declared inside a function
-- used in a semi-colon terminated multi-statement line
+- in a method expression
+- on a semi-colon terminated multi-statement line
 
 ### Next time(?)
 

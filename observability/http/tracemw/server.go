@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"net/http"
 	"runtime/debug"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"gitlab.com/efronlicht/blog/observability/trace"
 	"go.uber.org/zap"
 )
+
+var responseCount sync.Map
 
 // HttpServerTraceMiddleware retrieves a trace from the http headers, adds a new RequestID to the chain, and adds the trace to the request's context before calling the original handler h.
 // A missing or invalid trace will generate a new trace instead.

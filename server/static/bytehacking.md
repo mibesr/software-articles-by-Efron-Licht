@@ -1,9 +1,8 @@
 # Simple Byte Hacking
 
 #### A Programming Article by Efron Licht
-#### Written Jan 2023
-#### On: Performance, Low-Level Programming, Problem-Solving, Command-Line Tools
-#### Languages: Go
+
+#### Jan 2023
 
 ## [more articles](https://eblog.fly.dev)
 
@@ -461,11 +460,14 @@ We'd like output like this:
 | Swap8String | 2.36e+07 | 50.3  | 14.6  | 0     | 0     | 0      | 0     |
 
 ```go
+// fmtbench
 package main // fmtbench/main.go
 
 import (
+ "flag"
  "fmt"
  "io"
+ "log"
  "math"
  "os"
  "regexp"
@@ -474,26 +476,34 @@ import (
  "strings"
 )
 
-type result struct {
- name                    string
- runs, ns, bytes, allocs float64
-}
+var sortBy = flag.String("sort-by", "none", "sort criteria: options 'none' 'allocs' 'name', 'runtime'")
 
 func main() {
+ flag.Parse()
+ switch strings.ToLower(*sortBy) {
+ case "none", "allocs", "name", "runtime":
+  // nop
+ default:
+  flag.Usage()
+  log.Printf("unexpected value %q for flag -sortby", *sortBy)
+ }
  input := strings.TrimSpace(string(must(io.ReadAll(os.Stdin))))
  lines := strings.Split(input, "\n")
- goarch := strings.TrimPrefix(lines[0], "goarch: ")
- goos := strings.TrimPrefix(lines[1], "goos: ")
+ goos := strings.TrimPrefix(lines[1], "goarch: ")
+ goarch := strings.TrimPrefix(lines[0], "goos: ")
  pkg := strings.TrimPrefix(lines[2], "pkg: ")
- fmt.Printf("## benchmark %s: %s/%s\n", pkg, goos, goarch)
+ fmt.Printf("## benchmarks %s: %s/%s\n", pkg, goos, goarch)
  fmt.Println(`|name|runs|ns/op|%/max|bytes|%/max|allocs|%/max|`)
  fmt.Println(`|---|---|---|---|---|---|---|---|`)
  // get results and min/max
+ type result struct {
+  name                    string
+  runs, ns, bytes, allocs float64
+ }
  var results []result
  var maxNS, maxBytes, maxAllocs float64
  {
-  // thank you
-  var re = regexp.MustCompile(`Benchmark(.+)(?:-\w)\s+(\d+)\s+(.+)ns/op\s+(\d+) B/op\s+(\d+)`)
+  re := regexp.MustCompile(`Benchmark(.+)\s+(\d+)\s+(.+)ns/op\s+(\d+) B/op\s+(\d+)`)
 
   for _, line := range lines {
    match := re.FindStringSubmatch(line)
@@ -506,7 +516,22 @@ func main() {
    maxNS, maxBytes, maxAllocs = math.Max(maxNS, res.ns), math.Max(maxBytes, res.bytes), math.Max(maxAllocs, res.allocs)
   }
  }
- sort.SliceStable(results, func(i, j int) bool { return results[i].ns < results[j].ns })
+
+ { // sort results
+  var less func(i, j int) bool
+  switch *sortBy {
+  case "none":
+   goto PRINT
+  case "allocs":
+   less = func(i, j int) bool { return results[i].allocs < results[j].allocs }
+  case "name":
+   less = func(i, j int) bool { return results[i].name < results[j].name }
+  case "runtime":
+   less = func(i, j int) bool { return results[i].ns < results[j].ns }
+  }
+  sort.Slice(results, less)
+ }
+PRINT:
  for _, res := range results {
   fmt.Printf("|%s|%.3g|%.3g|%0.3g|%.3g|%0.3g|%.3g|%0.3g|\n", res.name, res.runs, res.ns, (res.ns/maxNS)*100, res.bytes, (res.bytes/maxBytes)*100, res.allocs, (res.allocs/maxAllocs)*100)
  }
@@ -514,10 +539,13 @@ func main() {
 
 func must[T any](t T, err error) T {
  if err != nil {
-  panic(err)
+  log.Print("unexpected error")
+  log.Print("USAGE:  go test -bench=. -benchmem DIR | bench")
+  log.Fatal(err)
  }
  return t
 }
+
 ```
 
 ### comparing benchmarks

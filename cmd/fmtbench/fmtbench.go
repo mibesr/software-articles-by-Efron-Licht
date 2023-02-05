@@ -14,11 +14,6 @@ import (
 	"strings"
 )
 
-type result struct {
-	name                    string
-	runs, ns, bytes, allocs float64
-}
-
 var sortBy = flag.String("sort-by", "none", "sort criteria: options 'none' 'allocs' 'name', 'runtime'")
 
 func main() {
@@ -39,6 +34,10 @@ func main() {
 	fmt.Println(`|name|runs|ns/op|%/max|bytes|%/max|allocs|%/max|`)
 	fmt.Println(`|---|---|---|---|---|---|---|---|`)
 	// get results and min/max
+	type result struct {
+		name                    string
+		runs, ns, bytes, allocs float64
+	}
 	var results []result
 	var maxNS, maxBytes, maxAllocs float64
 	{

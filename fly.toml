@@ -1,4 +1,4 @@
-# fly.toml file generated for eblog on 2023-02-04T20:28:36-08:00
+# fly.toml file generated for eblog on 2023-02-05T13:46:23-08:00
 
 app = "eblog"
 kill_signal = "SIGINT"
@@ -12,8 +12,8 @@ processes = []
   protocol = "tcp"
   script_checks = []
   [services.concurrency]
-    hard_limit = 25
-    soft_limit = 20
+    hard_limit = 100
+    soft_limit = 80
     type = "connections"
 
   [[services.ports]]

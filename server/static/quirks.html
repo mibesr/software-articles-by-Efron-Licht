@@ -11,23 +11,23 @@
 
 <h4>A programming article by Efron Licht</h4>
 
-<h4>Written Feb 2023</h4>
+<h4>Feb 2023</h4>
 
 <h2><a href="https://eblog.fly.dev">more articles</a></h2>
 
 <ul>
-<li><p><a href="./bytehacking.html">bytehacking</a></p></li>
-
-<li><p><a href="./faststack.html">tale of two stacks</a></p></li>
-
-<li><p><a href="./quirks.md">go quirks &amp; tricks</a></p>
-
-<h4>On: Go, Programming Languages</h4></li>
+<li>bytehacking <a href="./bytehacking.html">html</a> <a href="./bytehacking.md">markdown</a></li>
+<li><a href="./faststack.html">tale of two stacks</a> <a href="./faststack.md">markdown</a></li>
+<li><a href="./quirks.html">go quirks &amp; tricks</a> <a href="./quirks.md">markdown</a></li>
 </ul>
+
+<h4>On: Go, Programming Languages</h4>
 
 <p>Go is generally considered a ‘simple’ language, but it has more edge cases and tricks than most might expect.</p>
 
-<p>You can be a productive go programmer without knowing about or using most or any of these tricks, but some of them are pretty handy. This is part 1 of what I hope to be a continuing series.</p>
+<p>You can be a productive go programmer without knowing about or using most or any of these tricks, but some of them are pretty handy. I’ll link to the <a href="https://go.dev/ref/spec">go spec</a> where appropriate throughout the article.</p>
+
+<p>This is part 1 of what I hope to be a continuing series.</p>
 
 <h2>multi-statement lines with semicolons</h2>
 
@@ -122,9 +122,8 @@
 <p>missing type in composite literal</p>
 </blockquote>
 
-<p>This implies that you always need to provide the types of composite literals, but that’s just not true:</p>
-
-<p>Go is happy to compile this without me spelling out the type of each item on the right-hand side:</p>
+<p>This implies that you always need to provide the types of composite literals, but that’s just not true:<br/>
+Go is happy to compile this without me spelling out the type of each item on the right-hand side:</p>
 
 <pre><code class="language-go"><span class="kwd">type</span> <span class="typ">S</span> <span class="pun">{</span> <span class="typ">N</span><span class="pun">,</span> <span class="typ">M</span> <span class="kwd">int</span><span class="pun">}</span>
 <span class="pln">arrayOfStructs</span> <span class="pun">:</span><span class="pun">=</span> <span class="pun">[</span><span class="dec">3</span><span class="pun">]</span><span class="typ">S</span><span class="pun">{</span><span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> <span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> <span class="pun">{</span><span class="dec">0</span><span class="pun">,</span> <span class="dec">1</span><span class="pun">}</span><span class="pun">}</span><span class="pun">)</span>
@@ -149,6 +148,53 @@
 
 <p>There’s a long-open <a href="https://github.com/golang/go/issues/12854">issue (#12584)</a> hoping to address this inconsitency. I’d love to see more permissive composite literals.</p>
 
+<h2>simple expressions in switch statements</h2>
+
+<p>A switch statement <a href="https://go.dev/ref/spec#Switch_statements">can be proceeded by a simple statement</a>:</p>
+
+<pre><code class="language-go"><span class="com">// b is a *math/big.Int*</span>
+<span class="kwd">switch</span> <span class="pln">n</span><span class="pun">,</span> <span class="pln">acc</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">b</span><span class="pun">.</span><span class="typ">Uint64</span><span class="pun">(</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">acc</span> <span class="pun">{</span>
+    <span class="kwd">case</span> <span class="pln">big</span><span class="pun">.</span><span class="typ">Below</span><span class="pun">:</span>
+        <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="str">&#34;&lt; 0&#34;</span><span class="pun">)</span><span class="pun">,</span>
+    <span class="kwd">case</span> <span class="pln">big</span><span class="pun">.</span><span class="typ">Above</span><span class="pun">:</span>
+        <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="str">&#34;&gt; 18446744073709551615&#34;</span><span class="pun">)</span>
+    <span class="kwd">case</span> <span class="pln">big</span><span class="pun">.</span><span class="typ">Exact</span><span class="pun">:</span>
+        <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">n</span><span class="pun">)</span>
+<span class="pun">}</span>
+</code></pre>
+
+<p>This works for expression switches and type switches:</p>
+
+<pre><code class="language-go"><span class="kwd">switch</span> <span class="pln">a</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">f</span><span class="pun">(</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">err</span><span class="pun">.</span><span class="pun">(</span><span class="kwd">type</span><span class="pun">)</span> <span class="pun">{</span>
+<span class="pun">}</span>
+</code></pre>
+
+<p>If you omit the <em>second</em> part of the switch, you can do a “normal” boolean-value switch statement:</p>
+
+<pre><code class="language-go"><span class="com">// some kind of low-level networking call:</span>
+<span class="kwd">var</span> <span class="kwd">try</span> <span class="kwd">int</span>
+<span class="kwd">var</span> <span class="pln">packets</span> <span class="pun">[</span><span class="pun">]</span><span class="typ">Packet</span>
+<span class="typ">READ</span><span class="pun">:</span>
+<span class="kwd">for</span> <span class="pun">{</span>
+    <span class="kwd">switch</span> <span class="pln">packet</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">readPacket</span><span class="pun">(</span><span class="pln">ctx</span><span class="pun">,</span> <span class="pln">conn</span><span class="pun">,</span> <span class="pln">buf</span><span class="pun">)</span><span class="pun">;</span>  <span class="pun">{</span> <span class="com">// note semicolon</span>
+        <span class="kwd">case</span> <span class="pln">errors</span><span class="pun">.</span><span class="typ">Is</span><span class="pun">(</span><span class="pln">io</span><span class="pun">.</span><span class="typ">EOF</span><span class="pun">)</span><span class="pun">:</span> 
+            <span class="pln">packets</span> <span class="pun">=</span> <span class="kwd">append</span><span class="pun">(</span><span class="pln">packets</span><span class="pun">,</span> <span class="pln">packet</span><span class="pun">)</span>
+            <span class="kwd">break</span> <span class="typ">READ</span>
+        <span class="kwd">case</span> <span class="pln">err</span> <span class="pun">=</span><span class="pun">=</span> <span class="kwd">nil</span><span class="pun">:</span>
+            <span class="pln">packets</span> <span class="pun">=</span> <span class="kwd">append</span><span class="pun">(</span><span class="pln">packets</span><span class="pun">,</span> <span class="pln">packet</span><span class="pun">)</span>
+            <span class="kwd">try</span> <span class="pun">=</span> <span class="dec">0</span>
+        <span class="kwd">case</span> <span class="pln">errors</span><span class="pun">.</span><span class="typ">As</span><span class="pun">(</span><span class="pln">err</span><span class="pun">,</span> <span class="pln">fatalErr</span><span class="pun">)</span> <span class="pun">|</span><span class="pun">|</span> <span class="kwd">try</span> <span class="pun">=</span><span class="pun">=</span> <span class="pln">maxTries</span><span class="pun">:</span>
+            <span class="kwd">return</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;fatal error after %d retries: %v&#34;</span><span class="pun">,</span> <span class="pln">i</span><span class="pun">,</span> <span class="pln">err</span><span class="pun">)</span>
+        <span class="kwd">default</span><span class="pun">:</span>
+            <span class="kwd">try</span><span class="pun">+</span><span class="pun">+</span>
+            <span class="pln">time</span><span class="pun">.</span><span class="typ">Sleep</span><span class="pun">(</span><span class="dec">100</span><span class="pun">*</span><span class="pln">time</span><span class="pun">.</span><span class="typ">Millisecond</span><span class="pun">)</span>
+    <span class="pun">}</span>
+<span class="pun">}</span>
+
+</code></pre>
+
+<p>I like the look of these: they allow very terse, expressive code, but they’re rare &amp; unusual enough to probably cause confusion. Most of the time you’re better off with a chain of <code>if</code>.</p>
+
 <h2>GOTO exists</h2>
 
 <p>The oft-maligned GOTO is an excellent piece of kit.
@@ -169,12 +215,16 @@ unlike many languages, Go’s GOTO can only jump <em>forwards</em>, so it’s ha
 
 </code></pre>
 
-<p>I find this useful for complicated variable initialization:</p>
+<p>I find this useful for complicated variable initialization. Here’s an example from the <code>fmtbench</code> tool I wrote in <a href="./bytehacking.html">the last article</a></p>
 
 <pre><code class="language-go"><span class="com">// fmtbench.go</span>
 <span class="com">// context: the variable sortBy is a command-line flag specifying the sort order. we&#39;ve already validated it.</span>
-
- <span class="pun">{</span> <span class="com">// sort results</span>
+<span class="com">// results is a []struct{</span>
+<span class="com">//     name                    string</span>
+<span class="com">//  runs, ns, bytes, allocs float64</span>
+<span class="com">// }</span>
+<span class="pun">{</span>
+ <span class="com">// sort results</span>
   <span class="kwd">var</span> <span class="pln">less</span> <span class="kwd">func</span><span class="pun">(</span><span class="pln">i</span><span class="pun">,</span> <span class="pln">j</span> <span class="kwd">int</span><span class="pun">)</span> <span class="kwd">bool</span>
   <span class="kwd">switch</span> <span class="pun">*</span><span class="pln">sortBy</span> <span class="pun">{</span>
   <span class="kwd">default</span><span class="pun">:</span>
@@ -340,9 +390,11 @@ You <em>can</em> define a function that takes that type using a function express
 
 <p>Both anonymous structs and interfaces can be generic, too.</p>
 
-<h2>zero-sized type</h2>
+<h2>zero-sized type (“ZST”)</h2>
 
-<p>Empty structs or arrays with length zero take up no memory. These are most often used as handles to an interface, like <code>io.Discard</code>:</p>
+<p>The empty struct <code>struct{}</code> and arrays of length zero (like <code>[0]int</code>) take up no memory, as do structs and arrays comprised entirely of zero-sized types.</p>
+
+<p>A zero-sized type (“ZST”) is most often used as an interface handle, like <code>io.Discard</code>.</p>
 
 <pre><code class="language-go">
 <span class="pun">#</span><span class="pun">#</span> <span class="pln">zero</span><span class="pun">-</span><span class="pln">sized</span> <span class="pln">types</span>
@@ -357,31 +409,33 @@ You <em>can</em> define a function that takes that type using a function express
 <span class="kwd">func</span> <span class="pun">(</span><span class="pln">discard</span><span class="pun">)</span> <span class="typ">WriteString</span><span class="pun">(</span><span class="pln">s</span> <span class="pln">string</span><span class="pun">)</span> <span class="pun">(</span><span class="kwd">int</span><span class="pun">,</span> <span class="pln">error</span><span class="pun">)</span> <span class="pun">{</span> <span class="kwd">return</span> <span class="pln">len</span><span class="pun">(</span><span class="pln">s</span><span class="pun">)</span><span class="pun">,</span> <span class="kwd">nil</span><span class="pun">}</span>
 </code></pre>
 
-<p>You can also use them as the value type in a map to make a set without allocating extra memory for values:</p>
+<p>You can also use a ZST as a map value type to save space rather than using <code>map[string]bool</code></p>
 
-<pre><code class="language-go"><span class="kwd">var</span> <span class="kwd">set</span> <span class="pun">=</span> <span class="kwd">make</span><span class="pun">(</span><span class="kwd">map</span><span class="pun">[</span><span class="pln">string</span><span class="pun">]</span><span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="kwd">int</span><span class="pun">)</span>
+<pre><code class="language-go"><span class="kwd">var</span> <span class="kwd">set</span> <span class="pun">=</span> <span class="kwd">make</span><span class="pun">(</span><span class="kwd">map</span><span class="pun">[</span><span class="pln">string</span><span class="pun">]</span><span class="kwd">struct</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span>
 </code></pre>
 
-<p>but <em>don’t do this</em>: <code>map[string]bool</code> is just as fast and has a much cleaner api.</p>
+<p>but <em>don’t</em>: <code>map[string]bool</code> is just as fast and has a much cleaner api.</p>
 
 <p>You can get kind of silly with this:</p>
 
-<pre><code class="language-go"><span class="kwd">type</span> <span class="pln">cursed</span> <span class="pun">=</span> <span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="kwd">map</span><span class="pun">[</span><span class="kwd">struct</span><span class="pun">{</span><span class="pun">}</span><span class="pun">]</span><span class="kwd">struct</span><span class="pun">{</span><span class="pun">}</span> <span class="com">// still zero-sized! don&#39;t do this.</span>
+<pre><code class="language-go"><span class="kwd">type</span> <span class="pln">cursedZST</span> <span class="pun">=</span> <span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="kwd">map</span><span class="pun">[</span><span class="kwd">struct</span><span class="pun">{</span><span class="pun">}</span><span class="pun">]</span><span class="kwd">struct</span><span class="pun">{</span><span class="pun">}</span> <span class="com">// don&#39;t do this.</span>
 </code></pre>
 
-<h2>unreachable struct members</h2>
+<p>Zero-sized types have a third use, but we’ll need to talk about blank struct fields first.</p>
 
-<p>Structs can have unreachable member variables, specified using <code>_</code>. This has a few uses.</p>
+<h2>blank struct fields</h2>
+
+<p>Struct types can have unreachable fields using the <a href="https://go.dev/ref/spec#Blank_identifier">blank identifier</a>, <code>_</code> as the field name. You can use blank fields:</p>
 
 <ul>
-<li><p>You can use them to pad a struct to a specific size or alignment.</p>
+<li><p>To pad a struct to a specific size or alignment.</p>
 
-<p>This is occasionally handy for cool <code>unsafe</code> stuff like serializing or deserializing stuff straight from a bytestream without worrying about pesky stuff like ‘safety’.</p>
+<p>This is occasionally handy for cool <code>unsafe</code> stuff like serializing or deserializing stuff straight from a bytestream.</p>
 
 <pre><code class="language-go"><span class="kwd">type</span> <span class="typ">Point</span> <span class="kwd">struct</span><span class="pun">{</span> <span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span><span class="pun">,</span> <span class="typ">Z</span> <span class="pln">uint16</span> <span class="pun">}</span>
 <span class="kwd">type</span> <span class="typ">PaddedPoint</span> <span class="kwd">struct</span> <span class="pun">{</span>
 <span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span><span class="pun">,</span> <span class="typ">Z</span> <span class="pln">uint16</span>
-<span class="pln">_</span>       <span class="pln">uint16</span>
+<span class="pln">_</span>       <span class="pln">uint16</span> 
 <span class="pun">}</span>
 <span class="kwd">const</span> <span class="pln">format</span> <span class="pun">=</span> <span class="str">&#34;%12v\t%v\t%v\n&#34;</span>
 <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="pln">format</span><span class="pun">,</span> <span class="str">&#34;type&#34;</span><span class="pun">,</span> <span class="str">&#34;size&#34;</span><span class="pun">,</span> <span class="str">&#34;align&#34;</span><span class="pun">)</span>
@@ -393,34 +447,23 @@ You <em>can</em> define a function that takes that type using a function express
     PaddedPoint  8    2
 </code></pre></li>
 
-<li><p>An unreachable member variable means you have to use the key-value notation to make a literal of that struct, <em>even within it’s own package</em>.</p>
+<li><p>A blank field makes it difficult to initialize a struct without specifying key names. So as not to waste space, use a <a href="#zero-sized-type"><code>zero-sized type</code></a> for this.</p>
 
-<p>This means that if you add a field to the struct later, it’s not a breaking change for users.  So as not to waste space, use a <a href="#zero-sized-type"><code>zero-sized type</code></a> for this.</p>
+<p>This means that if you add a field to the struct later, it’s not a breaking change for users.</p>
 
 <pre><code class="language-go"><span class="kwd">type</span> <span class="typ">LogOptions</span> <span class="kwd">struct</span> <span class="pun">{</span>
     <span class="typ">Level</span> <span class="kwd">int8</span>
     <span class="typ">LogTime</span><span class="pun">,</span> <span class="typ">LogFile</span><span class="pun">,</span> <span class="typ">LogLine</span> <span class="kwd">bool</span>
-    <span class="pln">_</span> <span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="kwd">int</span>
+    <span class="pln">_</span> <span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="kwd">int</span> <span class="com">// reserve space to expand the struct</span>
 <span class="pun">}</span>
 </code></pre>
-<p>Be careful with this: sometimes you <em>want</em> changes to the API to be breaking changes, and changing the size of commonly-used types can have unforseen performance ramifications. It’s best used for quality-of-life structs like the logging configuration above.</p></li>
+<p>Be careful with this: sometimes you <em>want</em> changes to the API to be breaking changes, and changing the size of commonly-used types can have unforseen performance ramifications.
+Blank fields should be used sparingly, but can be nice for configuration.</p></li>
 
 <li><p>Adding a field of uncomparable type makes the entire struct uncomparable.
-Structs comprised only of <a href="https://go.dev/ref/spec#Comparison_operators">comparable</a> types (that is, ones where you can use the <code>==</code> operator) are themselves comparable. You may not want this to happen. Additionaly, the compiler has to generate a comparison function for each struct of this kind, which bloats the binary and increases compilation times. You can avoid this by having an unreachable member variable of an uncomparable type: the usual candidate is <code>[0]func()</code>, since it’s zero-sized.</p>
+Structs comprised only of <a href="https://go.dev/ref/spec#Comparison_operators">comparable</a> types (that is, ones where you can use the <code>==</code> operator) are themselves comparable, and can be used as keys in hashmaps or compared using <code>==</code>. The compiler implements these by generating comparison and hash functions for each comparable type in your code. This (very slightly) bloats the binary &amp; compilation time. You may not want this to happen. Prevent this having a blank field of uncomparable type (the usual candidate is the ZST <code>[0]func()</code>). If you have the kind of performance requirements that need this, you’ll know. Don’t do it “just because”; it’s confusing.</p></li>
 
-<pre><code class="language-go">    <span class="kwd">type</span> <span class="typ">NotComparable</span> <span class="kwd">struct</span> <span class="pun">{</span>
-        <span class="typ">N</span><span class="pun">,</span> <span class="typ">M</span> <span class="kwd">int</span>
-        <span class="pln">_</span> <span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="kwd">func</span><span class="pun">(</span><span class="pun">)</span>
-    <span class="pun">}</span>
-    <span class="kwd">var</span> <span class="pln">a</span><span class="pun">,</span> <span class="pln">b</span> <span class="typ">NotComparable</span>
-    <span class="pln">a</span> <span class="pun">=</span><span class="pun">=</span> <span class="pln">b</span>
-</code></pre>
-<blockquote>
-<p>invalid operation: a == b (struct containing [0]func() cannot be compared)</p>
-</blockquote>
-</li>
-
-<li><p>Unreachable member variables can provide hints to tooling about how a type should be used. The most famous example of this is <code>copylock</code>. See <a href="https://github.com/golang/go/issues/8005#issuecomment-190753527">go issue #8005</a> for more details.</p></li>
+<li><p>Blank fields can provide hints to tooling like <code>go vet</code> about how a type should be used. The most famous example of this is <code>copylock</code>. See <a href="https://github.com/golang/go/issues/8005#issuecomment-190753527">go issue #8005</a> for more details.</p></li>
 </ul>
 
 <h3>Putting it together: A generic zero-sized type</h3>
@@ -469,8 +512,8 @@ type should be a pointer or interface.</p>
 <li>zero-sized type</li>
 <li>containing an anonymous <code>struct</code></li>
 <li>with an unreachable member containing a function so it’s not comparable</li>
-<li>declared inside a function</li>
-<li>used in a semi-colon terminated multi-statement line</li>
+<li>in a method expression</li>
+<li>on a semi-colon terminated multi-statement line</li>
 </ul>
 
 <h3>Next time(?)</h3>

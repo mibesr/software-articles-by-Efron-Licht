@@ -11,11 +11,7 @@
 
 <h4>A Programming Article by Efron Licht</h4>
 
-<h4>Written Jan 2023</h4>
-
-<h4>On: Performance, Low-Level Programming, Problem-Solving, Command-Line Tools</h4>
-
-<h4>Languages: Go</h4>
+<h4>Jan 2023</h4>
 
 <h2><a href="https://eblog.fly.dev">more articles</a></h2>
 
@@ -907,11 +903,14 @@ BenchmarkSwap8String-8          23469300                50.81 ns/op            0
 </tbody>
 </table>
 
-<pre><code class="language-go"><span class="kwd">package</span> <span class="pln">main</span> <span class="com">// fmtbench/main.go</span>
+<pre><code class="language-go"><span class="com">// fmtbench</span>
+<span class="kwd">package</span> <span class="pln">main</span> <span class="com">// fmtbench/main.go</span>
 
 <span class="kwd">import</span> <span class="pun">(</span>
+ <span class="str">&#34;flag&#34;</span>
  <span class="str">&#34;fmt&#34;</span>
  <span class="str">&#34;io&#34;</span>
+ <span class="str">&#34;log&#34;</span>
  <span class="str">&#34;math&#34;</span>
  <span class="str">&#34;os&#34;</span>
  <span class="str">&#34;regexp&#34;</span>
@@ -920,26 +919,34 @@ BenchmarkSwap8String-8          23469300                50.81 ns/op            0
  <span class="str">&#34;strings&#34;</span>
 <span class="pun">)</span>
 
-<span class="kwd">type</span> <span class="pln">result</span> <span class="kwd">struct</span> <span class="pun">{</span>
- <span class="pln">name</span>                    <span class="pln">string</span>
- <span class="pln">runs</span><span class="pun">,</span> <span class="pln">ns</span><span class="pun">,</span> <span class="pln">bytes</span><span class="pun">,</span> <span class="pln">allocs</span> <span class="kwd">float64</span>
-<span class="pun">}</span>
+<span class="kwd">var</span> <span class="pln">sortBy</span> <span class="pun">=</span> <span class="pln">flag</span><span class="pun">.</span><span class="typ">String</span><span class="pun">(</span><span class="str">&#34;sort-by&#34;</span><span class="pun">,</span> <span class="str">&#34;none&#34;</span><span class="pun">,</span> <span class="str">&#34;sort criteria: options &#39;none&#39; &#39;allocs&#39; &#39;name&#39;, &#39;runtime&#39;&#34;</span><span class="pun">)</span>
 
 <span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
+ <span class="pln">flag</span><span class="pun">.</span><span class="typ">Parse</span><span class="pun">(</span><span class="pun">)</span>
+ <span class="kwd">switch</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">ToLower</span><span class="pun">(</span><span class="pun">*</span><span class="pln">sortBy</span><span class="pun">)</span> <span class="pun">{</span>
+ <span class="kwd">case</span> <span class="str">&#34;none&#34;</span><span class="pun">,</span> <span class="str">&#34;allocs&#34;</span><span class="pun">,</span> <span class="str">&#34;name&#34;</span><span class="pun">,</span> <span class="str">&#34;runtime&#34;</span><span class="pun">:</span>
+  <span class="com">// nop</span>
+ <span class="kwd">default</span><span class="pun">:</span>
+  <span class="pln">flag</span><span class="pun">.</span><span class="typ">Usage</span><span class="pun">(</span><span class="pun">)</span>
+  <span class="pln">log</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;unexpected value %q for flag -sortby&#34;</span><span class="pun">,</span> <span class="pun">*</span><span class="pln">sortBy</span><span class="pun">)</span>
+ <span class="pun">}</span>
  <span class="pln">input</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">TrimSpace</span><span class="pun">(</span><span class="pln">string</span><span class="pun">(</span><span class="pln">must</span><span class="pun">(</span><span class="pln">io</span><span class="pun">.</span><span class="typ">ReadAll</span><span class="pun">(</span><span class="pln">os</span><span class="pun">.</span><span class="typ">Stdin</span><span class="pun">)</span><span class="pun">)</span><span class="pun">)</span><span class="pun">)</span>
  <span class="pln">lines</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">Split</span><span class="pun">(</span><span class="pln">input</span><span class="pun">,</span> <span class="str">&#34;\n&#34;</span><span class="pun">)</span>
- <span class="pln">goarch</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">TrimPrefix</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="pun">,</span> <span class="str">&#34;goarch: &#34;</span><span class="pun">)</span>
- <span class="pln">goos</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">TrimPrefix</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">[</span><span class="dec">1</span><span class="pun">]</span><span class="pun">,</span> <span class="str">&#34;goos: &#34;</span><span class="pun">)</span>
+ <span class="pln">goos</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">TrimPrefix</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">[</span><span class="dec">1</span><span class="pun">]</span><span class="pun">,</span> <span class="str">&#34;goarch: &#34;</span><span class="pun">)</span>
+ <span class="pln">goarch</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">TrimPrefix</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="pun">,</span> <span class="str">&#34;goos: &#34;</span><span class="pun">)</span>
  <span class="pln">pkg</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">TrimPrefix</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">[</span><span class="dec">2</span><span class="pun">]</span><span class="pun">,</span> <span class="str">&#34;pkg: &#34;</span><span class="pun">)</span>
- <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;## benchmark %s: %s/%s\n&#34;</span><span class="pun">,</span> <span class="pln">pkg</span><span class="pun">,</span> <span class="pln">goos</span><span class="pun">,</span> <span class="pln">goarch</span><span class="pun">)</span>
+ <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;## benchmarks %s: %s/%s\n&#34;</span><span class="pun">,</span> <span class="pln">pkg</span><span class="pun">,</span> <span class="pln">goos</span><span class="pun">,</span> <span class="pln">goarch</span><span class="pun">)</span>
  <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="str">`|name|runs|ns/op|%/max|bytes|%/max|allocs|%/max|`</span><span class="pun">)</span>
  <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="str">`|---|---|---|---|---|---|---|---|`</span><span class="pun">)</span>
  <span class="com">// get results and min/max</span>
+ <span class="kwd">type</span> <span class="pln">result</span> <span class="kwd">struct</span> <span class="pun">{</span>
+  <span class="pln">name</span>                    <span class="pln">string</span>
+  <span class="pln">runs</span><span class="pun">,</span> <span class="pln">ns</span><span class="pun">,</span> <span class="pln">bytes</span><span class="pun">,</span> <span class="pln">allocs</span> <span class="kwd">float64</span>
+ <span class="pun">}</span>
  <span class="kwd">var</span> <span class="pln">results</span> <span class="pun">[</span><span class="pun">]</span><span class="pln">result</span>
  <span class="kwd">var</span> <span class="pln">maxNS</span><span class="pun">,</span> <span class="pln">maxBytes</span><span class="pun">,</span> <span class="pln">maxAllocs</span> <span class="kwd">float64</span>
  <span class="pun">{</span>
-  <span class="com">// thank you</span>
-  <span class="kwd">var</span> <span class="pln">re</span> <span class="pun">=</span> <span class="pln">regexp</span><span class="pun">.</span><span class="typ">MustCompile</span><span class="pun">(</span><span class="str">`Benchmark(.+)(?:-\w)\s+(\d+)\s+(.+)ns/op\s+(\d+) B/op\s+(\d+)`</span><span class="pun">)</span>
+  <span class="pln">re</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">regexp</span><span class="pun">.</span><span class="typ">MustCompile</span><span class="pun">(</span><span class="str">`Benchmark(.+)\s+(\d+)\s+(.+)ns/op\s+(\d+) B/op\s+(\d+)`</span><span class="pun">)</span>
 
   <span class="kwd">for</span> <span class="pln">_</span><span class="pun">,</span> <span class="pln">line</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">range</span> <span class="pln">lines</span> <span class="pun">{</span>
    <span class="pln">match</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">re</span><span class="pun">.</span><span class="typ">FindStringSubmatch</span><span class="pun">(</span><span class="pln">line</span><span class="pun">)</span>
@@ -952,7 +959,22 @@ BenchmarkSwap8String-8          23469300                50.81 ns/op            0
    <span class="pln">maxNS</span><span class="pun">,</span> <span class="pln">maxBytes</span><span class="pun">,</span> <span class="pln">maxAllocs</span> <span class="pun">=</span> <span class="pln">math</span><span class="pun">.</span><span class="typ">Max</span><span class="pun">(</span><span class="pln">maxNS</span><span class="pun">,</span> <span class="pln">res</span><span class="pun">.</span><span class="pln">ns</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">math</span><span class="pun">.</span><span class="typ">Max</span><span class="pun">(</span><span class="pln">maxBytes</span><span class="pun">,</span> <span class="pln">res</span><span class="pun">.</span><span class="pln">bytes</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">math</span><span class="pun">.</span><span class="typ">Max</span><span class="pun">(</span><span class="pln">maxAllocs</span><span class="pun">,</span> <span class="pln">res</span><span class="pun">.</span><span class="pln">allocs</span><span class="pun">)</span>
   <span class="pun">}</span>
  <span class="pun">}</span>
- <span class="pln">sort</span><span class="pun">.</span><span class="typ">SliceStable</span><span class="pun">(</span><span class="pln">results</span><span class="pun">,</span> <span class="kwd">func</span><span class="pun">(</span><span class="pln">i</span><span class="pun">,</span> <span class="pln">j</span> <span class="kwd">int</span><span class="pun">)</span> <span class="kwd">bool</span> <span class="pun">{</span> <span class="kwd">return</span> <span class="pln">results</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="pln">ns</span> <span class="pun">&lt;</span> <span class="pln">results</span><span class="pun">[</span><span class="pln">j</span><span class="pun">]</span><span class="pun">.</span><span class="pln">ns</span> <span class="pun">}</span><span class="pun">)</span>
+
+ <span class="pun">{</span> <span class="com">// sort results</span>
+  <span class="kwd">var</span> <span class="pln">less</span> <span class="kwd">func</span><span class="pun">(</span><span class="pln">i</span><span class="pun">,</span> <span class="pln">j</span> <span class="kwd">int</span><span class="pun">)</span> <span class="kwd">bool</span>
+  <span class="kwd">switch</span> <span class="pun">*</span><span class="pln">sortBy</span> <span class="pun">{</span>
+  <span class="kwd">case</span> <span class="str">&#34;none&#34;</span><span class="pun">:</span>
+   <span class="kwd">goto</span> <span class="typ">PRINT</span>
+  <span class="kwd">case</span> <span class="str">&#34;allocs&#34;</span><span class="pun">:</span>
+   <span class="pln">less</span> <span class="pun">=</span> <span class="kwd">func</span><span class="pun">(</span><span class="pln">i</span><span class="pun">,</span> <span class="pln">j</span> <span class="kwd">int</span><span class="pun">)</span> <span class="kwd">bool</span> <span class="pun">{</span> <span class="kwd">return</span> <span class="pln">results</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="pln">allocs</span> <span class="pun">&lt;</span> <span class="pln">results</span><span class="pun">[</span><span class="pln">j</span><span class="pun">]</span><span class="pun">.</span><span class="pln">allocs</span> <span class="pun">}</span>
+  <span class="kwd">case</span> <span class="str">&#34;name&#34;</span><span class="pun">:</span>
+   <span class="pln">less</span> <span class="pun">=</span> <span class="kwd">func</span><span class="pun">(</span><span class="pln">i</span><span class="pun">,</span> <span class="pln">j</span> <span class="kwd">int</span><span class="pun">)</span> <span class="kwd">bool</span> <span class="pun">{</span> <span class="kwd">return</span> <span class="pln">results</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="pln">name</span> <span class="pun">&lt;</span> <span class="pln">results</span><span class="pun">[</span><span class="pln">j</span><span class="pun">]</span><span class="pun">.</span><span class="pln">name</span> <span class="pun">}</span>
+  <span class="kwd">case</span> <span class="str">&#34;runtime&#34;</span><span class="pun">:</span>
+   <span class="pln">less</span> <span class="pun">=</span> <span class="kwd">func</span><span class="pun">(</span><span class="pln">i</span><span class="pun">,</span> <span class="pln">j</span> <span class="kwd">int</span><span class="pun">)</span> <span class="kwd">bool</span> <span class="pun">{</span> <span class="kwd">return</span> <span class="pln">results</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">.</span><span class="pln">ns</span> <span class="pun">&lt;</span> <span class="pln">results</span><span class="pun">[</span><span class="pln">j</span><span class="pun">]</span><span class="pun">.</span><span class="pln">ns</span> <span class="pun">}</span>
+  <span class="pun">}</span>
+  <span class="pln">sort</span><span class="pun">.</span><span class="typ">Slice</span><span class="pun">(</span><span class="pln">results</span><span class="pun">,</span> <span class="pln">less</span><span class="pun">)</span>
+ <span class="pun">}</span>
+<span class="typ">PRINT</span><span class="pun">:</span>
  <span class="kwd">for</span> <span class="pln">_</span><span class="pun">,</span> <span class="pln">res</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">range</span> <span class="pln">results</span> <span class="pun">{</span>
   <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;|%s|%.3g|%.3g|%0.3g|%.3g|%0.3g|%.3g|%0.3g|\n&#34;</span><span class="pun">,</span> <span class="pln">res</span><span class="pun">.</span><span class="pln">name</span><span class="pun">,</span> <span class="pln">res</span><span class="pun">.</span><span class="pln">runs</span><span class="pun">,</span> <span class="pln">res</span><span class="pun">.</span><span class="pln">ns</span><span class="pun">,</span> <span class="pun">(</span><span class="pln">res</span><span class="pun">.</span><span class="pln">ns</span><span class="pun">/</span><span class="pln">maxNS</span><span class="pun">)</span><span class="pun">*</span><span class="dec">100</span><span class="pun">,</span> <span class="pln">res</span><span class="pun">.</span><span class="pln">bytes</span><span class="pun">,</span> <span class="pun">(</span><span class="pln">res</span><span class="pun">.</span><span class="pln">bytes</span><span class="pun">/</span><span class="pln">maxBytes</span><span class="pun">)</span><span class="pun">*</span><span class="dec">100</span><span class="pun">,</span> <span class="pln">res</span><span class="pun">.</span><span class="pln">allocs</span><span class="pun">,</span> <span class="pun">(</span><span class="pln">res</span><span class="pun">.</span><span class="pln">allocs</span><span class="pun">/</span><span class="pln">maxAllocs</span><span class="pun">)</span><span class="pun">*</span><span class="dec">100</span><span class="pun">)</span>
  <span class="pun">}</span>
@@ -960,10 +982,13 @@ BenchmarkSwap8String-8          23469300                50.81 ns/op            0
 
 <span class="kwd">func</span> <span class="pln">must</span><span class="pun">[</span><span class="typ">T</span> <span class="pln">any</span><span class="pun">]</span><span class="pun">(</span><span class="pln">t</span> <span class="typ">T</span><span class="pun">,</span> <span class="pln">err</span> <span class="pln">error</span><span class="pun">)</span> <span class="typ">T</span> <span class="pun">{</span>
  <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
-  <span class="pln">panic</span><span class="pun">(</span><span class="pln">err</span><span class="pun">)</span>
+  <span class="pln">log</span><span class="pun">.</span><span class="typ">Print</span><span class="pun">(</span><span class="str">&#34;unexpected error&#34;</span><span class="pun">)</span>
+  <span class="pln">log</span><span class="pun">.</span><span class="typ">Print</span><span class="pun">(</span><span class="str">&#34;USAGE:  go test -bench=. -benchmem DIR | bench&#34;</span><span class="pun">)</span>
+  <span class="pln">log</span><span class="pun">.</span><span class="typ">Fatal</span><span class="pun">(</span><span class="pln">err</span><span class="pun">)</span>
  <span class="pun">}</span>
  <span class="kwd">return</span> <span class="pln">t</span>
 <span class="pun">}</span>
+
 </code></pre>
 
 <h3>comparing benchmarks</h3>

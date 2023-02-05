@@ -24,7 +24,11 @@
 }
 
 /* formatting: non syntax-highlighting */
-body {
+body {  
+  padding-top: 2ch;
+  padding-bottom: 2ch;
+  padding-left: 8ch;
+  text-align: left;
   background-color: black;
   background-image: repeating-radial-gradient((rgba(55, 6, 6, 0.75) 10%, black 20%, rgba(87, 32, 0, 0.75) 30%));
   font-family: "Open Sans", "Monaco", "Helvetica";
@@ -56,7 +60,7 @@ table {
   table-layout:auto ;
   width: 100%;
   border-collapse: collapse;
-  border: 3px solid pink;
+  border: 1px solid gray;
   font-variant: small-caps;
   line-height: 130%;
 
@@ -76,6 +80,7 @@ tr {
 
   font-family: "Source Code Pro";
   border-top: 1px dashed;
+
   border-bottom: 1px dashed;
   border-color: #bac8f2;
 }
@@ -98,10 +103,14 @@ th {
 
 }
 
+header {
+  text-align: center
+}
 /* headers */
 h1,
 h2,
 h3 {
+  text-align: center;
   line-height: 130%;
   font-variant: titling-caps;
   color: rgb(208, 254, 248);
@@ -132,7 +141,9 @@ a:visited {
 
 
 
-pre {
+pre { 
+  padding-top: 6px;
+  padding-bottom: 4px;
   line-height: 130%;
   font-size: 12px;
   max-width: 120ch;
@@ -169,8 +180,12 @@ li.L9 {
   list-style-type: decimal;
 }
 
+span.language-go {
+  text-align: left;
+}
 /* syntax highlighting */
 @media screen {
+
   .str {
     color: #bac8f2;
   }
