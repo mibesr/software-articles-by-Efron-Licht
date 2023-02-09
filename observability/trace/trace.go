@@ -46,13 +46,13 @@ func PopulateHttpHeader(h http.Header, t Trace) {
 	h[ReqIDHeader] = reqIDs
 }
 
-// ErrNoTraceIDHeader is returns FromHTTPHeader when no  "E-Trace-Id" header is ound.
+// ErrNoTraceIDHeader is returned FromHTTPHeader when no  "E-Trace-Id" header is ound.
 var ErrNoTraceIDHeader = errors.New("no E-Trace-Id header")
 
-// ErrNoReqIDHeader is returns FromHTTPHeader when no "E-Req-Id" header is found
+// ErrNoReqIDHeader is returned FromHTTPHeader when no "E-Req-Id" header is found
 var ErrNoReqIDHeader = errors.New("no E-Req-ID header")
 
-// FromHttpReq decodes a Trace from the request's headers. In eneral, this function should not be used directly: use the ServerMiddleware instead.
+// FromHttpReq decodes a Trace from the request's headers. In general, this function should not be used directly: use the ServerMiddleware instead.
 func FromHttpHeader(h http.Header) (Trace, error) {
 	rawTrace := h.Get(TraceIDHeader)
 	traceID, err := uuid.Parse(rawTrace)

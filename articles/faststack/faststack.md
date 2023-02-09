@@ -1,12 +1,15 @@
 
 # a tale of two stacks: optimizing gin's panic recovery handler
+
 #### A programming article by Efron Licht
 
 ## [more articles](./index.html)
 
-- [bytehacking](./bytehacking.html)
-- [tale of two stacks](./faststack.html)
-- [go quirks & tricks](./quirks.md)
+- bytehacking [html](./bytehacking.html) [markdown](./bytehacking.md)
+- [tale of two stacks](./faststack.html) [markdown] (./faststack.md)
+- [go quirks & tricks](./quirks.html) [markdown] (./quirks.md)
+
+
 ## gin's panic handler
 
 The popular go web framework Gin has a middleware that allows you to recover from and log panics while serving HTTP.

@@ -23,14 +23,16 @@
     U+FEFF, U+FFFD;
 }
 
+
 /* formatting: non syntax-highlighting */
 body {  
   padding-top: 2ch;
   padding-bottom: 2ch;
   padding-left: 8ch;
   text-align: left;
-  background-color: black;
-  background-image: repeating-radial-gradient((rgba(55, 6, 6, 0.75) 10%, black 20%, rgba(87, 32, 0, 0.75) 30%));
+  background-color: rgb(20, 20, 20);
+
+
   font-family: "Open Sans", "Monaco", "Helvetica";
   color: rgb(136, 251, 245);
   font-size: 15px;
@@ -141,7 +143,8 @@ a:visited {
 
 
 
-pre { 
+pre {   
+  overflow-x: auto;
   padding-top: 6px;
   padding-bottom: 4px;
   line-height: 130%;

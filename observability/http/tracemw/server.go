@@ -68,7 +68,7 @@ func Server(h http.Handler, logger *zap.Logger) http.HandlerFunc {
 	}
 }
 
-// loggingWriter intercepts calls to WriteHeader() and Write(), recording the status code and the total number of bytes written to the response body.
+// loggingWriter sniffs calls to WriteHeader() and Write(), recording the status code and the total number of bytes written to the response body.
 type writer struct {
 	http.ResponseWriter
 	statusCode, contentLength int

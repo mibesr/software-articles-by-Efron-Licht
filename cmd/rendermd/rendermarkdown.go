@@ -1,10 +1,6 @@
-// rendermarkdown
-// // USAGE recursively
-// // rendermarkdown SRC DST
-//
 // rendermarkdown searches a directory for markdown files and renders them as HTML to the output directory.
-//
-// it has two passes:
+// // USAGE:
+// // rendermarkdown SRC DST
 package main
 
 import (
@@ -51,8 +47,6 @@ func main() {
 	log.Println("dstDir: ", dstDir)
 	const format = "rendermd\t%s\t->\t%s\n"
 	log.Println("scanning...")
-	{
-	}
 	var wg sync.WaitGroup
 	type res struct {
 		md, mermaid, html string
@@ -126,10 +120,7 @@ func renderMarkdown(path string) []byte {
 		oldCode := s.Text()
 		s.SetHtml(string(must(syntaxhighlight.AsHTML([]byte(oldCode)))))
 	})
-	doc.Find("style").SetHtml(`        <style>
-	/*! Color themes for Google Code Prettify | MIT License | github.com/jmblog/color-themes-for-google-code-prettify */
-pre{background:#fff;font-family:Menlo,Bitstream Vera Sans Mono,DejaVu Sans Mono,Monaco,Consolas,monospace;border:0!important}.pln{color:#333}ol.linenums{margin-top:0;margin-bottom:0;color:#ccc}li.L0,li.L1,li.L2,li.L3,li.L4,li.L5,li.L6,li.L7,li.L8,li.L9{padding-left:1em;background-color:#fff;list-style-type:decimal}@media screen{.str{color:#183691}.kwd{color:#a71d5d}.com{color:#969896}.typ{color:#0086b3}.lit{color:#0086b3}.pun{color:#333}.opn{color:#333}.clo{color:#333}.tag{color:navy}.atn{color:#795da3}.atv{color:#183691}.dec{color:#333}.var{color:teal}.fun{color:#900}}
-</style>`)
+
 	html = []byte((must(doc.Html())))
 	html = bytes.ReplaceAll(html, []byte("<html><head></head><body>"), nil)
 	html = bytes.ReplaceAll(html, []byte("</body></html>"), nil)

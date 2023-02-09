@@ -45,12 +45,11 @@ func Client(
 	log *zap.Logger,
 ) ClientInterface {
 	if client == nil {
-		panic("nil client")
+		panic("nil client: try using &http.DefaultClient")
 	}
 	if log == nil {
-		panic("nil logger")
+		panic("nil logger: if you want to omit logging, use zap.NewNoOp()")
 	}
-	zap.NewNop().WithOptions()
 	return ClientFunc(func(req *http.Request) (*http.Response, error) {
 		t := trace.FromCtxOrNew(req.Context())
 		start := time.Now()
@@ -84,6 +83,7 @@ func Client(
 		} else {
 			log.Debug(prefix + "response failed to return trace")
 		}
+		// log resposne
 		if resp.StatusCode >= 300 {
 			log.Error(prefix+"end: unexpected status code", zap.Duration("elapsed", time.Since(start)), zap.Int("status_code", resp.StatusCode), zap.Stringer("trace_id", t.TraceID), zap.Stringers("request_id", t.RequestIDs))
 			return resp, err
