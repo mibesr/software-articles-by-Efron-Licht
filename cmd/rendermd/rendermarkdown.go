@@ -120,7 +120,6 @@ func renderMarkdown(path string) []byte {
 		oldCode := s.Text()
 		s.SetHtml(string(must(syntaxhighlight.AsHTML([]byte(oldCode)))))
 	})
-
 	html = []byte((must(doc.Html())))
 	html = bytes.ReplaceAll(html, []byte("<html><head></head><body>"), nil)
 	html = bytes.ReplaceAll(html, []byte("</body></html>"), nil)

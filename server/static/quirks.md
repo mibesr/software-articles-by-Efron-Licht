@@ -500,26 +500,30 @@ The usual way Go programs have handled this is by making a separate context key 
 
 ```go
 
+type key[T] struct{}
+
 // FromCtx returns the value of type T stored in the context, if any:
-func FromCtx[T](ctx context) (T, bool) { t, ok := context.Value([0]T{}).(T); return t, ok)}
+func FromCtx[T](ctx context) (T, bool) { t, ok := context.Value(key[T]{}).(T); return t, ok)}
 // WithValue returns a copy of parent in which the value associated with `CtxKey[T]{}` is
 // val.
-func WithValue[T](ctx context, t T)(context.Context) {return context.WithValue(ctx, [0]T{}, t)}
+func WithValue[T](ctx context, t T)(context.Context) {return context.WithValue(ctx, key[T]{}, t)}
 ```
 
-For fun, let's rewrite `FromCtx` as a truly hellish one-liner using (nearly) every trick we've learned so far:
+~~For fun, let's rewrite `FromCtx` as a truly hellish one-liner using (nearly) every trick we've learned so far:~~
 
 ```go
-func FromCtx[T any](ctx context.Context) (T, bool) {t, ok := context.Context.Value(ctx, [0] struct{ _ func(T) };).(T);return t, ok}
+func FromCtx[T any](ctx context.Context) (T, bool) {t, ok := context.Context.Value(ctx, struct {
+    _ [0]T
+}};).(T);return t, ok}
 ```
 
 That's right: this ugly SOB has a
 
 - zero-sized type
-- containing an anonymous `struct`
-- with an unreachable member containing a function so it's not comparable
+- containing an anonymous struct with a blank field
 - in a method expression
 - on a semi-colon terminated multi-statement line
+**but don't do this**: not only is it ugly, it will cause a runtime panic if T is not a comparable type!**)
 
 ### Next time(?)
 

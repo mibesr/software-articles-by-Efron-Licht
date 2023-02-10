@@ -9,6 +9,8 @@ generate: # make generate
 	# --- make generate ---
 	git rev-parse HEAD > server/commit.txt
 	go run ./cmd/rendermd . ./server/static # generate static html from markdown
+	go run ./cmd/buildindex ./server/static
+	go run ./cmd/prezip ./server/static > ./server/static/assets.zip
 
 deps:  generate
 	# --- make deps ----
@@ -20,7 +22,7 @@ deps:  generate
 
 test: deps
 	# --- make test ---
-	go test -v ./...
+	go test ./...
 	go build ./... # check that everything can build w/out compiler errors
 
 build: test 
