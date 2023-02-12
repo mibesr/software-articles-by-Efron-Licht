@@ -58,6 +58,7 @@ blockquote {
 
 /* tables */
 table {
+  font-size: 18px;
   margin-top: 12px;
   margin-bottom: 4px;
   font-family: "Source Code Pro";
@@ -98,7 +99,6 @@ tr:nth-child(even) {
 }
 
 th { 
-  font-family: "Source Code Pro";
   border: 1px solid grey;
   border-bottom: 2px inset grey;
   table-layout: fixed;
