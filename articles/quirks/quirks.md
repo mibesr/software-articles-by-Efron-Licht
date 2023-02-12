@@ -47,6 +47,7 @@ You can call the method in the 'usual' way by providing a receiver and using `re
 p, q := Point{1, 1}, Point(2,2)
 fmt.Println(p.Add(q))
 ```
+
 > out: `{3 3}`
 
 Or you can use the method as an ordinary, "bare" function via `typeName.funcName(arg0, arg1, arg2`)
@@ -55,8 +56,9 @@ Or you can use the method as an ordinary, "bare" function via `typeName.funcName
 p, q := Point{1, 1}, Point(2,2); 
 fmt.Println(Point.Add(p, q))
 ```
+
 > out: `{3, 3}`
-> 
+
 This is called a [method expression](https://go.dev/ref/spec#Method_expressions). Unlike method calls, a method _expression_ won't automatically reference or de-reference a receiver for you, since there _is_ no receiver.
 
 That is, while **this** code compiles fine,
@@ -128,7 +130,7 @@ arrayOfStructs := [3]S{{}, {}, {0, 1}})
 fmt.Println(arrayOfStructs)
 ```
 
-> `[{0 0} {0 0} {0 1}]`
+> out: `[{0 0} {0 0} {0 1}]`
 
 Or even this:
 
@@ -137,7 +139,7 @@ sliceOfMapOfArrayOfStructs := []map[string][2]S{{"foo": {{1, 2}, {}}}})
 fmt.Println(sliceOfMapOfArrayOfStructs)
 ```
 
-> `[map[foo:[{1 2} {0 0}]]]`
+> out: `[map[foo:[{1 2} {0 0}]]]`
 
 The actual rule is this: go will infer the types of composite literals if they're contained within an **array**, **map**, or **slice**, but struct fields and function arguments always need to spelled out explicitly.
 
@@ -570,3 +572,6 @@ That's right: this ugly SOB has a
 - Advanced generics
 - Unsafe
 - Runtime shenanigans
+
+Like this article? Hire me, or bring me in to consult. Professional enquiries at
+[efron.dev@gmail.com](efron.dev@mail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)

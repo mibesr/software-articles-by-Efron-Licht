@@ -45,19 +45,30 @@
 <p>Go methods are just functions. Given a type and method:</p>
 
 <pre><code class="language-go"><span class="kwd">type</span> <span class="typ">Point</span> <span class="kwd">struct</span><span class="pun">{</span><span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span> <span class="kwd">float64</span><span class="pun">}</span>
-<span class="kwd">func</span> <span class="pun">(</span><span class="pln">p</span> <span class="typ">Point</span><span class="pun">)</span> <span class="typ">Add</span><span class="pun">(</span><span class="pln">q</span> <span class="typ">Point</span><span class="pun">)</span> <span class="typ">Point</span><span class="pun">{</span><span class="pun">}</span>
+<span class="kwd">func</span> <span class="pun">(</span><span class="pln">p</span> <span class="typ">Point</span><span class="pun">)</span> <span class="typ">Add</span><span class="pun">(</span><span class="pln">q</span> <span class="typ">Point</span><span class="pun">)</span> <span class="typ">Point</span><span class="pun">{</span> 
+    <span class="kwd">return</span> <span class="typ">Point</span><span class="pun">{</span><span class="typ">X</span><span class="pun">:</span> <span class="pln">p</span><span class="pun">.</span><span class="typ">X</span><span class="pun">+</span><span class="pln">q</span><span class="pun">.</span><span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span><span class="pun">:</span> <span class="pln">p</span><span class="pun">.</span><span class="typ">Y</span><span class="pun">+</span><span class="pln">q</span><span class="pun">.</span><span class="typ">Y</span><span class="pun">}</span>
+<span class="pun">}</span>
 </code></pre>
 
 <p>You can call the method in the ‘usual’ way by providing a receiver and using <code>receiver.funcName(arg1, arg2, ...)</code></p>
 
 <pre><code class="language-go"><span class="pln">p</span><span class="pun">,</span> <span class="pln">q</span> <span class="pun">:</span><span class="pun">=</span> <span class="typ">Point</span><span class="pun">{</span><span class="dec">1</span><span class="pun">,</span> <span class="dec">1</span><span class="pun">}</span><span class="pun">,</span> <span class="typ">Point</span><span class="pun">(</span><span class="dec">2</span><span class="pun">,</span><span class="dec">2</span><span class="pun">)</span>
-<span class="pln">r</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">p</span><span class="pun">.</span><span class="typ">Add</span><span class="pun">(</span><span class="pln">q</span><span class="pun">)</span><span class="pun">)</span>
+<span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">p</span><span class="pun">.</span><span class="typ">Add</span><span class="pun">(</span><span class="pln">q</span><span class="pun">)</span><span class="pun">)</span>
 </code></pre>
+
+<blockquote>
+<p>out: <code>{3 3}</code></p>
+</blockquote>
 
 <p>Or you can use the method as an ordinary, “bare” function via <code>typeName.funcName(arg0, arg1, arg2</code>)</p>
 
-<pre><code class="language-go"><span class="pln">p</span><span class="pun">,</span> <span class="pln">q</span> <span class="pun">:</span><span class="pun">=</span> <span class="typ">Point</span><span class="pun">{</span><span class="dec">1</span><span class="pun">,</span> <span class="dec">1</span><span class="pun">}</span><span class="pun">,</span> <span class="typ">Point</span><span class="pun">(</span><span class="dec">2</span><span class="pun">,</span><span class="dec">2</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">p</span><span class="pun">.</span><span class="typ">Add</span><span class="pun">(</span><span class="pln">q</span><span class="pun">)</span><span class="pun">)</span>
+<pre><code class="language-go"><span class="pln">p</span><span class="pun">,</span> <span class="pln">q</span> <span class="pun">:</span><span class="pun">=</span> <span class="typ">Point</span><span class="pun">{</span><span class="dec">1</span><span class="pun">,</span> <span class="dec">1</span><span class="pun">}</span><span class="pun">,</span> <span class="typ">Point</span><span class="pun">(</span><span class="dec">2</span><span class="pun">,</span><span class="dec">2</span><span class="pun">)</span><span class="pun">;</span> 
+<span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="typ">Point</span><span class="pun">.</span><span class="typ">Add</span><span class="pun">(</span><span class="pln">p</span><span class="pun">,</span> <span class="pln">q</span><span class="pun">)</span><span class="pun">)</span>
 </code></pre>
+
+<blockquote>
+<p>out: <code>{3, 3}</code></p>
+</blockquote>
 
 <p>This is called a <a href="https://go.dev/ref/spec#Method_expressions">method expression</a>. Unlike method calls, a method <em>expression</em> won’t automatically reference or de-reference a receiver for you, since there <em>is</em> no receiver.</p>
 
@@ -76,7 +87,7 @@
 </code></pre>
 
 <blockquote>
-<p>invalid method expression big.Float.SetFloat64 (needs pointer receiver (*big.Float).SetFloat64)</p>
+<p>compiler error: <code>invalid method expression big.Float.SetFloat64 (needs pointer receiver (*big.Float).SetFloat64)</code></p>
 </blockquote>
 
 <p>The proper method expression is as follows:</p>
@@ -90,9 +101,7 @@
 
 <h2><code>select</code> statements have <code>break</code></h2>
 
-<p><code>select</code> has no <code>continue</code>, but it <em>does</em> have <code>break</code>. This can lead to nasty bugs if you’re trying to break out of, say, an enclosing <code>switch</code> or loop. Use labels instead, as demonstrated by this code in the un-exported <code>filelock</code> package in go’s stdlib:[^1]</p>
-
-<p>[^1]: I’d love to talk more about the useful but un-exported tools in the go stdlib, like <code>strconv.appendQuotedWith</code></p>
+<p><code>select</code> has no <code>continue</code>, but it <em>does</em> have <code>break</code>. This can lead to nasty bugs if you’re trying to break out of, say, an enclosing <code>switch</code> or loop. Use labels instead, as demonstrated by this code in the un-exported <code>filelock</code> package in go’s stdlib:</p>
 
 <pre><code class="language-go"> <span class="com">// Wait until process Q has either failed or locked file B.</span>
  <span class="com">// Otherwise, P.2 might not block on file B as intended.</span>
@@ -119,7 +128,7 @@
 </code></pre>
 
 <blockquote>
-<p>missing type in composite literal</p>
+<p>compiler error: <code>missing type in composite literal</code></p>
 </blockquote>
 
 <p>This implies that you always need to provide the types of composite literals, but that’s just not true:<br/>
@@ -131,7 +140,7 @@ Go is happy to compile this without me spelling out the type of each item on the
 </code></pre>
 
 <blockquote>
-<p>[{0 0} {0 0} {0 1}]</p>
+<p>out: <code>[{0 0} {0 0} {0 1}]</code></p>
 </blockquote>
 
 <p>Or even this:</p>
@@ -141,7 +150,7 @@ Go is happy to compile this without me spelling out the type of each item on the
 </code></pre>
 
 <blockquote>
-<p>[map[foo:[{1 2} {0 0}]]]</p>
+<p>out: <code>[map[foo:[{1 2} {0 0}]]]</code></p>
 </blockquote>
 
 <p>The actual rule is this: go will infer the types of composite literals if they’re contained within an <strong>array</strong>, <strong>map</strong>, or <strong>slice</strong>, but struct fields and function arguments always need to spelled out explicitly.</p>
@@ -177,7 +186,7 @@ Go is happy to compile this without me spelling out the type of each item on the
 <span class="typ">READ</span><span class="pun">:</span>
 <span class="kwd">for</span> <span class="pun">{</span>
     <span class="kwd">switch</span> <span class="pln">packet</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">readPacket</span><span class="pun">(</span><span class="pln">ctx</span><span class="pun">,</span> <span class="pln">conn</span><span class="pun">,</span> <span class="pln">buf</span><span class="pun">)</span><span class="pun">;</span>  <span class="pun">{</span> <span class="com">// note semicolon</span>
-        <span class="kwd">case</span> <span class="pln">errors</span><span class="pun">.</span><span class="typ">Is</span><span class="pun">(</span><span class="pln">io</span><span class="pun">.</span><span class="typ">EOF</span><span class="pun">)</span><span class="pun">:</span> 
+        <span class="kwd">case</span> <span class="pln">errors</span><span class="pun">.</span><span class="typ">Is</span><span class="pun">(</span><span class="pln">err</span><span class="pun">,</span> <span class="pln">io</span><span class="pun">.</span><span class="typ">EOF</span><span class="pun">)</span><span class="pun">:</span> 
             <span class="pln">packets</span> <span class="pun">=</span> <span class="kwd">append</span><span class="pun">(</span><span class="pln">packets</span><span class="pun">,</span> <span class="pln">packet</span><span class="pun">)</span>
             <span class="kwd">break</span> <span class="typ">READ</span>
         <span class="kwd">case</span> <span class="pln">err</span> <span class="pun">=</span><span class="pun">=</span> <span class="kwd">nil</span><span class="pun">:</span>
@@ -186,8 +195,10 @@ Go is happy to compile this without me spelling out the type of each item on the
         <span class="kwd">case</span> <span class="pln">errors</span><span class="pun">.</span><span class="typ">As</span><span class="pun">(</span><span class="pln">err</span><span class="pun">,</span> <span class="pln">fatalErr</span><span class="pun">)</span> <span class="pun">|</span><span class="pun">|</span> <span class="kwd">try</span> <span class="pun">=</span><span class="pun">=</span> <span class="pln">maxTries</span><span class="pun">:</span>
             <span class="kwd">return</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;fatal error after %d retries: %v&#34;</span><span class="pun">,</span> <span class="pln">i</span><span class="pun">,</span> <span class="pln">err</span><span class="pun">)</span>
         <span class="kwd">default</span><span class="pun">:</span>
+            <span class="kwd">const</span> <span class="pln">wait</span> <span class="pun">=</span> <span class="dec">100</span><span class="pun">*</span><span class="pln">time</span><span class="pun">.</span><span class="typ">Millisecond</span>
+            <span class="pln">log</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;error: retrying in %d&#34;</span><span class="pun">,</span> <span class="pln">wait</span><span class="pun">)</span>
             <span class="kwd">try</span><span class="pun">+</span><span class="pun">+</span>
-            <span class="pln">time</span><span class="pun">.</span><span class="typ">Sleep</span><span class="pun">(</span><span class="dec">100</span><span class="pun">*</span><span class="pln">time</span><span class="pun">.</span><span class="typ">Millisecond</span><span class="pun">)</span>
+            <span class="pln">time</span><span class="pun">.</span><span class="typ">Sleep</span><span class="pun">(</span><span class="pln">wait</span><span class="pun">)</span>
     <span class="pun">}</span>
 <span class="pun">}</span>
 
@@ -197,24 +208,30 @@ Go is happy to compile this without me spelling out the type of each item on the
 
 <h2>GOTO exists</h2>
 
-<p>The oft-maligned GOTO is an excellent piece of kit. Go’s GOTO is somewhat limited: you can’t jump into the middle of blocks or out of a function,</p>
+<p>The oft-maligned GOTO is an excellent piece of kit. Go’s GOTO is somewhat limited: you can’t jump into a new block or out of a function, so it’s hard to get yourself into the kind of trouble you could in 1980s BASIC.</p>
 
-<pre><code class="language-go"> <span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
-	<span class="kwd">goto</span> <span class="pln">anotherblock</span>
+<p>This means you can’t do something like this, since you’ll get a compiler error:</p>
 
-	<span class="pun">{</span>
-		<span class="pln">v</span> <span class="pun">:</span><span class="pun">=</span> <span class="dec">3</span>
-	<span class="pln">anotherblock</span><span class="pun">:</span> 
-    <span class="com">// what&#39;s the value of v here?</span>
-    <span class="com">// go gives a compiler error: &#34; goto anotherblock jumps into block starting at...&#34;</span>
-    <span class="com">// so that we don&#39;t have to worry about this.</span>
-		<span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">v</span><span class="pun">)</span>
-	<span class="pun">}</span>
+<pre><code class="language-go">
+<span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
+ <span class="kwd">goto</span> <span class="pln">label</span>
+
+ <span class="kwd">if</span> <span class="kwd">true</span> <span class="pun">{</span>
+  <span class="pln">v</span> <span class="pun">:</span><span class="pun">=</span> <span class="dec">3</span>
+  <span class="pln">panic</span><span class="pun">(</span><span class="pln">v</span><span class="pun">)</span>
+        
+ <span class="pln">label</span><span class="pun">:</span> 
+  <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">v</span><span class="pun">)</span> <span class="com">// what&#39;s the value of v?</span>
+ <span class="pun">}</span>
+<span class="pun">}</span>
+
 </code></pre>
 
-<p>So it’s hard to get yourself into the kind of trouble you could in 1980s BASIC. Use GOTO to avoid extraneous variables and conditionals and to jump out of blocks without having to define a function.</p>
+<blockquote>
+<p>compiler error: <code>./prog.go:11:7: goto label jumps into block starting at ./prog.go:13:10</code></p>
+</blockquote>
 
-<p>Speaking of which…</p>
+<p>Speaking of which:</p>
 
 <h2>you can make a block at any time</h2>
 
@@ -228,6 +245,14 @@ Go is happy to compile this without me spelling out the type of each item on the
 <span class="pun">}</span>
 
 </code></pre>
+
+<blockquote>
+<p>compiler error: <code>goto label jumps into block starting at ./prog.go:10:2</code></p>
+</blockquote>
+
+<p>So it’s hard to get yourself into the kind of trouble you could in 1980s BASIC. Use GOTO to avoid extraneous variables and conditionals and to jump out of blocks without having to define a function.</p>
+
+<p>Speaking of which…</p>
 
 <p>I find this useful for complicated variable initialization. Here’s an example from the <code>fmtbench</code> tool I wrote in <a href="./bytehacking.html">the last article</a></p>
 
@@ -304,21 +329,31 @@ You <em>can</em> define a function that takes that type using a function express
 
 <pre><code class="language-go"><span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
  <span class="kwd">type</span> <span class="typ">Point</span> <span class="kwd">struct</span><span class="pun">{</span> <span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span> <span class="kwd">float64</span> <span class="pun">}</span>
- <span class="pln">addPoint</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">func</span><span class="pun">(</span><span class="pln">p</span><span class="pun">,</span> <span class="pln">q</span> <span class="typ">Point</span><span class="pun">)</span> <span class="typ">Point</span> <span class="pun">{</span><span class="kwd">return</span> <span class="typ">Point</span><span class="pun">{</span><span class="typ">X</span><span class="pun">:</span> <span class="pln">p</span><span class="pun">.</span><span class="typ">X</span> <span class="pun">+</span> <span class="pln">q</span><span class="pun">.</span><span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span><span class="pun">:</span> <span class="pln">p</span><span class="pun">.</span><span class="typ">Y</span> <span class="pun">+</span> <span class="pln">q</span><span class="pun">.</span><span class="typ">Y</span><span class="pun">}</span><span class="pun">}</span>
- <span class="pln">q</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">addPoint</span><span class="pun">(</span><span class="typ">Point</span><span class="pun">{</span><span class="dec">2</span><span class="pun">,</span> <span class="dec">3</span><span class="pun">}</span><span class="pun">,</span> <span class="typ">Point</span><span class="pun">{</span><span class="pun">-</span><span class="dec">1</span><span class="pun">,</span> <span class="pun">-</span><span class="dec">1</span><span class="pun">}</span><span class="pun">)</span><span class="pun">)</span>
+ <span class="pln">addPoint</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">func</span><span class="pun">(</span><span class="pln">p</span><span class="pun">,</span> <span class="pln">q</span> <span class="typ">Point</span><span class="pun">)</span> <span class="typ">Point</span> <span class="pun">{</span>
+  <span class="kwd">return</span> <span class="typ">Point</span><span class="pun">{</span><span class="pln">p</span><span class="pun">.</span><span class="typ">X</span> <span class="pun">+</span> <span class="pln">q</span><span class="pun">.</span><span class="typ">X</span><span class="pun">,</span> <span class="pln">p</span><span class="pun">.</span><span class="typ">Y</span> <span class="pun">+</span> <span class="pln">q</span><span class="pun">.</span><span class="typ">Y</span><span class="pun">}</span>
  <span class="pun">}</span>
+ <span class="pln">q</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">addPoint</span><span class="pun">(</span><span class="typ">Point</span><span class="pun">{</span><span class="dec">2</span><span class="pun">,</span> <span class="dec">3</span><span class="pun">}</span><span class="pun">,</span> <span class="typ">Point</span><span class="pun">{</span><span class="pun">-</span><span class="dec">1</span><span class="pun">,</span> <span class="dec">1</span><span class="pun">}</span><span class="pun">)</span>
+ <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">q</span><span class="pun">)</span>
+<span class="pun">}</span>
 </code></pre>
 
-<p>This obeys the ordinary block-scope rules:</p>
+<blockquote>
+<p>output:  <code>{1 4}</code></p>
+</blockquote>
+
+<p>This obeys the ordinary block-scope rules, so this would be a compiler error:</p>
 
 <pre><code class="language-go"><span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
-    <span class="pun">{</span><span class="kwd">type</span> <span class="typ">Point</span> <span class="kwd">struct</span><span class="pun">{</span><span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span> <span class="kwd">float64</span><span class="pun">}</span><span class="pun">}</span>
+    <span class="pun">{</span>
+        <span class="kwd">type</span> <span class="typ">Point</span> <span class="kwd">struct</span><span class="pun">{</span><span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span> <span class="kwd">float64</span><span class="pun">}</span>
+    <span class="pun">}</span>
     <span class="kwd">var</span> <span class="pln">p</span> <span class="typ">Point</span> 
 <span class="pun">}</span>
-
-    <span class="com">// this would be a compiler error: undefined: Point</span>
-    <span class="com">// fmt.Println(Point{1, 1})</span>
 </code></pre>
+
+<blockquote>
+<p>compiler error: <code>./prog.go:9:8: undefined: Point</code></p>
+</blockquote>
 
 <p>This can make your code more straightforward. Just like variables, it’s best to define a type as close to it’s use and with as small of a scope as possible.</p>
 
@@ -370,9 +405,9 @@ You <em>can</em> define a function that takes that type using a function express
     <span class="kwd">if</span> <span class="pln">f</span><span class="pun">,</span> <span class="pln">ok</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">w</span><span class="pun">.</span><span class="pun">(</span><span class="kwd">interface</span><span class="pun">{</span><span class="typ">Flush</span><span class="pun">(</span><span class="pun">)</span> <span class="pln">error</span><span class="pun">}</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">ok</span> <span class="pun">{</span>
         <span class="pln">_</span> <span class="pun">=</span> <span class="pln">f</span><span class="pun">.</span><span class="typ">Flush</span><span class="pun">(</span><span class="pun">)</span>
     <span class="pun">}</span>
-    <span class="com">// sync to disk, if it exists</span>
+    <span class="com">// sync to disk if possible</span>
     <span class="kwd">if</span> <span class="pln">f</span><span class="pun">,</span> <span class="pln">ok</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">w</span><span class="pun">.</span><span class="pun">(</span><span class="kwd">interface</span><span class="pun">{</span><span class="typ">Sync</span><span class="pun">(</span><span class="pun">)</span> <span class="pln">error</span><span class="pun">}</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">ok</span> <span class="pun">{</span>
-        <span class="kwd">if</span> <span class="pln">f</span><span class="pun">,</span> <span class="pln">ok</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">w</span><span class="pun">.</span>
+        <span class="pln">_</span> <span class="pun">=</span> <span class="pln">f</span><span class="pun">.</span><span class="typ">Sync</span><span class="pun">(</span><span class="pun">)</span>
     <span class="pun">}</span>
 <span class="pun">}</span>
 </code></pre>
@@ -505,19 +540,24 @@ type should be a pointer or interface.</p>
 
 <p>Most <strong>request-scoped data</strong> is a singleton per request. That is, it doesn’t make sense for a request to carry around multiple loggers, users, traces; you want to carry the <em>same one</em> with you from function call to function call</p>
 
-<p>The usual way Go programs have handled this is by making a separate context key per type you want to carry in the struct. But with the advent of generics in <code>go1.18</code>, instead of having to make a new zero-sized type for every struct, we can just make a single generic:</p>
+<p>The usual way Go programs have handled this is by making a separate context key per type you want to carry in the struct. But with the advent of generics in <code>go1.18</code>, instead of having to make a new zero-sized type for every struct, we can just make a single generic zero-sized type and use it for everything:</p>
 
-<pre><code class="language-go">
+<pre><code class="language-go"><span class="kwd">type</span> <span class="pln">key</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span> <span class="kwd">struct</span><span class="pun">{</span><span class="pun">}</span>
 <span class="com">// FromCtx returns the value of type T stored in the context, if any:</span>
-<span class="kwd">func</span> <span class="typ">FromCtx</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span><span class="pun">(</span><span class="pln">ctx</span> <span class="pln">context</span><span class="pun">)</span> <span class="pun">(</span><span class="typ">T</span><span class="pun">,</span> <span class="kwd">bool</span><span class="pun">)</span> <span class="pun">{</span> <span class="pln">t</span><span class="pun">,</span> <span class="pln">ok</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">Value</span><span class="pun">(</span><span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="typ">T</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">.</span><span class="pun">(</span><span class="typ">T</span><span class="pun">)</span><span class="pun">;</span> <span class="kwd">return</span> <span class="pln">t</span><span class="pun">,</span> <span class="pln">ok</span><span class="pun">)</span><span class="pun">}</span>
+<span class="kwd">func</span> <span class="typ">FromCtx</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span><span class="pun">(</span><span class="pln">ctx</span> <span class="pln">context</span><span class="pun">)</span> <span class="pun">(</span><span class="typ">T</span><span class="pun">,</span> <span class="kwd">bool</span><span class="pun">)</span> <span class="pun">{</span> 
+    <span class="pln">t</span><span class="pun">,</span> <span class="pln">ok</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">Value</span><span class="pun">(</span><span class="pln">key</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">.</span><span class="pun">(</span><span class="typ">T</span><span class="pun">)</span>
+    <span class="kwd">return</span> <span class="pln">t</span><span class="pun">,</span> <span class="pln">ok</span>
+<span class="pun">}</span>
 <span class="com">// WithValue returns a copy of parent in which the value associated with `CtxKey[T]{}` is</span>
 <span class="com">// val.</span>
-<span class="kwd">func</span> <span class="typ">WithValue</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span><span class="pun">(</span><span class="pln">ctx</span> <span class="pln">context</span><span class="pun">,</span> <span class="pln">t</span> <span class="typ">T</span><span class="pun">)</span><span class="pun">(</span><span class="pln">context</span><span class="pun">.</span><span class="typ">Context</span><span class="pun">)</span> <span class="pun">{</span><span class="kwd">return</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">WithValue</span><span class="pun">(</span><span class="pln">ctx</span><span class="pun">,</span> <span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="typ">T</span><span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> <span class="pln">t</span><span class="pun">)</span><span class="pun">}</span>
+<span class="kwd">func</span> <span class="typ">WithValue</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span><span class="pun">(</span><span class="pln">ctx</span> <span class="pln">context</span><span class="pun">,</span> <span class="pln">t</span> <span class="typ">T</span><span class="pun">)</span><span class="pun">(</span><span class="pln">context</span><span class="pun">.</span><span class="typ">Context</span><span class="pun">)</span> <span class="pun">{</span>
+    <span class="kwd">return</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">WithValue</span><span class="pun">(</span><span class="pln">ctx</span><span class="pun">,</span> <span class="pln">key</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span><span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> <span class="pln">t</span><span class="pun">)</span>
+<span class="pun">}</span>
 </code></pre>
 
 <p>For fun, let’s rewrite <code>FromCtx</code> as a truly hellish one-liner using (nearly) every trick we’ve learned so far:</p>
 
-<pre><code class="language-go"><span class="kwd">func</span> <span class="typ">FromCtx</span><span class="pun">[</span><span class="typ">T</span> <span class="pln">any</span><span class="pun">]</span><span class="pun">(</span><span class="pln">ctx</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">Context</span><span class="pun">)</span> <span class="pun">(</span><span class="typ">T</span><span class="pun">,</span> <span class="kwd">bool</span><span class="pun">)</span> <span class="pun">{</span><span class="pln">t</span><span class="pun">,</span> <span class="pln">ok</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">Context</span><span class="pun">.</span><span class="typ">Value</span><span class="pun">(</span><span class="pln">ctx</span><span class="pun">,</span> <span class="pun">[</span><span class="dec">0</span><span class="pun">]</span> <span class="kwd">struct</span><span class="pun">{</span> <span class="pln">_</span> <span class="kwd">func</span><span class="pun">(</span><span class="typ">T</span><span class="pun">)</span> <span class="pun">}</span><span class="pun">)</span><span class="pun">.</span><span class="pun">(</span><span class="typ">T</span><span class="pun">)</span><span class="pun">;</span><span class="kwd">return</span> <span class="pln">t</span><span class="pun">,</span> <span class="pln">ok</span><span class="pun">}</span>
+<pre><code class="language-go"><span class="kwd">func</span> <span class="typ">FromCtx</span><span class="pun">[</span><span class="typ">T</span> <span class="pln">any</span><span class="pun">]</span><span class="pun">(</span><span class="pln">ctx</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">Context</span><span class="pun">)</span> <span class="pun">(</span><span class="typ">T</span><span class="pun">,</span> <span class="kwd">bool</span><span class="pun">)</span> <span class="pun">{</span><span class="pln">t</span><span class="pun">,</span> <span class="pln">ok</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">Context</span><span class="pun">.</span><span class="typ">Value</span><span class="pun">(</span><span class="pln">ctx</span><span class="pun">,</span> <span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="kwd">struct</span><span class="pun">{</span><span class="pln">_</span> <span class="typ">T</span><span class="pun">}</span><span class="pun">)</span><span class="pun">.</span><span class="pun">(</span><span class="typ">T</span><span class="pun">)</span><span class="pun">;</span><span class="kwd">return</span> <span class="pln">t</span><span class="pun">,</span> <span class="pln">ok</span><span class="pun">}</span>
 </code></pre>
 
 <p>That’s right: this ugly SOB has a</p>
@@ -525,12 +565,12 @@ type should be a pointer or interface.</p>
 <ul>
 <li>zero-sized type</li>
 <li>containing an anonymous <code>struct</code></li>
-<li>with an unreachable member containing a function so it’s not comparable</li>
+<li>with a blank identifier</li>
 <li>in a method expression</li>
 <li>on a semi-colon terminated multi-statement line</li>
 </ul>
 
-<p>Is this useful? <strong>Absolutely not</strong>. In fact, it’ll crash immediately, since context keys need to be comparable.</p>
+<p>… please don’t do this.</p>
 
 <h3>Next time(?)</h3>
 
@@ -540,6 +580,9 @@ type should be a pointer or interface.</p>
 <li>Unsafe</li>
 <li>Runtime shenanigans</li>
 </ul>
+
+<p>Like this article? Hire me, or bring me in to consult. Professional enquiries at
+<a href="efron.dev@mail.com">efron.dev@gmail.com</a> or <a href="https://www.linkedin.com/in/efronlicht">linkedin</a></p>
 
 
 

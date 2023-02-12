@@ -599,3 +599,6 @@ Still, regardless of whether this has a meaningful performance impact, I'm happy
 - Best of all, I think that `swapDirect` is probably as fast as you can get without writing platform-dependent assembly. This probably doesn't matter, but I , for one, get a warm fuzzy feeling from writing the _best possible solution_.
 
 With luck, you've learned something about benchmarking, bytes, or UUIDs. And remember: if you're not sure where to start, try _just looking at it_.
+
+Like this article? Hire me, or bring me in to consult. Professional enquiries at
+[efron.dev@gmail.com](efron.dev@mail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)

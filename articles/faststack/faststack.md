@@ -699,3 +699,6 @@ How much benefit are we really getting from this implementation? How likely is a
 At some point, it's important to take a step back and ask yourself _whether or not all this work is worth it in the first place_. I don't think `slowstack` or `faststack` solve a problem that needs to be solved. I think think the Gin project would be better served by just using `runtime.Stack()` and forgetting about source code annotation. Sometimes simpler is better.
 
 We'll talk about panics, logging, and recovery more in a later article: stay tuned.
+
+Like this article? Hire me, or bring me in to consult. Professional enquiries at
+[efron.dev@gmail.com](efron.dev@mail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)

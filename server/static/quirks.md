@@ -36,21 +36,28 @@ Go methods are just functions. Given a type and method:
 
 ```go
 type Point struct{X, Y float64}
-func (p Point) Add(q Point) Point{}
+func (p Point) Add(q Point) Point{ 
+    return Point{X: p.X+q.X, Y: p.Y+q.Y}
+}
 ```
 
 You can call the method in the 'usual' way by providing a receiver and using `receiver.funcName(arg1, arg2, ...)`
 
 ```go
 p, q := Point{1, 1}, Point(2,2)
-r := fmt.Println(p.Add(q))
+fmt.Println(p.Add(q))
 ```
+
+> out: `{3 3}`
 
 Or you can use the method as an ordinary, "bare" function via `typeName.funcName(arg0, arg1, arg2`)
 
 ```go
-p, q := Point{1, 1}, Point(2,2); fmt.Println(p.Add(q))
+p, q := Point{1, 1}, Point(2,2); 
+fmt.Println(Point.Add(p, q))
 ```
+
+> out: `{3, 3}`
 
 This is called a [method expression](https://go.dev/ref/spec#Method_expressions). Unlike method calls, a method _expression_ won't automatically reference or de-reference a receiver for you, since there _is_ no receiver.
 
@@ -70,7 +77,7 @@ var x big.Float
 big.Float.SetFloat64(x, 10) // wrong
 ```
 
-> invalid method expression big.Float.SetFloat64 (needs pointer receiver (*big.Float).SetFloat64)
+> compiler error: `invalid method expression big.Float.SetFloat64 (needs pointer receiver (*big.Float).SetFloat64)`
 
 The proper method expression is as follows:
 
@@ -84,9 +91,7 @@ Method expressions don't come up often, but they can occasionally save some work
 
 ## `select` statements have `break`
 
-`select` has no `continue`, but it _does_ have `break`. This can lead to nasty bugs if you're trying to break out of, say, an enclosing `switch` or loop. Use labels instead, as demonstrated by this code in the un-exported `filelock` package in go's stdlib:[^1]
-
-[^1]: I'd love to talk more about the useful but un-exported tools in the go stdlib, like `strconv.appendQuotedWith`
+`select` has no `continue`, but it _does_ have `break`. This can lead to nasty bugs if you're trying to break out of, say, an enclosing `switch` or loop. Use labels instead, as demonstrated by this code in the un-exported `filelock` package in go's stdlib:
 
 ```go
  // Wait until process Q has either failed or locked file B.
@@ -114,7 +119,7 @@ structOfArrays := Q{{}, {}}
 fmt.Println(structOfArrays)
 ```
 
-> missing type in composite literal
+> compiler error: `missing type in composite literal`
 
 This implies that you always need to provide the types of composite literals, but that's just not true:\
 Go is happy to compile this without me spelling out the type of each item on the right-hand side:
@@ -125,7 +130,7 @@ arrayOfStructs := [3]S{{}, {}, {0, 1}})
 fmt.Println(arrayOfStructs)
 ```
 
-> [{0 0} {0 0} {0 1}]
+> out: `[{0 0} {0 0} {0 1}]`
 
 Or even this:
 
@@ -134,7 +139,7 @@ sliceOfMapOfArrayOfStructs := []map[string][2]S{{"foo": {{1, 2}, {}}}})
 fmt.Println(sliceOfMapOfArrayOfStructs)
 ```
 
-> [map[foo:[{1 2} {0 0}]]]
+> out: `[map[foo:[{1 2} {0 0}]]]`
 
 The actual rule is this: go will infer the types of composite literals if they're contained within an **array**, **map**, or **slice**, but struct fields and function arguments always need to spelled out explicitly.
 
@@ -172,7 +177,7 @@ var packets []Packet
 READ:
 for {
     switch packet, err := readPacket(ctx, conn, buf);  { // note semicolon
-        case errors.Is(io.EOF): 
+        case errors.Is(err, io.EOF): 
             packets = append(packets, packet)
             break READ
         case err == nil:
@@ -181,8 +186,10 @@ for {
         case errors.As(err, fatalErr) || try == maxTries:
             return fmt.Errorf("fatal error after %d retries: %v", i, err)
         default:
+            const wait = 100*time.Millisecond
+            log.Printf("error: retrying in %d", wait)
             try++
-            time.Sleep(100*time.Millisecond)
+            time.Sleep(wait)
     }
 }
 
@@ -192,23 +199,29 @@ I like the look of these: they allow very terse, expressive code, but they're ra
 
 ## GOTO exists
 
-The oft-maligned GOTO is an excellent piece of kit. Go's GOTO is somewhat limited: you can't jump into the middle of blocks or out of a function,
+The oft-maligned GOTO is an excellent piece of kit. Go's GOTO is somewhat limited: you can't jump into a new block or out of a function, so it's hard to get yourself into the kind of trouble you could in 1980s BASIC.
+
+This means you can't do something like this, since you'll get a compiler error:
+
 ```go
- func main() {
-	goto anotherblock
 
-	{
-		v := 3
-	anotherblock: 
-    // what's the value of v here?
-    // go gives a compiler error: " goto anotherblock jumps into block starting at..."
-    // so that we don't have to worry about this.
-		fmt.Println(v)
-	}
+func main() {
+ goto label
+
+ if true {
+  v := 3
+  panic(v)
+        
+ label: 
+  fmt.Println(v) // what's the value of v?
+ }
+}
+
 ```
-So it's hard to get yourself into the kind of trouble you could in 1980s BASIC. Use GOTO to avoid extraneous variables and conditionals and to jump out of blocks without having to define a function.
 
-Speaking of which...
+> compiler error: `./prog.go:11:7: goto label jumps into block starting at ./prog.go:13:10`
+
+Speaking of which:
 
 ## you can make a block at any time
 
@@ -223,6 +236,12 @@ You don't need an `if`, `for`, `func`, or any other keyword to make a block.
 }
 
 ```
+
+> compiler error: `goto label jumps into block starting at ./prog.go:10:2`
+
+So it's hard to get yourself into the kind of trouble you could in 1980s BASIC. Use GOTO to avoid extraneous variables and conditionals and to jump out of blocks without having to define a function.
+
+Speaking of which...
 
 I find this useful for complicated variable initialization. Here's an example from the `fmtbench` tool I wrote in [the last article](./bytehacking.html)
 
@@ -298,22 +317,28 @@ You _can_ define a function that takes that type using a function expression ("c
 ```go
 func main() {
  type Point struct{ X, Y float64 }
- addPoint := func(p, q Point) Point {return Point{X: p.X + q.X, Y: p.Y + q.Y}}
- q := addPoint(Point{2, 3}, Point{-1, -1}))
+ addPoint := func(p, q Point) Point {
+  return Point{p.X + q.X, p.Y + q.Y}
  }
+ q := addPoint(Point{2, 3}, Point{-1, 1})
+ fmt.Println(q)
+}
 ```
 
-This obeys the ordinary block-scope rules:
+> output:  `{1 4}`
+
+This obeys the ordinary block-scope rules, so this would be a compiler error:
 
 ```go
 func main() {
-    {type Point struct{X, Y float64}}
+    {
+        type Point struct{X, Y float64}
+    }
     var p Point 
 }
-
-    // this would be a compiler error: undefined: Point
-    // fmt.Println(Point{1, 1})
 ```
+
+> compiler error: `./prog.go:9:8: undefined: Point`
 
 This can make your code more straightforward. Just like variables, it's best to define a type as close to it's use and with as small of a scope as possible.
 
@@ -368,9 +393,9 @@ func writeZipped(w io.Writer, b []byte) (int, error) {
     if f, ok := w.(interface{Flush() error}); ok {
         _ = f.Flush()
     }
-    // sync to disk, if it exists
+    // sync to disk if possible
     if f, ok := w.(interface{Sync() error}); ok {
-        if f, ok := w.
+        _ = f.Sync()
     }
 }
 ```
@@ -509,32 +534,37 @@ Let's review the documentation:
 
 Most **request-scoped data** is a singleton per request. That is, it doesn't make sense for a request to carry around multiple loggers, users, traces; you want to carry the _same one_ with you from function call to function call
 
-The usual way Go programs have handled this is by making a separate context key per type you want to carry in the struct. But with the advent of generics in `go1.18`, instead of having to make a new zero-sized type for every struct, we can just make a single generic:
+The usual way Go programs have handled this is by making a separate context key per type you want to carry in the struct. But with the advent of generics in `go1.18`, instead of having to make a new zero-sized type for every struct, we can just make a single generic zero-sized type and use it for everything:
 
 ```go
-
+type key[T] struct{}
 // FromCtx returns the value of type T stored in the context, if any:
-func FromCtx[T](ctx context) (T, bool) { t, ok := context.Value([0]T{}).(T); return t, ok)}
+func FromCtx[T](ctx context) (T, bool) { 
+    t, ok := context.Value(key[T]{}).(T)
+    return t, ok
+}
 // WithValue returns a copy of parent in which the value associated with `CtxKey[T]{}` is
 // val.
-func WithValue[T](ctx context, t T)(context.Context) {return context.WithValue(ctx, [0]T{}, t)}
+func WithValue[T](ctx context, t T)(context.Context) {
+    return context.WithValue(ctx, key[T]{}, t)
+}
 ```
 
 For fun, let's rewrite `FromCtx` as a truly hellish one-liner using (nearly) every trick we've learned so far:
 
 ```go
-func FromCtx[T any](ctx context.Context) (T, bool) {t, ok := context.Context.Value(ctx, [0] struct{ _ func(T) }).(T);return t, ok}
+func FromCtx[T any](ctx context.Context) (T, bool) {t, ok := context.Context.Value(ctx, [0]struct{_ T}).(T);return t, ok}
 ```
 
 That's right: this ugly SOB has a
 
 - zero-sized type
 - containing an anonymous `struct`
-- with an unreachable member containing a function so it's not comparable
+- with a blank identifier
 - in a method expression
 - on a semi-colon terminated multi-statement line
   
-Is this useful? **Absolutely not**. In fact, it'll crash immediately, since context keys need to be comparable.
+... please don't do this.
 
 ### Next time(?)
 
@@ -542,3 +572,6 @@ Is this useful? **Absolutely not**. In fact, it'll crash immediately, since cont
 - Advanced generics
 - Unsafe
 - Runtime shenanigans
+
+Like this article? Hire me, or bring me in to consult. Professional enquiries at
+[efron.dev@gmail.com](efron.dev@mail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)

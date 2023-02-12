@@ -33,7 +33,8 @@ func main() {
 		switch filepath.Ext(src.Name()) {
 		case ".woff2", ".png", ".jpg": // already compressed; a layer of deflate won't help.
 			header := must(zip.FileInfoHeader(must(d.Info())))
-			dst = must(zw.CreateRaw(header))
+			header.Method = zip.Store
+			dst = must(zw.CreateHeader(header))
 		default:
 			dst = must(zw.Create(d.Name()))
 		}
