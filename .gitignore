@@ -3,4 +3,5 @@ bin/**
 .DS_Store
 **/*.log.gz
 **/static/*.md
+**/static/assets.zip
 **/static/*.html
