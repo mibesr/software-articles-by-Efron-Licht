@@ -197,8 +197,22 @@ Go is happy to compile this without me spelling out the type of each item on the
 
 <h2>GOTO exists</h2>
 
-<p>The oft-maligned GOTO is an excellent piece of kit.
-unlike many languages, Go’s GOTO can only jump <em>forwards</em>, so it’s hard to get yourself into the kind of trouble you could in 1980s BASIC. Use GOTO to avoid extraneous variables and conditionals and to jump out of blocks without having to define a function.</p>
+<p>The oft-maligned GOTO is an excellent piece of kit. Go’s GOTO is somewhat limited: you can’t jump into the middle of blocks or out of a function,</p>
+
+<pre><code class="language-go"> <span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
+	<span class="kwd">goto</span> <span class="pln">anotherblock</span>
+
+	<span class="pun">{</span>
+		<span class="pln">v</span> <span class="pun">:</span><span class="pun">=</span> <span class="dec">3</span>
+	<span class="pln">anotherblock</span><span class="pun">:</span> 
+    <span class="com">// what&#39;s the value of v here?</span>
+    <span class="com">// go gives a compiler error: &#34; goto anotherblock jumps into block starting at...&#34;</span>
+    <span class="com">// so that we don&#39;t have to worry about this.</span>
+		<span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">v</span><span class="pun">)</span>
+	<span class="pun">}</span>
+</code></pre>
+
+<p>So it’s hard to get yourself into the kind of trouble you could in 1980s BASIC. Use GOTO to avoid extraneous variables and conditionals and to jump out of blocks without having to define a function.</p>
 
 <p>Speaking of which…</p>
 
@@ -494,31 +508,29 @@ type should be a pointer or interface.</p>
 <p>The usual way Go programs have handled this is by making a separate context key per type you want to carry in the struct. But with the advent of generics in <code>go1.18</code>, instead of having to make a new zero-sized type for every struct, we can just make a single generic:</p>
 
 <pre><code class="language-go">
-<span class="kwd">type</span> <span class="pln">key</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span> <span class="kwd">struct</span><span class="pun">{</span><span class="pun">}</span>
-
 <span class="com">// FromCtx returns the value of type T stored in the context, if any:</span>
-<span class="kwd">func</span> <span class="typ">FromCtx</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span><span class="pun">(</span><span class="pln">ctx</span> <span class="pln">context</span><span class="pun">)</span> <span class="pun">(</span><span class="typ">T</span><span class="pun">,</span> <span class="kwd">bool</span><span class="pun">)</span> <span class="pun">{</span> <span class="pln">t</span><span class="pun">,</span> <span class="pln">ok</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">Value</span><span class="pun">(</span><span class="pln">key</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">.</span><span class="pun">(</span><span class="typ">T</span><span class="pun">)</span><span class="pun">;</span> <span class="kwd">return</span> <span class="pln">t</span><span class="pun">,</span> <span class="pln">ok</span><span class="pun">)</span><span class="pun">}</span>
+<span class="kwd">func</span> <span class="typ">FromCtx</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span><span class="pun">(</span><span class="pln">ctx</span> <span class="pln">context</span><span class="pun">)</span> <span class="pun">(</span><span class="typ">T</span><span class="pun">,</span> <span class="kwd">bool</span><span class="pun">)</span> <span class="pun">{</span> <span class="pln">t</span><span class="pun">,</span> <span class="pln">ok</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">Value</span><span class="pun">(</span><span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="typ">T</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">.</span><span class="pun">(</span><span class="typ">T</span><span class="pun">)</span><span class="pun">;</span> <span class="kwd">return</span> <span class="pln">t</span><span class="pun">,</span> <span class="pln">ok</span><span class="pun">)</span><span class="pun">}</span>
 <span class="com">// WithValue returns a copy of parent in which the value associated with `CtxKey[T]{}` is</span>
 <span class="com">// val.</span>
-<span class="kwd">func</span> <span class="typ">WithValue</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span><span class="pun">(</span><span class="pln">ctx</span> <span class="pln">context</span><span class="pun">,</span> <span class="pln">t</span> <span class="typ">T</span><span class="pun">)</span><span class="pun">(</span><span class="pln">context</span><span class="pun">.</span><span class="typ">Context</span><span class="pun">)</span> <span class="pun">{</span><span class="kwd">return</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">WithValue</span><span class="pun">(</span><span class="pln">ctx</span><span class="pun">,</span> <span class="pln">key</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span><span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> <span class="pln">t</span><span class="pun">)</span><span class="pun">}</span>
+<span class="kwd">func</span> <span class="typ">WithValue</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span><span class="pun">(</span><span class="pln">ctx</span> <span class="pln">context</span><span class="pun">,</span> <span class="pln">t</span> <span class="typ">T</span><span class="pun">)</span><span class="pun">(</span><span class="pln">context</span><span class="pun">.</span><span class="typ">Context</span><span class="pun">)</span> <span class="pun">{</span><span class="kwd">return</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">WithValue</span><span class="pun">(</span><span class="pln">ctx</span><span class="pun">,</span> <span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="typ">T</span><span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> <span class="pln">t</span><span class="pun">)</span><span class="pun">}</span>
 </code></pre>
 
-<p><del>For fun, let’s rewrite <code>FromCtx</code> as a truly hellish one-liner using (nearly) every trick we’ve learned so far:</del></p>
+<p>For fun, let’s rewrite <code>FromCtx</code> as a truly hellish one-liner using (nearly) every trick we’ve learned so far:</p>
 
-<pre><code class="language-go"><span class="kwd">func</span> <span class="typ">FromCtx</span><span class="pun">[</span><span class="typ">T</span> <span class="pln">any</span><span class="pun">]</span><span class="pun">(</span><span class="pln">ctx</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">Context</span><span class="pun">)</span> <span class="pun">(</span><span class="typ">T</span><span class="pun">,</span> <span class="kwd">bool</span><span class="pun">)</span> <span class="pun">{</span><span class="pln">t</span><span class="pun">,</span> <span class="pln">ok</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">Context</span><span class="pun">.</span><span class="typ">Value</span><span class="pun">(</span><span class="pln">ctx</span><span class="pun">,</span> <span class="kwd">struct</span> <span class="pun">{</span>
-    <span class="pln">_</span> <span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="typ">T</span>
-<span class="pun">}</span><span class="pun">}</span><span class="pun">;</span><span class="pun">)</span><span class="pun">.</span><span class="pun">(</span><span class="typ">T</span><span class="pun">)</span><span class="pun">;</span><span class="kwd">return</span> <span class="pln">t</span><span class="pun">,</span> <span class="pln">ok</span><span class="pun">}</span>
+<pre><code class="language-go"><span class="kwd">func</span> <span class="typ">FromCtx</span><span class="pun">[</span><span class="typ">T</span> <span class="pln">any</span><span class="pun">]</span><span class="pun">(</span><span class="pln">ctx</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">Context</span><span class="pun">)</span> <span class="pun">(</span><span class="typ">T</span><span class="pun">,</span> <span class="kwd">bool</span><span class="pun">)</span> <span class="pun">{</span><span class="pln">t</span><span class="pun">,</span> <span class="pln">ok</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">Context</span><span class="pun">.</span><span class="typ">Value</span><span class="pun">(</span><span class="pln">ctx</span><span class="pun">,</span> <span class="pun">[</span><span class="dec">0</span><span class="pun">]</span> <span class="kwd">struct</span><span class="pun">{</span> <span class="pln">_</span> <span class="kwd">func</span><span class="pun">(</span><span class="typ">T</span><span class="pun">)</span> <span class="pun">}</span><span class="pun">)</span><span class="pun">.</span><span class="pun">(</span><span class="typ">T</span><span class="pun">)</span><span class="pun">;</span><span class="kwd">return</span> <span class="pln">t</span><span class="pun">,</span> <span class="pln">ok</span><span class="pun">}</span>
 </code></pre>
 
 <p>That’s right: this ugly SOB has a</p>
 
 <ul>
 <li>zero-sized type</li>
-<li>containing an anonymous struct with a blank field</li>
+<li>containing an anonymous <code>struct</code></li>
+<li>with an unreachable member containing a function so it’s not comparable</li>
 <li>in a method expression</li>
-<li>on a semi-colon terminated multi-statement line
-<strong>but don’t do this</strong>: not only is it ugly, it will cause a runtime panic if T is not a comparable type!**)</li>
+<li>on a semi-colon terminated multi-statement line</li>
 </ul>
+
+<p>Is this useful? <strong>Absolutely not</strong>. In fact, it’ll crash immediately, since context keys need to be comparable.</p>
 
 <h3>Next time(?)</h3>
 

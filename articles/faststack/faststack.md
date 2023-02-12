@@ -49,7 +49,7 @@ and in another shell provoke the panic:
 curl http://localhost:8080
 ```
 
-Getting this nicely formatted result:
+Getting this nicely formatted result:P
 
 ```
 2023/01/17 13:45:01 [Recovery] 2023/01/17 - 13:45:01 panic recovered:

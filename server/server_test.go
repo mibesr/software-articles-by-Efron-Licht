@@ -23,6 +23,7 @@ func TestMain(m *testing.M) {
 	time.Sleep(50 * time.Millisecond)
 	os.Exit(m.Run())
 }
+
 func TestUptime(t *testing.T) {
 	if got := testGet(t, "debug/uptime"); !regexp.MustCompile(`\d+h \d+m \d+s`).MatchString(got) {
 		t.Fatal(`expected \d+h \d+m \d+s: got `, got)
@@ -39,6 +40,7 @@ func TestFiles(t *testing.T) {
 		return nil
 	})
 }
+
 func testGet(t *testing.T, p string) (body string) {
 	t.Run(p, func(t *testing.T) {
 		target := "http://localhost:6483/" + strings.TrimPrefix(p, "/")
@@ -56,5 +58,4 @@ func testGet(t *testing.T, p string) (body string) {
 		body = string(b)
 	})
 	return body
-
 }

@@ -30,11 +30,11 @@ body {
   padding-bottom: 2ch;
   padding-left: 8ch;
   text-align: left;
-  background-color: rgb(20, 20, 20);
+  background-color: rgb(23, 11, 11);
 
 
   font-family: "Open Sans", "Monaco", "Helvetica";
-  color: rgb(136, 251, 245);
+  color: rgb(175, 232, 229);
   font-size: 15px;
   text-shadow: 0 0 1px #c8c8c8;
   max-width: 80ch;
@@ -42,24 +42,27 @@ body {
 }
 
 code {
-  color: rgb(61, 248, 123);
+  color: rgb(65, 223, 118);
   font-family: "JetBrains Mono", Menlo, Bitstream Vera Sans Mono,
     DejaVu Sans Mono, Monaco, Consolas, monospace;
     line-height: 130%;
-
+  font-size: 15x;
 }
 blockquote {
+ 
   font-size: 15px;
   color: #478eba;
-  font-variant: small-caps;
   line-height: 130%;
 
 }
 
 /* tables */
 table {
+  margin-top: 12px;
+  margin-bottom: 4px;
   font-family: "Source Code Pro";
   table-layout:auto ;
+  max-width: 90ch;
   width: 100%;
   border-collapse: collapse;
   border: 1px solid gray;
@@ -69,22 +72,24 @@ table {
 }
 
 td {
-  border: 1px dashed;
-  border-color: #bac8f2;
+  margin: 2px;
+  border-right: 1px solid;
+  padding-left: 2px;
+  border-left: 1px solid;
+  border-color: grey;
   width: max-content;
   line-height: 130%;
 
 }
 
 tr {
+  text-align: justify;
+  padding-left: 4px;
   overflow: scroll;
   line-height: 130%;
 
   font-family: "Source Code Pro";
-  border-top: 1px dashed;
 
-  border-bottom: 1px dashed;
-  border-color: #bac8f2;
 }
 
 tr:nth-child(even) {
@@ -92,14 +97,14 @@ tr:nth-child(even) {
   background-color: #3a3535;
 }
 
-th {
+th { 
   font-family: "Source Code Pro";
-
-  border-bottom: 1px dashed;
-  border-color: #bac8f2;
+  border: 1px solid grey;
+  border-bottom: 2px inset grey;
   table-layout: fixed;
+  padding-left: 4px;
   text-align: center;
-  color: #ed88b7;
+  color: #ea87b5;
   font-weight: bolder;
   line-height: 130%;
 
@@ -115,7 +120,7 @@ h3 {
   text-align: center;
   line-height: 130%;
   font-variant: titling-caps;
-  color: rgb(208, 254, 248);
+  color: rgb(188, 235, 229);
   text-shadow: 0 0 1px #c8c8c8;
 }
 
@@ -142,20 +147,25 @@ a:visited {
 
 
 
-
+/* code blocks*/
 pre {   
+  background-color: #2b2727;
   overflow-x: auto;
-  padding-top: 6px;
-  padding-bottom: 4px;
+
+  margin-top: 4px;
+  margin-bottom: 2px;
+  padding-left: 10px;
+  font-size: 14px;
+  padding-top: 2px;
+  padding-bottom: 12px;
+  border-radius: 10px;
   line-height: 130%;
-  font-size: 12px;
-  max-width: 120ch;
+  max-width: 100ch;
+  border-color: grey;
   font-family: 'JetBrains Mono', Menlo, Bitstream Vera Sans Mono, DejaVu Sans Mono, Monaco,
     Consolas, monospace;
-  border-top: dotted;
-  border-spacing: 15px;
-  border-bottom: dotted;
-  border-color: #c8c8c8;
+  border-spacing: 15px; 
+  border-top-style: groove;
 }
 
 .pln {
@@ -194,7 +204,7 @@ span.language-go {
   }
 
   .kwd {
-    color: #df3d89;
+    color: #e08db4; 
   }
 
   .com {

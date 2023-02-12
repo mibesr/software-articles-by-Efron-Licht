@@ -14,18 +14,24 @@ import (
 //go:embed assets.zip
 var zipped []byte
 
-var FS, _ = zip.NewReader(bytes.NewReader(zipped), int64(len(zipped)))
+var (
+	FS    *zip.Reader
+	files map[string]*zip.File
+)
 
-var files map[string]*zip.File = func() map[string]*zip.File {
-	m := make(map[string]*zip.File, len(FS.File))
-	for _, f := range FS.File {
-		m[f.Name] = f
+func init() {
+	var err error
+	FS, err = zip.NewReader(bytes.NewReader(zipped), int64(len(zipped)))
+	if err != nil {
+		panic("failed to read zipped file: " + err.Error())
 	}
-	return m
-}()
+	files = make(map[string]*zip.File, len(FS.File))
+	for _, f := range FS.File {
+		files[f.Name] = f
+	}
+}
 
 func ServeFile(w http.ResponseWriter, r *http.Request) {
-
 	path := strings.Trim(r.URL.Path, "/")
 	if _, ok := files[path+".html"]; ok { // they forgot to add .html: show them where to find it.
 		http.Redirect(w, r, "./"+path+".html", http.StatusPermanentRedirect)

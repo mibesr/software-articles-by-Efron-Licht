@@ -33,7 +33,6 @@ func main() {
 	}
 	cancel()
 	log.Println("successful shutdown")
-
 }
 
 func setupLogger() *zap.Logger {
@@ -103,7 +102,7 @@ func Run(ctx context.Context) (err error) {
 		BaseContext: func(_ net.Listener) context.Context { return ctx },
 	}
 
-	logger.Info("serving http", zap.String("addr", server.Addr), zap.Any("server", server))
+	logger.Info("serving http", zap.String("addr", server.Addr), zap.String("server", fmt.Sprintf("%#+v", server)))
 	go server.ListenAndServe()
 	<-ctx.Done() // wait for (ctrl+c)
 

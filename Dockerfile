@@ -8,7 +8,8 @@ RUN apk update && apk --no-cache add npm && npm install -g @mermaid-js/mermaid-c
 COPY . .
 RUN go run ./cmd/rendermd . ./server/static/
 RUN go run ./cmd/buildindex ./server/static
-RUN go run ./cmd/prezip ./server/static
+RUN go run ./cmd/prezip ./server/static > ./server/static/assets.zip
+RUN go test ./...
 RUN go build -trimpath -o /app ./server 
 
 

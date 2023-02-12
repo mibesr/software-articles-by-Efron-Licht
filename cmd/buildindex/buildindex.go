@@ -32,7 +32,6 @@ func main() {
 	dst := filepath.Join(dir, "index.html")
 	os.WriteFile(dst, html, 0o777)
 	log.Printf("wrote %s", dst)
-
 }
 
 func must[T any](t T, err error) T {

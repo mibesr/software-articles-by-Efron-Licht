@@ -18,7 +18,9 @@ deps:  generate
 	go mod download
 	go mod vendor
 
-
+test-css:
+	go run ./cmd/prezip ./server/static > ./server/static/assets.zip
+	go run ./server
 
 test: deps
 	# --- make test ---
@@ -33,7 +35,7 @@ build: test
 run: test # make run
 	go run ./server
 
-deploy: deps test # make deploy
+deploy: deps # make deploy
 	fly apps destroy -y eblog # remove the old app
 	# deploy the new one
 	fly launch \

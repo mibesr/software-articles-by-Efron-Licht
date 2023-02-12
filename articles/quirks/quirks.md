@@ -192,8 +192,21 @@ I like the look of these: they allow very terse, expressive code, but they're ra
 
 ## GOTO exists
 
-The oft-maligned GOTO is an excellent piece of kit.
-unlike many languages, Go's GOTO can only jump _forwards_, so it's hard to get yourself into the kind of trouble you could in 1980s BASIC. Use GOTO to avoid extraneous variables and conditionals and to jump out of blocks without having to define a function.
+The oft-maligned GOTO is an excellent piece of kit. Go's GOTO is somewhat limited: you can't jump into the middle of blocks or out of a function,
+```go
+ func main() {
+	goto anotherblock
+
+	{
+		v := 3
+	anotherblock: 
+    // what's the value of v here?
+    // go gives a compiler error: " goto anotherblock jumps into block starting at..."
+    // so that we don't have to worry about this.
+		fmt.Println(v)
+	}
+```
+So it's hard to get yourself into the kind of trouble you could in 1980s BASIC. Use GOTO to avoid extraneous variables and conditionals and to jump out of blocks without having to define a function.
 
 Speaking of which...
 
@@ -510,7 +523,7 @@ func WithValue[T](ctx context, t T)(context.Context) {return context.WithValue(c
 For fun, let's rewrite `FromCtx` as a truly hellish one-liner using (nearly) every trick we've learned so far:
 
 ```go
-func FromCtx[T any](ctx context.Context) (T, bool) {t, ok := context.Context.Value(ctx, [0] struct{ _ func(T) };).(T);return t, ok}
+func FromCtx[T any](ctx context.Context) (T, bool) {t, ok := context.Context.Value(ctx, [0] struct{ _ func(T) }).(T);return t, ok}
 ```
 
 That's right: this ugly SOB has a
@@ -520,6 +533,8 @@ That's right: this ugly SOB has a
 - with an unreachable member containing a function so it's not comparable
 - in a method expression
 - on a semi-colon terminated multi-statement line
+  
+Is this useful? **Absolutely not**. In fact, it'll crash immediately, since context keys need to be comparable.
 
 ### Next time(?)
 

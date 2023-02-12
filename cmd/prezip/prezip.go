@@ -11,7 +11,6 @@ import (
 	"io"
 	"io/fs"
 	"log"
-
 	"os"
 	"path/filepath"
 	"strings"
@@ -39,6 +38,7 @@ func main() {
 			dst = must(zw.Create(d.Name()))
 		}
 		bytes += must(io.Copy(dst, src))
+
 		files++
 		src.Close()
 		return nil
@@ -51,6 +51,7 @@ func main() {
 
 	log.Printf("combined %d files (%04d KiB)", files, bytes)
 }
+
 func must[T any](t T, err error) T {
 	if err != nil {
 		panic(err)

@@ -192,8 +192,21 @@ I like the look of these: they allow very terse, expressive code, but they're ra
 
 ## GOTO exists
 
-The oft-maligned GOTO is an excellent piece of kit.
-unlike many languages, Go's GOTO can only jump _forwards_, so it's hard to get yourself into the kind of trouble you could in 1980s BASIC. Use GOTO to avoid extraneous variables and conditionals and to jump out of blocks without having to define a function.
+The oft-maligned GOTO is an excellent piece of kit. Go's GOTO is somewhat limited: you can't jump into the middle of blocks or out of a function,
+```go
+ func main() {
+	goto anotherblock
+
+	{
+		v := 3
+	anotherblock: 
+    // what's the value of v here?
+    // go gives a compiler error: " goto anotherblock jumps into block starting at..."
+    // so that we don't have to worry about this.
+		fmt.Println(v)
+	}
+```
+So it's hard to get yourself into the kind of trouble you could in 1980s BASIC. Use GOTO to avoid extraneous variables and conditionals and to jump out of blocks without having to define a function.
 
 Speaking of which...
 
@@ -500,30 +513,28 @@ The usual way Go programs have handled this is by making a separate context key 
 
 ```go
 
-type key[T] struct{}
-
 // FromCtx returns the value of type T stored in the context, if any:
-func FromCtx[T](ctx context) (T, bool) { t, ok := context.Value(key[T]{}).(T); return t, ok)}
+func FromCtx[T](ctx context) (T, bool) { t, ok := context.Value([0]T{}).(T); return t, ok)}
 // WithValue returns a copy of parent in which the value associated with `CtxKey[T]{}` is
 // val.
-func WithValue[T](ctx context, t T)(context.Context) {return context.WithValue(ctx, key[T]{}, t)}
+func WithValue[T](ctx context, t T)(context.Context) {return context.WithValue(ctx, [0]T{}, t)}
 ```
 
-~~For fun, let's rewrite `FromCtx` as a truly hellish one-liner using (nearly) every trick we've learned so far:~~
+For fun, let's rewrite `FromCtx` as a truly hellish one-liner using (nearly) every trick we've learned so far:
 
 ```go
-func FromCtx[T any](ctx context.Context) (T, bool) {t, ok := context.Context.Value(ctx, struct {
-    _ [0]T
-}};).(T);return t, ok}
+func FromCtx[T any](ctx context.Context) (T, bool) {t, ok := context.Context.Value(ctx, [0] struct{ _ func(T) }).(T);return t, ok}
 ```
 
 That's right: this ugly SOB has a
 
 - zero-sized type
-- containing an anonymous struct with a blank field
+- containing an anonymous `struct`
+- with an unreachable member containing a function so it's not comparable
 - in a method expression
 - on a semi-colon terminated multi-statement line
-**but don't do this**: not only is it ugly, it will cause a runtime panic if T is not a comparable type!**)
+  
+Is this useful? **Absolutely not**. In fact, it'll crash immediately, since context keys need to be comparable.
 
 ### Next time(?)
 
