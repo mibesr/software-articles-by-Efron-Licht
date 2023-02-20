@@ -1,4 +1,4 @@
-# fly.toml file generated for eblog on 2023-02-12T13:10:22-08:00
+# fly.toml file generated for eblog on 2023-02-14T15:08:52-08:00
 
 app = "eblog"
 kill_signal = "SIGINT"

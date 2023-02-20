@@ -5,18 +5,15 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io/fs"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
 	"text/tabwriter"
-	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/sourcegraph/syntaxhighlight"
@@ -49,7 +46,7 @@ func main() {
 	log.Println("scanning...")
 	var wg sync.WaitGroup
 	type res struct {
-		md, mermaid, html string
+		md, html string
 	}
 	ch := make(chan res, 24)
 	walkFunc := func(srcPath string, d fs.DirEntry, err error) error {
@@ -66,23 +63,11 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			renderedMermaidPath := filepath.Join(dstDir, filepath.Base(srcPath))
-
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			defer cancel()
-			fmt.Fprintf(tw, format, srcPath, renderedMermaidPath)
-
-			if err := exec.CommandContext(ctx, "mmdc", "--theme", "dark", "--input", srcPath, "--output", renderedMermaidPath).Run(); err != nil {
-				log.Print("HELP: do you have the mermaid CLI installed?")
-				log.Print("https://github.com/mermaid-js/mermaid-cli")
-				log.Print("https://yarnpkg.com/package/mermaid.cli")
-				must(0, fmt.Errorf("mermaid cli (mmdc) error:  %w", err))
-			}
 			dstPath := strings.ReplaceAll(filepath.Join(dstDir, filepath.Base(srcPath)), ".md", ".html")
 
 			fmt.Fprintf(tw, format, srcPath, dstPath)
-			must(0, os.WriteFile(dstPath, renderMarkdown(renderedMermaidPath), 0o777))
-			ch <- res{md: srcPath, mermaid: renderedMermaidPath, html: dstPath}
+			must(0, os.WriteFile(dstPath, renderMarkdown(srcPath), 0o777))
+			ch <- res{md: srcPath, html: dstPath}
 		}()
 		return nil
 	}
@@ -101,7 +86,6 @@ func main() {
 	defer tw.Flush()
 	for r := range ch {
 		fmt.Fprintf(tw, format, r.md, r.html)
-		fmt.Fprintf(tw, format, r.md, r.mermaid)
 	}
 }
 

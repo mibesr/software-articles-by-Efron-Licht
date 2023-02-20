@@ -64,7 +64,7 @@ This is called a [method expression](https://go.dev/ref/spec#Method_expressions)
 That is, while **this** code compiles fine
 
 ```go
-import "math/big" // playground: https://go.dev/play/p/-CHMNxIKumy
+import "math/big" // https://go.dev/play/p/-CHMNxIKumy
 func main() {
  var x big.Float
  x.SetFloat64(10)
@@ -74,7 +74,7 @@ func main() {
 **This** code gives a compiler error
 
 ```go
-import "math/big" // playground: https://go.dev/play/p/cv8TSURe15J
+import "math/big" // https://go.dev/play/p/cv8TSURe15J
 func main() {
  var x big.Float
  big.Float.SetFloat64(x, 10) // wrong
@@ -87,7 +87,7 @@ func main() {
 The proper method expression is as follows
 
 ```go
-import "math/big" // playground: https://go.dev/play/p/SRYxpp1UdVJ
+import "math/big" // https://go.dev/play/p/SRYxpp1UdVJ
 func main() {
  var x big.Float
  (*big.Float).SetFloat64(&x, 10) // note parens
@@ -120,42 +120,44 @@ locked:
 
 The following code [playground](https://go.dev/play/p/Bn8DbOzely0) gives a terse and unhelpful compiler error:
 
-```go
-type Q struct {A, B [3]int}
-structOfArrays := Q{{}, {}}
-fmt.Println(structOfArrays)
+```go  
+
+func main() { // https://go.dev/play/p/CLu4AXg5qYW
+ type Q struct{ A, B [3]int }
+ structOfArrays := Q{{}, {}}
+ fmt.Println(structOfArrays)
+}
 ```
 
 > compiler error: `missing type in composite literal`
 
-This implies that you always need to provide the types of composite literals, but that's just not true:\
-Go is happy to compile this [playground](https://go.dev/play/p/CLu4AXg5qYW) without me spelling out the type of each item on the right-hand side:
+This implies that you always need to provide the types of composite literals, but that's just not true. Go is happy to compile the following bode without me spelling out the type of each item on the right-hand side:
 
 ```go
-import "fmt"
-func main() {
-    type S struct { N, M int}
-    arrayOfStructs := [3]S{{}, {}, {0, 1}}) 
-    fmt.Println(arrayOfStructs)
+func main() { // https://go.dev/play/p/CLu4AXg5qYW
+ type S struct{ N, M int }
+ arrayOfStructs := [3]S{{}, {}, {0, 1}}
+ fmt.Println(arrayOfStructs)
 }
-
-func main() {}
 ```
 
 > out: `[{0 0} {0 0} {0 1}]`
 
-Or even this:
+Or even this monstrosity:
 
 ```go
-sliceOfMapOfArrayOfStructs := []map[string][2]S{{"foo": {{1, 2}, {}}}})
-fmt.Println(sliceOfMapOfArrayOfStructs)
+func main() { // https://go.dev/play/p/kXLR8n7WdMc
+ sliceOfMapOfArrayOfStructs := []map[string][2]struct{ N, M int }{{"foo": {{}, {M: 2}}}}
+ fmt.Printf("%+v\n", sliceOfMapOfArrayOfStructs)
+}
+
 ```
 
-> out: `[map[foo:[{1 2} {0 0}]]]`
+> out: `[map[foo:[{N:0 M:0} {N:0 M:2}]]]`
 
 The actual rule is this: go will infer the types of composite literals if they're contained within an **array**, **map**, or **slice**, but struct fields and function arguments always need to spelled out explicitly.
 
-There's a long-open [issue (#12584)](https://github.com/golang/go/issues/12854) hoping to address this inconsitency. I'd love to see more permissive composite literals.
+There's a long-open [issue (#12584)](https://github.com/golang/go/issues/12854) hoping to address this inconsistency. I'd love to see more permissive composite literals.
 
 ## simple expressions in switch statements
 
@@ -217,17 +219,18 @@ This means you can't do something like this, since you'll get a compiler error:
 
 ```go
 
-func main() {
+func main() { // https://go.dev/play/p/1krGFE6FvgJ
  goto label
 
  if true {
   v := 3
   panic(v)
-        
- label: 
+
+ label:
   fmt.Println(v) // what's the value of v?
  }
 }
+
 
 ```
 
@@ -248,12 +251,6 @@ You don't need an `if`, `for`, `func`, or any other keyword to make a block.
 }
 
 ```
-
-> compiler error: `goto label jumps into block starting at ./prog.go:10:2`
-
-So it's hard to get yourself into the kind of trouble you could in 1980s BASIC. Use GOTO to avoid extraneous variables and conditionals and to jump out of blocks without having to define a function.
-
-Speaking of which...
 
 I find this useful for complicated variable initialization. Here's an example from the `fmtbench` tool I wrote in [the last article](./bytehacking.html)
 
@@ -316,8 +313,6 @@ var seed uint64 = func() uint64 {
 func main() {
  fmt.Println(seed)
 }
-
-
 ```
 
 This is the catchily-named "immediately-evaluated-function-expression", or IIFE for short. These are invaluable in languages which privelege functions over other kinds of blocks: for example, Javascript before it got the `let` keyword had no block scope, so you had to define functions every time you wanted a new namespace.
@@ -355,7 +350,7 @@ func main() { // playground: https://go.dev/play/p/vAkgOTnEg7d
 This obeys the ordinary block-scope rules, so this would be a compiler error:
 
 ```go
-func main() { // playground: https://go.dev/play/p/_ytvmPewLTA
+func main() { // https://go.dev/play/p/_ytvmPewLTA
     {
         type Point struct{X, Y float64}
     }
@@ -374,7 +369,7 @@ Sometimes you don't have to declare the type at all: go allows anonymous struct 
 These anonymous structs can _nest_:
 
 ```go
-func main() { // playground: https://go.dev/play/p/vA5SJ-GKJMm
+func main() { // https://go.dev/play/p/vA5SJ-GKJMm
  var s struct{ Name struct{ First, Last string } }
  json.Unmarshal([]byte(`{"name": {"first": "efron", "last": "licht"}}`), &s)
  fmt.Printf("%+v\n", s)
@@ -503,15 +498,17 @@ Struct types can have unreachable fields using the [blank identifier](https://go
     This is occasionally handy for cool `unsafe` stuff like serializing or deserializing stuff straight from a bytestream.
 
     ```go
-    type Point struct{ X, Y, Z uint16 }
-    type PaddedPoint struct {
-    X, Y, Z uint16
-    _       uint16 
+     func main() { // https://go.dev/play/p/4H7V_kKDw5m
+     type Point struct{ X, Y, Z uint16 }
+     type PaddedPoint struct {
+      X, Y, Z uint16
+      _       uint16
+     }
+     const format = "%12v\t%v\t%v\n"
+     fmt.Printf(format, "type", "size", "align")
+     fmt.Printf(format, "Point", unsafe.Sizeof(Point{}), unsafe.Alignof(Point{}))
+     fmt.Printf(format, "PaddedPoint", unsafe.Sizeof(PaddedPoint{}), unsafe.Alignof(PaddedPoint{}))
     }
-    const format = "%12v\t%v\t%v\n"
-    fmt.Printf(format, "type", "size", "align")
-    fmt.Printf(format, "Point", unsafe.Sizeof(Point{}), unsafe.Alignof(Point{}))
-    fmt.Printf(format, "PaddedPoint", unsafe.Sizeof(PaddedPoint{}), unsafe.Alignof(PaddedPoint{}))
     ```
 
     ```
@@ -534,9 +531,25 @@ Struct types can have unreachable fields using the [blank identifier](https://go
 
     Be careful with this: sometimes you _want_ changes to the API to be breaking changes, and changing the size of commonly-used types can have unforseen performance ramifications.
 
-    > **WEIRD EDGE CASE WARNING:** **A ZERO-SIZED TYPE IS ONLY ZERO-SIZED IF IT'S NOT THE FINAL MEMBER OF THE STRUCT**. See [issue 58483](https://github.com/golang/go/issues/). I found this out in a response to this article!
+    > **WEIRD EDGE CASE WARNING:** **A ZERO-SIZED TYPE IS ONLY ZERO-SIZED IF IT'S NOT THE FINAL MEMBER OF THE STRUCT**. 
+    > 
+    > That is, do this:
+    > ```go
+    > type s struct {
+    >        _ [0]func()
+    >        a int
+    > }
+    > ```
+    > And not this:
+    > ```go
+    > type s struct {
+    >    a int
+    >    _ [0]func()
+    > }
+    > ```
+    > See [issue 58483](https://github.com/golang/go/issues/58483). I found this out in a response to this article!
 
-Blank fields should be used sparingly, but can be nice for configuration.
+    Blank fields should be used sparingly, but can be nice for configuration.
 
 - Adding a field of uncomparable type makes the entire struct uncomparable.
 

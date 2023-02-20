@@ -49,7 +49,8 @@ deploy-test: deps # make deploy
 	--strategy immediate \
 	--verbose
 
-deploy: deps # make deploy
+deploy: deps 
+	go mod vendor
 	fly apps destroy -y eblog # remove the old app
 	# deploy the new one
 	fly launch \

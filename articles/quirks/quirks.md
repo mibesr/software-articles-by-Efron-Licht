@@ -8,8 +8,8 @@
 
 - bytehacking [html](./bytehacking.html) [markdown](./bytehacking.md)
 - [tale of two stacks](./faststack.html) [markdown] (./faststack.md)
-- [go quirks & tricks](./quirks.html) [markdown] (./quirks.md)
-
+- [go quirks & tricks, pt 1](./quirks.html) [markdown] (./quirks.md)
+- [go quirks & tricks, pt 2](./quirks2.html) [markdown] (./quirks2.md)
 #### On: Go, Programming Languages
 
 Go is generally considered a 'simple' language, but it has more edge cases and tricks than most might expect.
@@ -123,9 +123,9 @@ The following code [playground](https://go.dev/play/p/Bn8DbOzely0) gives a terse
 ```go  
 
 func main() { // https://go.dev/play/p/CLu4AXg5qYW
-	type Q struct{ A, B [3]int }
-	structOfArrays := Q{{}, {}}
-	fmt.Println(structOfArrays)
+ type Q struct{ A, B [3]int }
+ structOfArrays := Q{{}, {}}
+ fmt.Println(structOfArrays)
 }
 ```
 
@@ -135,9 +135,9 @@ This implies that you always need to provide the types of composite literals, bu
 
 ```go
 func main() { // https://go.dev/play/p/CLu4AXg5qYW
-	type S struct{ N, M int }
-	arrayOfStructs := [3]S{{}, {}, {0, 1}}
-	fmt.Println(arrayOfStructs)
+ type S struct{ N, M int }
+ arrayOfStructs := [3]S{{}, {}, {0, 1}}
+ fmt.Println(arrayOfStructs)
 }
 ```
 
@@ -147,14 +147,13 @@ Or even this monstrosity:
 
 ```go
 func main() { // https://go.dev/play/p/kXLR8n7WdMc
-	sliceOfMapOfArrayOfStructs := []map[string][2]struct{ N, M int }{{"foo": {{}, {M: 2}}}}
-	fmt.Printf("%+v\n", sliceOfMapOfArrayOfStructs)
+ sliceOfMapOfArrayOfStructs := []map[string][2]struct{ N, M int }{{"foo": {{}, {M: 2}}}}
+ fmt.Printf("%+v\n", sliceOfMapOfArrayOfStructs)
 }
 
 ```
 
 > out: `[map[foo:[{N:0 M:0} {N:0 M:2}]]]`
-
 
 The actual rule is this: go will infer the types of composite literals if they're contained within an **array**, **map**, or **slice**, but struct fields and function arguments always need to spelled out explicitly.
 
@@ -221,15 +220,15 @@ This means you can't do something like this, since you'll get a compiler error:
 ```go
 
 func main() { // https://go.dev/play/p/1krGFE6FvgJ
-	goto label
+ goto label
 
-	if true {
-		v := 3
-		panic(v)
+ if true {
+  v := 3
+  panic(v)
 
-	label:
-		fmt.Println(v) // what's the value of v?
-	}
+ label:
+  fmt.Println(v) // what's the value of v?
+ }
 }
 
 
@@ -300,19 +299,19 @@ You can define a function and invoke it on the same line:
 package main
 
 import (
-	"crypto/rand"
-	"encoding/binary"
-	"fmt"
+ "crypto/rand"
+ "encoding/binary"
+ "fmt"
 )
 
 var seed uint64 = func() uint64 {
-	var b = make([]byte, 8)
-	_, _ = rand.Read(b)
-	return binary.LittleEndian.Uint64(b)
+ var b = make([]byte, 8)
+ _, _ = rand.Read(b)
+ return binary.LittleEndian.Uint64(b)
 }()
 
 func main() {
-	fmt.Println(seed)
+ fmt.Println(seed)
 }
 ```
 
@@ -500,15 +499,15 @@ Struct types can have unreachable fields using the [blank identifier](https://go
 
     ```go
      func main() { // https://go.dev/play/p/4H7V_kKDw5m
-	    type Point struct{ X, Y, Z uint16 }
-	    type PaddedPoint struct {
-		    X, Y, Z uint16
-		    _       uint16
-	    }
-	    const format = "%12v\t%v\t%v\n"
-	    fmt.Printf(format, "type", "size", "align")
-	    fmt.Printf(format, "Point", unsafe.Sizeof(Point{}), unsafe.Alignof(Point{}))
-	    fmt.Printf(format, "PaddedPoint", unsafe.Sizeof(PaddedPoint{}), unsafe.Alignof(PaddedPoint{}))
+     type Point struct{ X, Y, Z uint16 }
+     type PaddedPoint struct {
+      X, Y, Z uint16
+      _       uint16
+     }
+     const format = "%12v\t%v\t%v\n"
+     fmt.Printf(format, "type", "size", "align")
+     fmt.Printf(format, "Point", unsafe.Sizeof(Point{}), unsafe.Alignof(Point{}))
+     fmt.Printf(format, "PaddedPoint", unsafe.Sizeof(PaddedPoint{}), unsafe.Alignof(PaddedPoint{}))
     }
     ```
 
@@ -532,12 +531,28 @@ Struct types can have unreachable fields using the [blank identifier](https://go
 
     Be careful with this: sometimes you _want_ changes to the API to be breaking changes, and changing the size of commonly-used types can have unforseen performance ramifications.
 
-    > **WEIRD EDGE CASE WARNING:** **A ZERO-SIZED TYPE IS ONLY ZERO-SIZED IF IT'S NOT THE FINAL MEMBER OF THE STRUCT**. See [issue 58483](https://github.com/golang/go/issues/). I found this out in a response to this article!
+    > **WEIRD EDGE CASE WARNING:** **A ZERO-SIZED TYPE IS ONLY ZERO-SIZED IF IT'S NOT THE FINAL MEMBER OF THE STRUCT**. 
+    > 
+    > That is, do this:
+    > ```go
+    > type s struct {
+    >        _ [0]func()
+    >        a int
+    > }
+    > ```
+    > And not this:
+    > ```go
+    > type s struct {
+    >    a int
+    >    _ [0]func()
+    > }
+    > ```
+    > See [issue 58483](https://github.com/golang/go/issues/58483). I found this out in a response to this article!
 
     Blank fields should be used sparingly, but can be nice for configuration.
 
 - Adding a field of uncomparable type makes the entire struct uncomparable.
-    
+
     Structs comprised only of [comparable](https://go.dev/ref/spec#Comparison_operators) types (that is, ones where you can use the `==` operator) are themselves comparable, and can be used as keys in hashmaps or compared using `==`. The compiler implements these by generating comparison and hash functions for each comparable type in your code. This (very slightly) bloats the binary & compilation time. You may not want this to happen. Prevent this having a blank field of uncomparable type (the usual candidate is the ZST `[0]func()`). If you have the kind of performance requirements that need this, you'll know. Don't do it "just because"; it's confusing.
 
 - Blank fields can provide hints to tooling like `go vet` about how a type should be used. The most famous example of this is `copylock`. See [go issue #8005](https://github.com/golang/go/issues/8005#issuecomment-190753527) for more details.

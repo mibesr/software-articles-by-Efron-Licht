@@ -5,10 +5,10 @@
 
 ## [more articles](./index.html)
 
-- bytehacking [html](./bytehacking.html) [markdown](./bytehacking.md)
+- [bytehacking](./bytehacking.html) [markdown](./bytehacking.md)
 - [tale of two stacks](./faststack.html) [markdown] (./faststack.md)
-- [go quirks & tricks](./quirks.html) [markdown] (./quirks.md)
-
+- [go quirks & tricks, pt 1](./quirks.html) [markdown] (./quirks.md)
+- [go quirks & tricks, pt 2](./quirks2.html) [markdown] (./quirks2.md)
 
 ## gin's panic handler
 

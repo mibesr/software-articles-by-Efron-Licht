@@ -6,9 +6,10 @@
 
 ## [more articles](https://eblog.fly.dev)
 
-- bytehacking [html](./bytehacking.html) [markdown](./bytehacking.md)
-- a tale of two stacks [html](./faststack.html) [markdown] (./faststack.md)
-- go quirks & tricks [html](./quirks.html) [markdown] (./quirks.md)
+- [bytehacking](./bytehacking.html) [markdown](./bytehacking.md)
+- [tale of two stacks](./faststack.html) [markdown] (./faststack.md)
+- [go quirks & tricks, pt 1](./quirks.html) [markdown] (./quirks.md)
+- [go quirks & tricks, pt 2](./quirks2.html) [markdown] (./quirks2.md)
 
 
 Many junior & intermediate programmers can be a little skittish around around byte-level hacking. You shouldn't be. It's not as hard as it's made out to be, and getting comfortable with low-level programming can make for simpler, more efficient code, In this article, we'll take an example of a real-world problem with a solution that was best discovered and implemented with byte-level programming.
@@ -602,3 +603,4 @@ With luck, you've learned something about benchmarking, bytes, or UUIDs. And rem
 
 Like this article? Hire me, or bring me in to consult. Professional enquiries at
 [efron.dev@gmail.com](efron.dev@mail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)
+A

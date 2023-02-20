@@ -4,27 +4,27 @@
   font-weight: 300;
   src: local("Source Code Pro"), url("/SourceCodePro-Regular.tff.woff2"),
     format("woff2");
+  font-display: fallback;
 }
 
 @font-face {
+  font-display: fallback;
   font-family: "Open Sans";
   font-weight: 400;
-  src: local("Open Sans"), url(https://fonts.gstatic.com/s/opensans/v13/cJZKeOuBrn4kERxqtaUH3T8E0i7KZn-EPnyo3HZu7kw.woff) format("woff");
+  src: local("Open Sans"), url("/OpenSans-Regular.woff2") format("woff2"), url(https://fonts.gstatic.com/s/opensans/v13/cJZKeOuBrn4kERxqtaUH3T8E0i7KZn-EPnyo3HZu7kw.woff) format("woff");
 }
 
 @font-face {
+  font-display: fallback;
   font-family: "JetBrains Mono";
   font-weight: 400;
   src: local('JetBrains Mono'),
     url("/JetBrainsMono-Regular.woff2") format("woff2");
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
-    U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
-    U+FEFF, U+FFFD;
 }
 
 
 /* formatting: non syntax-highlighting */
-body {  
+body {
   padding-top: 2ch;
   padding-bottom: 2ch;
   padding-left: 8ch;
@@ -44,11 +44,12 @@ code {
   color: rgb(65, 223, 118);
   font-family: "JetBrains Mono", Menlo, Bitstream Vera Sans Mono,
     DejaVu Sans Mono, Monaco, Consolas, monospace;
-    line-height: 130%;
+  line-height: 130%;
   font-size: 14x;
 }
+
 blockquote {
- 
+
   font-size: 15px;
   color: #478eba;
   line-height: 130%;
@@ -61,7 +62,7 @@ table {
   margin-top: 12px;
   margin-bottom: 4px;
   font-family: "Source Code Pro";
-  table-layout:auto ;
+  table-layout: auto;
   max-width: 90ch;
   width: 100%;
   border-collapse: collapse;
@@ -97,7 +98,7 @@ tr:nth-child(even) {
   background-color: #3a3535;
 }
 
-th { 
+th {
   border: 1px solid grey;
   border-bottom: 2px inset grey;
   table-layout: fixed;
@@ -105,12 +106,14 @@ th {
   text-align: center;
   color: #ea87b5;
   font-weight: bolder;
-`
+
 }
 
 header {
-  text-align: center
+  text-align: center;
+  font-family: "Open Sans";
 }
+
 /* headers */
 h1,
 h2,
@@ -146,7 +149,7 @@ a:visited {
 
 
 /* code blocks*/
-pre {   
+pre {
   background-color: #2b2727;
   overflow-x: auto;
 
@@ -162,7 +165,7 @@ pre {
   border-color: grey;
   font-family: 'JetBrains Mono', Menlo, Bitstream Vera Sans Mono, DejaVu Sans Mono, Monaco,
     Consolas, monospace;
-  border-spacing: 15px; 
+  border-spacing: 15px;
   border-top-style: groove;
 }
 
@@ -194,6 +197,7 @@ li.L9 {
 span.language-go {
   text-align: left;
 }
+
 /* syntax highlighting */
 @media screen {
 
@@ -202,7 +206,7 @@ span.language-go {
   }
 
   .kwd {
-    color: #e08db4; 
+    color: #e08db4;
   }
 
   .com {

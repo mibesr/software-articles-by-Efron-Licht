@@ -16,12 +16,16 @@
 <h2><a href="https://eblog.fly.dev">more articles</a></h2>
 
 <ul>
-<li>bytehacking <a href="./bytehacking.html">html</a> <a href="./bytehacking.md">markdown</a></li>
-<li><a href="./faststack.html">tale of two stacks</a> <a href="./faststack.md">markdown</a></li>
-<li><a href="./quirks.html">go quirks &amp; tricks</a> <a href="./quirks.md">markdown</a></li>
-</ul>
+<li><p>bytehacking <a href="./bytehacking.html">html</a> <a href="./bytehacking.md">markdown</a></p></li>
 
-<h4>On: Go, Programming Languages</h4>
+<li><p><a href="./faststack.html">tale of two stacks</a> <a href="./faststack.md">markdown</a></p></li>
+
+<li><p><a href="./quirks.html">go quirks &amp; tricks, pt 1</a> <a href="./quirks.md">markdown</a></p></li>
+
+<li><p><a href="./quirks2.html">go quirks &amp; tricks, pt 2</a> <a href="./quirks2.md">markdown</a></p>
+
+<h4>On: Go, Programming Languages</h4></li>
+</ul>
 
 <p>Go is generally considered a ‘simple’ language, but it has more edge cases and tricks than most might expect.</p>
 
@@ -74,7 +78,7 @@
 
 <p>That is, while <strong>this</strong> code compiles fine</p>
 
-<pre><code class="language-go"><span class="kwd">import</span> <span class="str">&#34;math/big&#34;</span> <span class="com">// playground: https://go.dev/play/p/-CHMNxIKumy</span>
+<pre><code class="language-go"><span class="kwd">import</span> <span class="str">&#34;math/big&#34;</span> <span class="com">// https://go.dev/play/p/-CHMNxIKumy</span>
 <span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
  <span class="kwd">var</span> <span class="pln">x</span> <span class="pln">big</span><span class="pun">.</span><span class="typ">Float</span>
  <span class="pln">x</span><span class="pun">.</span><span class="typ">SetFloat64</span><span class="pun">(</span><span class="dec">10</span><span class="pun">)</span>
@@ -83,7 +87,7 @@
 
 <p><strong>This</strong> code gives a compiler error</p>
 
-<pre><code class="language-go"><span class="kwd">import</span> <span class="str">&#34;math/big&#34;</span> <span class="com">// playground: https://go.dev/play/p/cv8TSURe15J</span>
+<pre><code class="language-go"><span class="kwd">import</span> <span class="str">&#34;math/big&#34;</span> <span class="com">// https://go.dev/play/p/cv8TSURe15J</span>
 <span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
  <span class="kwd">var</span> <span class="pln">x</span> <span class="pln">big</span><span class="pun">.</span><span class="typ">Float</span>
  <span class="pln">big</span><span class="pun">.</span><span class="typ">Float</span><span class="pun">.</span><span class="typ">SetFloat64</span><span class="pun">(</span><span class="pln">x</span><span class="pun">,</span> <span class="dec">10</span><span class="pun">)</span> <span class="com">// wrong</span>
@@ -97,7 +101,7 @@
 
 <p>The proper method expression is as follows</p>
 
-<pre><code class="language-go"><span class="kwd">import</span> <span class="str">&#34;math/big&#34;</span> <span class="com">// playground: https://go.dev/play/p/SRYxpp1UdVJ</span>
+<pre><code class="language-go"><span class="kwd">import</span> <span class="str">&#34;math/big&#34;</span> <span class="com">// https://go.dev/play/p/SRYxpp1UdVJ</span>
 <span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
  <span class="kwd">var</span> <span class="pln">x</span> <span class="pln">big</span><span class="pun">.</span><span class="typ">Float</span>
  <span class="pun">(</span><span class="pun">*</span><span class="pln">big</span><span class="pun">.</span><span class="typ">Float</span><span class="pun">)</span><span class="pun">.</span><span class="typ">SetFloat64</span><span class="pun">(</span><span class="pun">&amp;</span><span class="pln">x</span><span class="pun">,</span> <span class="dec">10</span><span class="pun">)</span> <span class="com">// note parens</span>
@@ -129,45 +133,47 @@
 
 <p>The following code <a href="https://go.dev/play/p/Bn8DbOzely0">playground</a> gives a terse and unhelpful compiler error:</p>
 
-<pre><code class="language-go"><span class="kwd">type</span> <span class="typ">Q</span> <span class="kwd">struct</span> <span class="pun">{</span><span class="typ">A</span><span class="pun">,</span> <span class="typ">B</span> <span class="pun">[</span><span class="dec">3</span><span class="pun">]</span><span class="kwd">int</span><span class="pun">}</span>
-<span class="pln">structOfArrays</span> <span class="pun">:</span><span class="pun">=</span> <span class="typ">Q</span><span class="pun">{</span><span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> <span class="pun">{</span><span class="pun">}</span><span class="pun">}</span>
-<span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">structOfArrays</span><span class="pun">)</span>
+<pre><code class="language-go">
+<span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span> <span class="com">// https://go.dev/play/p/CLu4AXg5qYW</span>
+ <span class="kwd">type</span> <span class="typ">Q</span> <span class="kwd">struct</span><span class="pun">{</span> <span class="typ">A</span><span class="pun">,</span> <span class="typ">B</span> <span class="pun">[</span><span class="dec">3</span><span class="pun">]</span><span class="kwd">int</span> <span class="pun">}</span>
+ <span class="pln">structOfArrays</span> <span class="pun">:</span><span class="pun">=</span> <span class="typ">Q</span><span class="pun">{</span><span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> <span class="pun">{</span><span class="pun">}</span><span class="pun">}</span>
+ <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">structOfArrays</span><span class="pun">)</span>
+<span class="pun">}</span>
 </code></pre>
 
 <blockquote>
 <p>compiler error: <code>missing type in composite literal</code></p>
 </blockquote>
 
-<p>This implies that you always need to provide the types of composite literals, but that’s just not true:<br/>
-Go is happy to compile this <a href="https://go.dev/play/p/CLu4AXg5qYW">playground</a> without me spelling out the type of each item on the right-hand side:</p>
+<p>This implies that you always need to provide the types of composite literals, but that’s just not true. Go is happy to compile the following bode without me spelling out the type of each item on the right-hand side:</p>
 
-<pre><code class="language-go"><span class="kwd">import</span> <span class="str">&#34;fmt&#34;</span>
-<span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
-    <span class="kwd">type</span> <span class="typ">S</span> <span class="kwd">struct</span> <span class="pun">{</span> <span class="typ">N</span><span class="pun">,</span> <span class="typ">M</span> <span class="kwd">int</span><span class="pun">}</span>
-    <span class="pln">arrayOfStructs</span> <span class="pun">:</span><span class="pun">=</span> <span class="pun">[</span><span class="dec">3</span><span class="pun">]</span><span class="typ">S</span><span class="pun">{</span><span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> <span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> <span class="pun">{</span><span class="dec">0</span><span class="pun">,</span> <span class="dec">1</span><span class="pun">}</span><span class="pun">}</span><span class="pun">)</span> 
-    <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">arrayOfStructs</span><span class="pun">)</span>
+<pre><code class="language-go"><span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span> <span class="com">// https://go.dev/play/p/CLu4AXg5qYW</span>
+ <span class="kwd">type</span> <span class="typ">S</span> <span class="kwd">struct</span><span class="pun">{</span> <span class="typ">N</span><span class="pun">,</span> <span class="typ">M</span> <span class="kwd">int</span> <span class="pun">}</span>
+ <span class="pln">arrayOfStructs</span> <span class="pun">:</span><span class="pun">=</span> <span class="pun">[</span><span class="dec">3</span><span class="pun">]</span><span class="typ">S</span><span class="pun">{</span><span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> <span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> <span class="pun">{</span><span class="dec">0</span><span class="pun">,</span> <span class="dec">1</span><span class="pun">}</span><span class="pun">}</span>
+ <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">arrayOfStructs</span><span class="pun">)</span>
 <span class="pun">}</span>
-
-<span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span><span class="pun">}</span>
 </code></pre>
 
 <blockquote>
 <p>out: <code>[{0 0} {0 0} {0 1}]</code></p>
 </blockquote>
 
-<p>Or even this:</p>
+<p>Or even this monstrosity:</p>
 
-<pre><code class="language-go"><span class="pln">sliceOfMapOfArrayOfStructs</span> <span class="pun">:</span><span class="pun">=</span> <span class="pun">[</span><span class="pun">]</span><span class="kwd">map</span><span class="pun">[</span><span class="pln">string</span><span class="pun">]</span><span class="pun">[</span><span class="dec">2</span><span class="pun">]</span><span class="typ">S</span><span class="pun">{</span><span class="pun">{</span><span class="str">&#34;foo&#34;</span><span class="pun">:</span> <span class="pun">{</span><span class="pun">{</span><span class="dec">1</span><span class="pun">,</span> <span class="dec">2</span><span class="pun">}</span><span class="pun">,</span> <span class="pun">{</span><span class="pun">}</span><span class="pun">}</span><span class="pun">}</span><span class="pun">}</span><span class="pun">)</span>
-<span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">sliceOfMapOfArrayOfStructs</span><span class="pun">)</span>
+<pre><code class="language-go"><span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span> <span class="com">// https://go.dev/play/p/kXLR8n7WdMc</span>
+ <span class="pln">sliceOfMapOfArrayOfStructs</span> <span class="pun">:</span><span class="pun">=</span> <span class="pun">[</span><span class="pun">]</span><span class="kwd">map</span><span class="pun">[</span><span class="pln">string</span><span class="pun">]</span><span class="pun">[</span><span class="dec">2</span><span class="pun">]</span><span class="kwd">struct</span><span class="pun">{</span> <span class="typ">N</span><span class="pun">,</span> <span class="typ">M</span> <span class="kwd">int</span> <span class="pun">}</span><span class="pun">{</span><span class="pun">{</span><span class="str">&#34;foo&#34;</span><span class="pun">:</span> <span class="pun">{</span><span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> <span class="pun">{</span><span class="typ">M</span><span class="pun">:</span> <span class="dec">2</span><span class="pun">}</span><span class="pun">}</span><span class="pun">}</span><span class="pun">}</span>
+ <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;%+v\n&#34;</span><span class="pun">,</span> <span class="pln">sliceOfMapOfArrayOfStructs</span><span class="pun">)</span>
+<span class="pun">}</span>
+
 </code></pre>
 
 <blockquote>
-<p>out: <code>[map[foo:[{1 2} {0 0}]]]</code></p>
+<p>out: <code>[map[foo:[{N:0 M:0} {N:0 M:2}]]]</code></p>
 </blockquote>
 
 <p>The actual rule is this: go will infer the types of composite literals if they’re contained within an <strong>array</strong>, <strong>map</strong>, or <strong>slice</strong>, but struct fields and function arguments always need to spelled out explicitly.</p>
 
-<p>There’s a long-open <a href="https://github.com/golang/go/issues/12854">issue (#12584)</a> hoping to address this inconsitency. I’d love to see more permissive composite literals.</p>
+<p>There’s a long-open <a href="https://github.com/golang/go/issues/12854">issue (#12584)</a> hoping to address this inconsistency. I’d love to see more permissive composite literals.</p>
 
 <h2>simple expressions in switch statements</h2>
 
@@ -225,17 +231,18 @@ Go is happy to compile this <a href="https://go.dev/play/p/CLu4AXg5qYW">playgrou
 <p>This means you can’t do something like this, since you’ll get a compiler error:</p>
 
 <pre><code class="language-go">
-<span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
+<span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span> <span class="com">// https://go.dev/play/p/1krGFE6FvgJ</span>
  <span class="kwd">goto</span> <span class="pln">label</span>
 
  <span class="kwd">if</span> <span class="kwd">true</span> <span class="pun">{</span>
   <span class="pln">v</span> <span class="pun">:</span><span class="pun">=</span> <span class="dec">3</span>
   <span class="pln">panic</span><span class="pun">(</span><span class="pln">v</span><span class="pun">)</span>
-        
- <span class="pln">label</span><span class="pun">:</span> 
+
+ <span class="pln">label</span><span class="pun">:</span>
   <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">v</span><span class="pun">)</span> <span class="com">// what&#39;s the value of v?</span>
  <span class="pun">}</span>
 <span class="pun">}</span>
+
 
 </code></pre>
 
@@ -257,14 +264,6 @@ Go is happy to compile this <a href="https://go.dev/play/p/CLu4AXg5qYW">playgrou
 <span class="pun">}</span>
 
 </code></pre>
-
-<blockquote>
-<p>compiler error: <code>goto label jumps into block starting at ./prog.go:10:2</code></p>
-</blockquote>
-
-<p>So it’s hard to get yourself into the kind of trouble you could in 1980s BASIC. Use GOTO to avoid extraneous variables and conditionals and to jump out of blocks without having to define a function.</p>
-
-<p>Speaking of which…</p>
 
 <p>I find this useful for complicated variable initialization. Here’s an example from the <code>fmtbench</code> tool I wrote in <a href="./bytehacking.html">the last article</a></p>
 
@@ -325,8 +324,6 @@ Go is happy to compile this <a href="https://go.dev/play/p/CLu4AXg5qYW">playgrou
 <span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
  <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">seed</span><span class="pun">)</span>
 <span class="pun">}</span>
-
-
 </code></pre>
 
 <p>This is the catchily-named “immediately-evaluated-function-expression”, or IIFE for short. These are invaluable in languages which privelege functions over other kinds of blocks: for example, Javascript before it got the <code>let</code> keyword had no block scope, so you had to define functions every time you wanted a new namespace.</p>
@@ -368,7 +365,7 @@ You <em>can</em> define a function that takes that type using a function express
 
 <p>This obeys the ordinary block-scope rules, so this would be a compiler error:</p>
 
-<pre><code class="language-go"><span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span> <span class="com">// playground: https://go.dev/play/p/_ytvmPewLTA</span>
+<pre><code class="language-go"><span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span> <span class="com">// https://go.dev/play/p/_ytvmPewLTA</span>
     <span class="pun">{</span>
         <span class="kwd">type</span> <span class="typ">Point</span> <span class="kwd">struct</span><span class="pun">{</span><span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span> <span class="kwd">float64</span><span class="pun">}</span>
     <span class="pun">}</span>
@@ -388,7 +385,7 @@ You <em>can</em> define a function that takes that type using a function express
 
 <p>These anonymous structs can <em>nest</em>:</p>
 
-<pre><code class="language-go"><span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span> <span class="com">// playground: https://go.dev/play/p/vA5SJ-GKJMm</span>
+<pre><code class="language-go"><span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span> <span class="com">// https://go.dev/play/p/vA5SJ-GKJMm</span>
  <span class="kwd">var</span> <span class="pln">s</span> <span class="kwd">struct</span><span class="pun">{</span> <span class="typ">Name</span> <span class="kwd">struct</span><span class="pun">{</span> <span class="typ">First</span><span class="pun">,</span> <span class="typ">Last</span> <span class="pln">string</span> <span class="pun">}</span> <span class="pun">}</span>
  <span class="pln">json</span><span class="pun">.</span><span class="typ">Unmarshal</span><span class="pun">(</span><span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span><span class="pun">(</span><span class="str">`{&#34;name&#34;: {&#34;first&#34;: &#34;efron&#34;, &#34;last&#34;: &#34;licht&#34;}}`</span><span class="pun">)</span><span class="pun">,</span> <span class="pun">&amp;</span><span class="pln">s</span><span class="pun">)</span>
  <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;%+v\n&#34;</span><span class="pun">,</span> <span class="pln">s</span><span class="pun">)</span>
@@ -512,15 +509,17 @@ You <em>can</em> define a function that takes that type using a function express
 
 <p>This is occasionally handy for cool <code>unsafe</code> stuff like serializing or deserializing stuff straight from a bytestream.</p>
 
-<pre><code class="language-go"><span class="kwd">type</span> <span class="typ">Point</span> <span class="kwd">struct</span><span class="pun">{</span> <span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span><span class="pun">,</span> <span class="typ">Z</span> <span class="pln">uint16</span> <span class="pun">}</span>
-<span class="kwd">type</span> <span class="typ">PaddedPoint</span> <span class="kwd">struct</span> <span class="pun">{</span>
-<span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span><span class="pun">,</span> <span class="typ">Z</span> <span class="pln">uint16</span>
-<span class="pln">_</span>       <span class="pln">uint16</span> 
+<pre><code class="language-go"> <span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span> <span class="com">// https://go.dev/play/p/4H7V_kKDw5m</span>
+ <span class="kwd">type</span> <span class="typ">Point</span> <span class="kwd">struct</span><span class="pun">{</span> <span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span><span class="pun">,</span> <span class="typ">Z</span> <span class="pln">uint16</span> <span class="pun">}</span>
+ <span class="kwd">type</span> <span class="typ">PaddedPoint</span> <span class="kwd">struct</span> <span class="pun">{</span>
+  <span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span><span class="pun">,</span> <span class="typ">Z</span> <span class="pln">uint16</span>
+  <span class="pln">_</span>       <span class="pln">uint16</span>
+ <span class="pun">}</span>
+ <span class="kwd">const</span> <span class="pln">format</span> <span class="pun">=</span> <span class="str">&#34;%12v\t%v\t%v\n&#34;</span>
+ <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="pln">format</span><span class="pun">,</span> <span class="str">&#34;type&#34;</span><span class="pun">,</span> <span class="str">&#34;size&#34;</span><span class="pun">,</span> <span class="str">&#34;align&#34;</span><span class="pun">)</span>
+ <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="pln">format</span><span class="pun">,</span> <span class="str">&#34;Point&#34;</span><span class="pun">,</span> <span class="pln">unsafe</span><span class="pun">.</span><span class="typ">Sizeof</span><span class="pun">(</span><span class="typ">Point</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">unsafe</span><span class="pun">.</span><span class="typ">Alignof</span><span class="pun">(</span><span class="typ">Point</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">)</span>
+ <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="pln">format</span><span class="pun">,</span> <span class="str">&#34;PaddedPoint&#34;</span><span class="pun">,</span> <span class="pln">unsafe</span><span class="pun">.</span><span class="typ">Sizeof</span><span class="pun">(</span><span class="typ">PaddedPoint</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">unsafe</span><span class="pun">.</span><span class="typ">Alignof</span><span class="pun">(</span><span class="typ">PaddedPoint</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">)</span>
 <span class="pun">}</span>
-<span class="kwd">const</span> <span class="pln">format</span> <span class="pun">=</span> <span class="str">&#34;%12v\t%v\t%v\n&#34;</span>
-<span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="pln">format</span><span class="pun">,</span> <span class="str">&#34;type&#34;</span><span class="pun">,</span> <span class="str">&#34;size&#34;</span><span class="pun">,</span> <span class="str">&#34;align&#34;</span><span class="pun">)</span>
-<span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="pln">format</span><span class="pun">,</span> <span class="str">&#34;Point&#34;</span><span class="pun">,</span> <span class="pln">unsafe</span><span class="pun">.</span><span class="typ">Sizeof</span><span class="pun">(</span><span class="typ">Point</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">unsafe</span><span class="pun">.</span><span class="typ">Alignof</span><span class="pun">(</span><span class="typ">Point</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">)</span>
-<span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="pln">format</span><span class="pun">,</span> <span class="str">&#34;PaddedPoint&#34;</span><span class="pun">,</span> <span class="pln">unsafe</span><span class="pun">.</span><span class="typ">Sizeof</span><span class="pun">(</span><span class="typ">PaddedPoint</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">unsafe</span><span class="pun">.</span><span class="typ">Alignof</span><span class="pun">(</span><span class="typ">PaddedPoint</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">)</span>
 </code></pre>
 <pre><code>        type size align
         Point    6     2
@@ -540,14 +539,29 @@ You <em>can</em> define a function that takes that type using a function express
 <p>Be careful with this: sometimes you <em>want</em> changes to the API to be breaking changes, and changing the size of commonly-used types can have unforseen performance ramifications.</p>
 
 <blockquote>
-<p><strong>WEIRD EDGE CASE WARNING:</strong> <strong>A ZERO-SIZED TYPE IS ONLY ZERO-SIZED IF IT’S NOT THE FINAL MEMBER OF THE STRUCT</strong>. See <a href="https://github.com/golang/go/issues/">issue 58483</a>. I found this out in a response to this article!</p>
+<p><strong>WEIRD EDGE CASE WARNING:</strong> <strong>A ZERO-SIZED TYPE IS ONLY ZERO-SIZED IF IT’S NOT THE FINAL MEMBER OF THE STRUCT</strong>.</p>
+
+<p>That is, do this:</p>
+
+<pre><code class="language-go"><span class="kwd">type</span> <span class="pln">s</span> <span class="kwd">struct</span> <span class="pun">{</span>
+       <span class="pln">_</span> <span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="kwd">func</span><span class="pun">(</span><span class="pun">)</span>
+       <span class="pln">a</span> <span class="kwd">int</span>
+<span class="pun">}</span>
+</code></pre>
+
+<p>And not this:</p>
+
+<pre><code class="language-go"><span class="kwd">type</span> <span class="pln">s</span> <span class="kwd">struct</span> <span class="pun">{</span>
+   <span class="pln">a</span> <span class="kwd">int</span>
+   <span class="pln">_</span> <span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="kwd">func</span><span class="pun">(</span><span class="pun">)</span>
+<span class="pun">}</span>
+</code></pre>
+
+<p>See <a href="https://github.com/golang/go/issues/58483">issue 58483</a>. I found this out in a response to this article!</p>
 </blockquote>
-</li>
-</ul>
 
-<p>Blank fields should be used sparingly, but can be nice for configuration.</p>
+<p>Blank fields should be used sparingly, but can be nice for configuration.</p></li>
 
-<ul>
 <li><p>Adding a field of uncomparable type makes the entire struct uncomparable.</p>
 
 <p>Structs comprised only of <a href="https://go.dev/ref/spec#Comparison_operators">comparable</a> types (that is, ones where you can use the <code>==</code> operator) are themselves comparable, and can be used as keys in hashmaps or compared using <code>==</code>. The compiler implements these by generating comparison and hash functions for each comparable type in your code. This (very slightly) bloats the binary &amp; compilation time. You may not want this to happen. Prevent this having a blank field of uncomparable type (the usual candidate is the ZST <code>[0]func()</code>). If you have the kind of performance requirements that need this, you’ll know. Don’t do it “just because”; it’s confusing.</p></li>
