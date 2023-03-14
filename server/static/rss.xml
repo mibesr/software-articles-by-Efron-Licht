@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+    <channel>
+        <title>efron's blog/title</title>
+        <link>https://eblog.fly.dev</link>
+        <description>programming articles, etc.</description>
+        <item>
+            <title> simple byte hacking</title>
+            <link>https://eblog.fly.dev/bytehacking.html</link>
+            <description> exploring a binary encoding w/ go</description>
+        </item>
+        <item>
+            <title> go quirks, pt 1 </title>
+            <link>https://eblog.fly.dev/quirks.html</link>
+            <description> quirks and tricks with the go programming language </description>
+        </item>
+        <item>
+            <title> go quirks, pt 2 </title>
+            <link>https://eblog.fly.dev/quirks2.html</link>
+            <description> more quirks and tricks w/ the go programming language </description>
+        </item>
+        <item>
+            <title> go quirks, pt 2 </title>
+            <link>https://eblog.fly.dev/quirks2.html</link>
+            <description> more quirks and tricks w/ the go programming language </description>
+        </item>
+        <item>
+            <title> faststack </title>
+            <link>https://eblog.fly.dev/faststack.html</link>
+            <description> optimizing a trace handler in a popular web framework </description>
+        </item>
+    </channel>
+</rss>
