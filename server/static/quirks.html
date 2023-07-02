@@ -16,16 +16,13 @@
 <h2><a href="https://eblog.fly.dev">more articles</a></h2>
 
 <ul>
-<li><p>bytehacking <a href="./bytehacking.html">html</a> <a href="./bytehacking.md">markdown</a></p></li>
-
-<li><p><a href="./faststack.html">tale of two stacks</a> <a href="./faststack.md">markdown</a></p></li>
-
-<li><p><a href="./quirks.html">go quirks &amp; tricks, pt 1</a> <a href="./quirks.md">markdown</a></p></li>
-
-<li><p><a href="./quirks2.html">go quirks &amp; tricks, pt 2</a> <a href="./quirks2.md">markdown</a></p>
-
-<h4>On: Go, Programming Languages</h4></li>
+<li>bytehacking <a href="./bytehacking.html">html</a> <a href="./bytehacking.md">markdown</a></li>
+<li><a href="./faststack.html">tale of two stacks</a> <a href="./faststack.md">markdown</a></li>
+<li><a href="./quirks.html">go quirks &amp; tricks, pt 1</a> <a href="./quirks.md">markdown</a></li>
+<li><a href="./quirks2.html">go quirks &amp; tricks, pt 2</a> <a href="./quirks2.md">markdown</a></li>
 </ul>
+
+<h4>On: Go, Programming Languages</h4>
 
 <p>Go is generally considered a ‘simple’ language, but it has more edge cases and tricks than most might expect.</p>
 
@@ -521,9 +518,9 @@ You <em>can</em> define a function that takes that type using a function express
  <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="pln">format</span><span class="pun">,</span> <span class="str">&#34;PaddedPoint&#34;</span><span class="pun">,</span> <span class="pln">unsafe</span><span class="pun">.</span><span class="typ">Sizeof</span><span class="pun">(</span><span class="typ">PaddedPoint</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">unsafe</span><span class="pun">.</span><span class="typ">Alignof</span><span class="pun">(</span><span class="typ">PaddedPoint</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">)</span>
 <span class="pun">}</span>
 </code></pre>
-<pre><code>        type size align
-        Point    6     2
-    PaddedPoint  8    2
+<pre><code class="language-text">        <span class="kwd">type</span> <span class="pln">size</span> <span class="pln">align</span>
+        <span class="typ">Point</span>    <span class="dec">6</span>     <span class="dec">2</span>
+    <span class="typ">PaddedPoint</span>  <span class="dec">8</span>    <span class="dec">2</span>
 </code></pre></li>
 
 <li><p>A blank field makes it difficult to initialize a struct without specifying key names. So as not to waste space, use a <a href="#zero-sized-type"><code>zero-sized type</code></a> for this.</p>

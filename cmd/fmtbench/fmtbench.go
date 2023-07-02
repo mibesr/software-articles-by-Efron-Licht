@@ -23,7 +23,7 @@ func main() {
 		// nop
 	default:
 		flag.Usage()
-		log.Printf("unexpected value %q for flag -sortby", *sortBy)
+		log.Fatalf("unexpected value %q for flag -sortby", *sortBy)
 	}
 	input := strings.TrimSpace(string(must(io.ReadAll(os.Stdin))))
 	lines := strings.Split(input, "\n")
@@ -38,9 +38,10 @@ func main() {
 		name                    string
 		runs, ns, bytes, allocs float64
 	}
+	//
 	var results []result
 	var maxNS, maxBytes, maxAllocs float64
-	{
+	{ // parse results
 		re := regexp.MustCompile(`Benchmark(.+)\s+(\d+)\s+(.+)ns/op\s+(\d+) B/op\s+(\d+)`)
 
 		for _, line := range lines {

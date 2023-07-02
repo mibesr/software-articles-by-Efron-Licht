@@ -5,12 +5,12 @@ all: build
 deps:
 	# make deps
 	which flyctl || ./deps/install-fly.sh
-generate: # make generate
+generate: 
 	# --- make generate ---
-	git rev-parse HEAD > server/commit.txt
+	git rev-parse HEAD > server/commit.txt # add current commit to server logs
 	go run ./cmd/rendermd . ./server/static # generate static html from markdown
-	go run ./cmd/buildindex ./server/static
-	go run ./cmd/prezip ./server/static > ./server/static/assets.zip
+	go run ./cmd/buildindex ./server/static # build /index.html
+	go run ./cmd/prezip ./server/static > ./server/static/assets.zip # zip up all of the assets
 
 deps:  generate
 	# --- make deps ----
@@ -19,6 +19,7 @@ deps:  generate
 	go mod vendor
 
 test-css:
+	# --- make test-css ---
 	go run ./cmd/prezip ./server/static > ./server/static/assets.zip
 	go run ./server
 
@@ -32,11 +33,13 @@ build: test
 
 	mkdir -p bin
 	go build -o ./bin/efronblogserver ./server
-run: test # make run
+run: test
+	# --- make run ---
 	go run ./server
 
 
-deploy-test: deps # make deploy
+deploy-test: deps 
+ 	# --- make deploy-test ---
 	fly apps destroy -y eblog-test # remove the old app
 	# deploy the new one
 	fly launch \

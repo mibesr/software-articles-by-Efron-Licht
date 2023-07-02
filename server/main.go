@@ -25,6 +25,8 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+var start = time.Now()
+
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT)
 	if err := Run(ctx); err != nil {
@@ -33,6 +35,7 @@ func main() {
 	}
 	cancel()
 	log.Println("successful shutdown")
+
 }
 
 func setupLogger() *zap.Logger {
@@ -67,7 +70,6 @@ func Run(ctx context.Context) (err error) {
 		// it's faster, too.
 		router = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			p := strings.TrimSuffix(r.URL.Path, "/")
-			r.Header.Add("cache-control", "no-cache")
 			switch {
 			case r.Method != "GET":
 				w.WriteHeader(http.StatusMethodNotAllowed)
@@ -79,10 +81,15 @@ func Run(ctx context.Context) (err error) {
 			case p == "":
 				http.Redirect(w, r, "./index.html", http.StatusPermanentRedirect)
 			default:
+				// fonts are immutable and large, so we can cache them for a long time.
+				// everything else is tiny and might change, so we don't cache it.
 				if strings.Contains(r.URL.Path, ".woff2") {
 					r.Header.Add("cache-control", "immutable")
 					r.Header.Add("cache-control", "max-age=604800")
 					r.Header.Add("cache-control", "public")
+				} else {
+					r.Header.Add("cache-control", "no-cache")
+
 				}
 				static.ServeFile(w, r)
 			}
@@ -102,7 +109,8 @@ func Run(ctx context.Context) (err error) {
 		BaseContext: func(_ net.Listener) context.Context { return ctx },
 	}
 
-	logger.Info("serving http", zap.String("addr", server.Addr), zap.String("server", fmt.Sprintf("%#+v", server)))
+	logger.Sugar().Infof("took %s to start", time.Since(start))
+	logger.Info("serving http", zap.String("addr", server.Addr))
 	go server.ListenAndServe()
 	<-ctx.Done() // wait for (ctrl+c)
 
@@ -123,7 +131,7 @@ var (
 	// Application Metadata. Everything you might want to know about the running application, all in one place.
 	// This is too heavyweight to add into the logs everywhere, so we log it once at application start and just inject
 	// the InstanceID into the logs. Then a search for 'metadata dump' should let you find out the rest.
-	// Some may consider this overkill.
+	// Some may conFsider this overkill.
 	Meta = struct {
 		AppName    string
 		InstanceID string // unique for each instance of the server

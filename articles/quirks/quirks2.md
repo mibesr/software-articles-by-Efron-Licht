@@ -386,7 +386,7 @@ func size[T any]() int {
 
 In general, the unsafe package is best avoided in production code, but sometimes you actually _do_ know better than the compiler. I encourage my readers to play around with the `unsafe` package on their own time to gain an intuition about how Go actually lays things out in memory. Make sure to read the [package](https://pkg.go.dev/unsafe) and [spec](https://go.dev/ref/spec#Package_unsafe) documentation carefully.
 
-I hope this was helpful! I think this is the end of this series; I'm planning to do some deeper dives next time. 
+I hope this was helpful! I think this is the end of this series; I'm planning to do some deeper dives next time.
 
 Like this article? Hire me, or bring me in to consult. Professional enquiries at
 [efron.dev@gmail.com](efron.dev@mail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)

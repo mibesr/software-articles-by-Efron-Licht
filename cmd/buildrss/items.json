@@ -1,0 +1,50 @@
+{
+    "README.html": {
+        "Title": "README",
+        "Link": "https://eblog.fly.dev/README.html",
+        "GUID": "0ba933f1-853e-42c2-8ee1-09d120dd3aa7",
+        "PubDate": "2023-03-14T13:41:39.763514288-07:00"
+    },
+    "benchmark_results.html": {
+        "Title": "benchmark_results",
+        "Link": "https://eblog.fly.dev/benchmark_results.html",
+        "GUID": "1e99191a-aa92-4aff-af42-8d862077d73d",
+        "PubDate": "2023-03-14T13:41:39.763514288-07:00"
+    },
+    "bytehacking.html": {
+        "Title": "bytehacking",
+        "Link": "https://eblog.fly.dev/bytehacking.html",
+        "GUID": "6c0c3811-a4b7-4ceb-98c2-0f7103cd56e0",
+        "PubDate": "2023-03-14T13:41:39.763514288-07:00"
+    },
+    "faststack.html": {
+        "Title": "faststack",
+        "Link": "https://eblog.fly.dev/faststack.html",
+        "GUID": "31aecf67-6d54-483b-9160-0f4314600e1a",
+        "PubDate": "2023-03-14T13:41:39.763514288-07:00"
+    },
+    "index.html": {
+        "Title": "index.html",
+        "Link": "https://eblog.fly.dev/index.html",
+        "GUID": "54d3cee8-ca19-41cd-9707-d15c8be581e5",
+        "PubDate": "2023-03-14T13:41:39.763514288-07:00"
+    },
+    "mermaid_test.html": {
+        "Title": "mermaid_test",
+        "Link": "https://eblog.fly.dev/mermaid_test.html",
+        "GUID": "b524bf80-eccd-4464-9231-bd0d9435c5f2",
+        "PubDate": "2023-03-14T13:41:39.763514288-07:00"
+    },
+    "quirks.html": {
+        "Title": "quirks",
+        "Link": "https://eblog.fly.dev/quirks.html",
+        "GUID": "8ff85434-9fdc-4880-9051-811ebbee311c",
+        "PubDate": "2023-03-14T13:41:39.763514288-07:00"
+    },
+    "quirks2.html": {
+        "Title": "quirks2",
+        "Link": "https://eblog.fly.dev/quirks2.html",
+        "GUID": "1f976683-1e17-4964-855d-ff9cc860042f",
+        "PubDate": "2023-03-14T13:41:39.763514288-07:00"
+    }
+}

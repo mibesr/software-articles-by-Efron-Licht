@@ -38,5 +38,5 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/sourcegraph/annotate v0.0.0-20160123013949-f4cad6c6324d // indirect
 	go.uber.org/zap v1.24.0
-	golang.org/x/net v0.4.0 // indirect
+	golang.org/x/net v0.4.0
 )
