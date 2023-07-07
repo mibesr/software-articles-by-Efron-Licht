@@ -1,6 +1,6 @@
-# fly.toml file generated for eblog on 2023-07-03T08:12:49-07:00
+# fly.toml file generated for eblog-test on 2023-07-07T14:14:08-07:00
 
-app = "eblog"
+app = "eblog-test"
 kill_signal = "SIGINT"
 kill_timeout = 5
 processes = []

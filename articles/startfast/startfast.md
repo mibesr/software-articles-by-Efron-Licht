@@ -191,8 +191,8 @@ func loadFont() map[string]font.Face {
     for i, entry := range dir {
         i, entry := i, entry 
         // needed until https://github.com/golang/go/wiki/LoopvarExperiment is implemented
-        wg.Add(1)
-        go func() {
+        wg.Add(1) 
+        go func() {  
             defer wg.Done()
             b := must(assets.ReadFile("font/" + d.Name()))
             if strings.Contains(d.Name(), "woff2") {
