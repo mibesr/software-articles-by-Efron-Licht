@@ -5,3 +5,4 @@ bin/**
 **/static/*.md
 **/static/assets.zip
 **/static/*.html
+vendor/**

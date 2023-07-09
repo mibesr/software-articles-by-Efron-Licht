@@ -39,7 +39,6 @@ func main() {
 	}
 	var changed int
 	walkFunc := func(srcPath string, d fs.DirEntry, err error) error {
-
 		if filepath.Ext(srcPath) != ".html" {
 			return nil
 		}
@@ -75,8 +74,8 @@ func main() {
 	}
 	toFile("items.json", items)
 	toFile("checksums.json", checksums)
-
 }
+
 func findTitle(n *html.Node) (string, bool) {
 	if n.Type == html.ElementNode && n.Data == "title" {
 		return n.FirstChild.Data, true
@@ -95,6 +94,7 @@ func toFile[T any](path string, t T) {
 		panic(fmt.Errorf("writing %s to %v", b, path))
 	}
 }
+
 func fromFile[T any](path string) T {
 	var t T
 	b, err := (os.ReadFile(path))

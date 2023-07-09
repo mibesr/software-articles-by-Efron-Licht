@@ -126,8 +126,8 @@ func init() {
 ```
 
 Or even worse, this:
-
-```go
+ 
+```go 
 var data []byte
 func init() {
     var buf bytes.Buffer

@@ -35,7 +35,6 @@ func main() {
 	}
 	cancel()
 	log.Println("successful shutdown")
-
 }
 
 func setupLogger() *zap.Logger {
@@ -50,7 +49,7 @@ func setupLogger() *zap.Logger {
 		zapcore.NewConsoleEncoder(cfg),
 		&zapcore.BufferedWriteSyncer{WS: os.Stderr, FlushInterval: time.Second},
 		zapcore.DebugLevel,
-	))
+	)) //
 	zap.ReplaceGlobals(logger)
 	zap.RedirectStdLog(logger)
 	logger.Info("initialized logger")
@@ -64,7 +63,6 @@ func Run(ctx context.Context) (err error) {
 	defer logger.Sync()
 	var router http.Handler // build router.
 	{
-
 		// a router just maps requests to responses.
 		// we don't have complicatd requests, so we can handle the logic ourselves.
 		// it's faster, too.
@@ -89,7 +87,6 @@ func Run(ctx context.Context) (err error) {
 					r.Header.Add("cache-control", "public")
 				} else {
 					r.Header.Add("cache-control", "no-cache")
-
 				}
 				static.ServeFile(w, r)
 			}
