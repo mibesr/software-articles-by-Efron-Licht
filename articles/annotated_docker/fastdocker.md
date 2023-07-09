@@ -194,18 +194,20 @@ Rather than starting from `ubuntu:latest`, we can have a _builder_ stage that st
 We could write our Dockerfile like this:
 
 ```dockerfile
-# builder stage: give it a name so we can refer to it later
 FROM golang:latest as builder
-# copy main.go from the host machine to the container
 COPY ./main.go ./main.go 
 RUN go build -o /helloworld main.go 
-
 FROM ubuntu:latest
-# copy the compiled program from the build stage to the run stage
 COPY --from=builder /helloworld ./helloworld
-# run our program
 ENTRYPOINT ./helloworld 
 ```
+
+This is pretty much the same as our previous Dockerfile, but with a few changes:
+
+- We start from `golang:latest` instead of `ubuntu:latest`, so we don't have to install Go.
+- We give our first stage a name: `as builder`. This is so we can refer to it later.
+- We have a second stage, which starts from `ubuntu:latest`, and _never installs the Go compiler_.
+- We use `COPY --from=builder` to copy our compiled program from the builder stage to the run stage.
 
 Let's check how long this takes to build:
 
@@ -276,26 +278,29 @@ mkdir -p foo/bar && touch foo/bar/baz
 
 ## Dockerfile performance: a few rules of thumb
 
-- ### Dockerfiles should be ordered from least-frequently-changed to most-frequently-changed
+#### Dockerfiles should be ordered from least-frequently-changed to most-frequently-changed
 
-    Usually, dependencies change less frequently than source code, and source code changes less often than assets.
+ Usually, dependencies change less frequently than source code, and source code changes less often than assets.
 
-- ### Dockerfiles should be as specific and granular as possible
+#### Dockerfiles should be as specific and granular as possible
 
-    The more specific a layer is, the less likely it is to be invalidated. `COPY` only the bits you need, immediately before you need them. Don't copy your entire source tree if you only need one file. Don't copy your entire assets directory if you only need one image. Don't copy your entire dependencies directory if you only need one binary. Avoid `node` and other enormous package managers that install hundreds of dependencies.
+ The more specific a layer is, the less likely it is to be invalidated. `COPY` only the bits you need, immediately before you need them. Don't copy your entire source tree if you only need one file. Don't copy your entire assets directory if you only need one image. Don't copy your entire dependencies directory if you only need one binary. Avoid `node` and other enormous package managers that install hundreds of dependencies.
 
-- ### Dockerfiles should be as small as possible
+#### Dockerfiles should be as small as possible
 
-    The image needs to be downloaded and cached on every machine that uses it. This takes time and space. Small is fast.  
+ The image needs to be downloaded and cached on every machine that uses it. This takes time and space. Small is fast.  
 
-- ### The Image that builds your application should be different from the image that runs your application
+#### The Image that builds your application should be different from the image that runs your application
 
-    You normally need far more tools to BUILD your application than you do to RUN your application. Build your application in one image, and copy the minimal subset needed to run it into a second image. In other words, ship the pizza, not the oven.
+ You normally need far more tools to BUILD your application than you do to RUN your application. Build your application in one image, and copy the minimal subset needed to run it into a second image. In other words, ship the pizza, not the oven.
+
 That should be enough to start.
 
 ## Annotated Dockerfile for `eblog`
 
-This is the Dockerfile for this very website. We'll explain it piece-by-piece here, and then show the full version at the end. Eblog works like this: I write articles in markdown. Three go programs I wrote in the `cmd` directory convert the markdown to html, generate the index page, and zip up those rendered assets into a zip file. That zip file is embedded into the binary for `eblog` itself, the webserver that serves the site.
+In the rest of this post, we'll walk through the Dockerfile for this blog, and explain how it works and why it's structured the way it is. Then we'll optimize it even further.
+
+Eblog (this site) works like this: I write articles (like this one) in markdown. Three go programs I wrote in the `cmd` directory convert the markdown to html (`rendermd`), generate the index page (`buildindex`), and zip up those rendered assets into a zip fil (`prezip`). That zip file is embedded into the binary for `eblog` itself. Then that binary is copied to a minimal docker image and uploaded to `fly.io`, which actually serves the site and handles DNS, etc.
 
 We can thus break the build process into three stages:
 
@@ -303,130 +308,7 @@ We can thus break the build process into three stages:
 - **Build** renders the assets using those tools and builds the `eblog` binary.
 - **Run** actually runs the `eblog` binary.
 
-## Stage 1: Tooling
-
-```dockerfile
-FROM golang:1.20.5-alpine3.18 as tooling
-```
-
-Our [golang:1.20.5-alpine3.18](https://hub.docker.com/layers/library/golang/1.20.5-alpine3.18/images/sha256-e7cc33118f807c67d9f2dfc811cc2cc8b79b3687d0b4ac891dd59bb2a5e4a8d3?context=explore) base image contains the golang compiler & tools at a svelte **99.77 MiB**.
-
-The standard `golang` images are based off debian and take [`314.84 MiB`](https://hub.docker.com/layers/library/golang/1.20.5/images/sha256-7f2cf491a0d8c1afcdc55120cda9d3777ee98852eff619c6c3e5a0b2386a69b4?context=explore).
-
-Always start with the smallest base image you can, and work your way up. You can add more layers, but you can't take them away. I prefer fixed tags to `latest`, since I don't want my builds to change out from under me.
-
-```dockerfile
-ENV GOPATH="" CGO_ENABLED=0
-```
-
-Environment variables persist from the line they're defined to the end of the Dockerfile,
-even across FROM statements, which can be a bit counterintuitive.
-
-- [`CGO_ENABLED=0`](https://pkg.go.dev/cmd/cgo) allows our final binary to run without glibc, saving us a ton of space on our final stage.
-- `GOPATH=""` makes Go always use [module mode](https://go.dev/blog/using-go-modules) (the usual way to use Go these days), simplifying our build process.
-
-```dockerfile
-RUN apk add --no-cache binutils
-```
-
-APK is alpine's package manager, very similar to `apt`, `yum`, `pacman`, `brew`, etc. Most dockerfiles need some kind of binary dependencies. When installing them, try to:
-
-- `RUN` those installs _before_ copying in your source code to avoid invalidating cache.
-- install the **minimal subset** of packages you need to build your app.
-- Set your package manager to `--no-cache` mode to avoid bloating your image with package metadata (or alternatively, delete the cache after installing your packages).
-- Remove tools you don't need after you're done with them.
-
-In this case, we're using the `strip` tool from binutils to remove debug symbols from our tool's binaries to shrink them down a bit. This isn't really necessary, but I wanted an example of a binary dependency.
-
-```dockerfile
-# list of dependencies
-COPY ./go.mod ./go.mod 
- # checksums for dependencies in go.mod
-COPY ./go.sum ./go.sum
-# helper libraries for our tools
-COPY ./observability ./observability 
-# source code for our tools
-COPY ./cmd ./cmd 
-```
-
-Copy the bare minimum of files you need to execute the next layer of code. Extra files take space and make it more likely to invalidate the cache. Docker has no way of knowing which files you actually need, so _any_ change to _any_ copied file invalidates that layer. Copy **as little as possible, as late as possible**. Never, ever use `COPY . .`.
-
-```dockerfile
-# download dependencies specified in go.mod
-RUN go mod download 
-
-# build our tools.
-RUN --mount=type=cache,target=/root/.cache/go-build go build -o rendermd -trimpath ./cmd/rendermd\
-&& go build -o buildindex -trimpath ./cmd/buildindex\
-&& go build -o prezip -trimpath ./cmd/prezip 
-```
-
-RUN executes commands as though they were in a shell. Each RUN command creates a new layer. The `--mount=type=cache,target=/root/.cache/go-build` flag tells docker to mount a cache directory for the go build cache. By combining layers that are likely to change together, we can reduce the number of layers that need to be rebuilt when we change our source code, saving time and space.
-
-```dockerfile
-# strip debug symbols from our binaries to reduce their size
-RUN strip ./rendermd ./buildindex ./prezip\
-&& apk del binutils # remove binutils, since we're done with it
-```
-
-Removing the tools you need after you're done with them is a good way to keep your image size down. In this case, we're removing `binutils` after we're done with it.
-
-## Stage 2: Build
-
-At this point, we have all the tools we need to build our app. Because our libraries and tools are unlikely to change, most of the time, these layers will remain cached, and our builds will be fast. Everything that follows handles application code or assets, which are more likely to change than stand-alone programs like `rendermd`.
-
-```dockerfile
-FROM tooling as builder
-```
-
-A new FROM statement starts a new stage. Here, we're just starting from where the previous stage left off, but we could have started from a completely different base image if we wanted to (and we will, in step 3).
-
-```dockerfile
-# server contains the source code for eblog.fly.dev
-COPY ./server ./server 
-# articles are markdown files that will be processed by the tools we built previously
-COPY ./articles ./articles 
-```
-
-As usual, we copy in the bare minimum of files we need to execute the next layer of code. The repo contains a number of other files and folders that aren't actually needed to build the app, so we don't copy them in.
-
-```dockerfile
-RUN ./rendermd ./articles ./server/static \
-&&  ./buildindex ./server/static \
-&&  ./prezip ./server/static > ./server/static/assets.zip
-```
-
-We run our tools to build the static assets for our app so we can [`embed`](https://pkg.go.dev/embed) them in the final binary. Embedding assets leads to fast serve and boot times.
-
-We're ready to build the app:
-
-```dockerfile
-RUN go mod download \
-&& go build -o /app -trimpath ./server
-```
-
-## Stage 3: Run
-
-```dockerfile
-FROM alpine:3.18 as run
-```
-
-Our final image just needs to run our application, not build it, so we can start from an even more minimal base image. `alpine:3.18` is only 5MiB!
-
-```dockerfile
-# expose port 8080 so the webserver can listen to it 
-EXPOSE 8080 
-# copy in our app from the previous stage
-COPY --from=builder /app /app 
-# add ca-certificates to allow https requests. 
-RUN apk add --no-cache ca-certificates 
-# note that we do this AFTER the copy: we always want the latest certs, even if the app hasn't changed!
-ENTRYPOINT ./app # this is the command that will be run when the container starts
-```
-
-## Full annotated Dockerfile
-
-Let's go over it again as one piece.
+I'll put the whole dockerfile here, then we'll walk through it line by line.
 
 ```dockerfile
 # start from a minimal golang image.
@@ -478,40 +360,134 @@ RUN apk add --no-cache ca-certificates
 ENTRYPOINT ./app
 ```
 
-## Results
-
-Let's compare this to a 'naive' Dockerfile that strives for as few lines as possible. This is broadly similar to the Dockerfile I used for the first version of `eblog`
+## Stage 1: Tooling
 
 ```dockerfile
-# debian-based golang image, like our original example
-FROM golang:latest 
-# copy in everything... will nearly always invalidate the cache. don't do this!
-COPY . . 
-# install git and ca-certificates
-RUN apt-get update && apt-get install -y git ca-certificates 
-ENV GOPATH="" CGO_ENABLED=0
-RUN go mod download
-RUN go run ./cmd/rendermd ./articles ./server/static
-RUN go run ./cmd/buildindex ./server/static
-RUN go run ./cmd/prezip ./server/static > ./server/static/assets.zip
-# I would advise AGAINST having your tests in the build/deploy dockerfile.
-# if you want to run tests, do it in CI, or do it in a separate stage that can run in parallel with the build.
-# I don't have time to go into this here.
-RUN go test ./server/...
-RUN go run ./server
+FROM golang:1.20.5-alpine3.18 as tooling
 ```
 
-I timed the builds with `time docker build .`, using the `real` time as the metric, and I used `docker images ls` to get the size of the final image.
+Nothing new here. We use the `golang:1.20.5-alpine3.18` image as our base image, and we give it a name so we can refer to it later.
+
+Our [golang:1.20.5-alpine3.18](https://hub.docker.com/layers/library/golang/1.20.5-alpine3.18/images/sha256-e7cc33118f807c67d9f2dfc811cc2cc8b79b3687d0b4ac891dd59bb2a5e4a8d3?context=explore) base image contains the golang compiler & tools at a svelte **99.77 MiB**.
+
+The standard `golang` images are based off debian and take [`314.84 MiB`](https://hub.docker.com/layers/library/golang/1.20.5/images/sha256-7f2cf491a0d8c1afcdc55120cda9d3777ee98852eff619c6c3e5a0b2386a69b4?context=explore).
+
+Always start with the smallest base image you can, and work your way up. You can add more layers, but you can't take them away. I prefer fixed tags to `latest`, since I don't want my builds to change out from under me.
+
+```dockerfile
+ENV GOPATH="" CGO_ENABLED=0
+```
+
+Environment variables persist from the line they're defined to the end of the Dockerfile,
+even across FROM statements, which can be a bit counterintuitive.
+
+- [`CGO_ENABLED=0`](https://pkg.go.dev/cmd/cgo) allows our final binary to run without glibc, saving us a ton of space on our final stage.
+- `GOPATH=""` makes Go always use [module mode](https://go.dev/blog/using-go-modules) (the usual way to use Go these days), simplifying our build process.
+
+```dockerfile
+RUN apk add --no-cache binutils
+```
+
+APK is alpine's package manager, very similar to `apt`, `yum`, `pacman`, `brew`, etc. Most dockerfiles need some kind of binary dependencies. When installing them, try to:
+
+- `RUN` those installs _before_ copying in your source code to avoid invalidating cache.
+- install the **minimal subset** of packages you need to build your app.
+- Set your package manager to `--no-cache` mode to avoid bloating your image with package metadata (or alternatively, delete the cache after installing your packages).
+- Remove tools you don't need after you're done with them.
+
+In this case, we're using the `strip` tool from binutils to remove debug symbols from our tool's binaries to shrink them down a bit. This isn't really necessary, but I wanted an example of a binary dependency.
+
+```dockerfile
+COPY ./go.mod ./go.mod 
+COPY ./go.sum ./go.sum
+COPY ./observability ./observability 
+COPY ./cmd ./cmd 
+```
+
+We copy the bare minimum of files you need to execute the next layer of code.  Specifically, we want to copy in `cmd` and the dependencies for `cmd`, but not `server` or `articles`, which are more likely to change. Docker has no way of knowing which files you actually need, so _any_ change to _any_ copied file invalidates that layer. Remember, copy **as little as possible, as late as possible**.
+
+```dockerfile
+RUN go mod download 
+```
+
+We download our dependencies here, so that we can cache them. They're specified in `go.mod` and `go.sum`, which we copied in earlier. This step is cached, so it will only run again if those files change.
+
+```dockerfile
+RUN go build -o rendermd -trimpath ./cmd/rendermd\
+&& go build -o buildindex -trimpath ./cmd/buildindex\
+&& go build -o prezip -trimpath ./cmd/prezip 
+```
+
+We build our tools here. We use the `-trimpath` flag to remove the absolute path to our source code from the binaries, which would otherwise be included by default. This step is also cached, so it will only run again if the source code changes.
+
+```dockerfile
+RUN strip ./rendermd ./buildindex ./prezip\
+&& apk del binutilst
+```
+
+This step removes debug symbols from our binaries, saving us a bit of space, then removes the `binutils` package we installed earlier to clean up after ourselves. Removing the tools you need after you're done with them is a good way to keep your image size down.
+
+## Stage 2: Build
+
+At this point, we have all the tools we need to build our app. Because our libraries and tools are unlikely to change, most of the time, these layers will remain cached, and our builds will be fast. Everything that follows handles application code or assets, which are more likely to change than stand-alone programs like `rendermd`.
+
+```dockerfile
+FROM tooling as builder
+```
+
+A new FROM statement starts a new stage. Here, we're just starting from where the previous stage left off, but we could have started from a completely different base image if we wanted to (and we will, in step 3).
+
+```dockerfile
+COPY ./server ./server 
+COPY ./articles ./articles 
+```
+
+As usual, we copy in the bare minimum of files we need to execute the next layer of code. In this case, we're copying in our application code and our articles, which are both needed to build our app every time, since I [`embed`](https://pkg.go.dev/embed) them in the final binary. Embedding assets leads to fast serve and boot times.
+
+```dockerfile
+RUN ./rendermd ./articles ./server/static \
+&&  ./buildindex ./server/static \
+&&  ./prezip ./server/static > ./server/static/assets.zip
+```
+
+We run the tools...
+
+```dockerfile
+RUN go mod download \
+&& go build -o /app -trimpath ./server
+```
+
+... and build our app.
+
+## Stage 3: Run
+
+Almost there.
+
+```dockerfile
+FROM alpine:3.18 as run
+EXPOSE 8080 
+COPY --from=builder /app /app 
+RUN apk add --no-cache ca-certificates 
+ENTRYPOINT ./app 
+```
+
+Our final image just needs to run our application, not build it, so we can start from an even more minimal base image. `alpine:3.18` is only 5MiB! We copy in our binary from the previous stage, install `ca-certificates` for the latest TLS certs, and run our app. Note that unlike before, we want to add the certificates _after_ copying in our binary, since we don't want to have outdated certs.
+
+## Results
+
+
+
+I timed the builds with `time docker build .`, using the `real` time as the metric, and I used `docker images ls` to get the size of the final image. I also did a few runs using debian-based images to see what using alpine savesus.
 
 Here, 'cache' means that we only had to rebuild starting from `builder`. 'no-cache' means that we had to rebuild starting from `tooling`. I'm not counting the initial download of the base image in either case.
 
 | Dockerfile | Time | % max |  Space | % max |
 |------------|-------|------| ------ | ----- |
-| naive      | `23.375s`| 100% |  `1340 MiB` | `100%` |
-| optimized (start at tooling) |`19.036s` | 81% |  `15.5  MiB` | `1.16%` |
-| optimized (start at run) | `4.243s` | 18% | `15.5  MiB` | `1.16%` |
+| golang:latest (1 stage)     | `23.375s`| 100% |  `1340 MiB` | `100%` |
+| golang:alpine -> alpine, start at tooling |`19.036s` | 81% |  `15.5  MiB` | `1.16%` |
+| golang:alpine -> alpine, start at build | `4.243s` | 18% | `15.5  MiB` | `1.16%` |
 
-No, that's not a typo. We get a **5x speedup** for cached builds, and a **86x** size reduction for the final image. If we go the whole hog and `strip` the final `app` binary, we get to 12.5MiB, **less than 1%** of the size of the naive build. (But I wouldn't recommend it: it's good to leave debug symbols in your production binaries. A 'mere' 86x improvement is just fine.)
+No, that's not a typo. We get a **5x speedup** for cached builds, and a **86x** size reduction for the final image compared to a naive 1-stage
 
 ... and we're still not done. **Not even close**.
 
@@ -540,11 +516,11 @@ Let's run it and see what happens:
 
 | build/tooling dockerfile | start | warm cache? | Time | % max |  Space | % max |
 |------------|-------|------| ------ | ----- | ---| ---|
-| `golang (debian)` |     tooling | ❌ |`23.375s`| `100%`|  `1340 MiB` | `100.00%` |
-| `golang-alpine` |tooling  | ❌ | `19.036s` | `81%` |  `15.5  MiB` | `1.16%` |
-| `golang-alpine` | tooling | ✅   | `7.070s` | `30%` |`15.5  MiB` | `1.16%` |
-| `golang-alpine` |  build | ❌ | `4.432s`  | `10%` | `15.5  MiB` | `1.16%` |
-| `golang-alpine` | build |     ✅|  `2.420s` | `2%` | `15.5  MiB` | `1.16%` |
+| `golang:latest` |     tooling | ❌ |`23.375s`| `100%`|  `1340 MiB` | `100.00%` |
+| `golang:alpine` |tooling  | ❌ | `19.036s` | `81%` |  `15.5  MiB` | `1.16%` |
+| `golang:alpine` | tooling | ✅   | `7.070s` | `30%` |`15.5  MiB` | `1.16%` |
+| `golang:alpine` |  build | ❌ | `4.432s`  | `10%` | `15.5  MiB` | `1.16%` |
+| `golang:alpine` | build |     ✅|  `2.420s` | `2%` | `15.5  MiB` | `1.16%` |
 
 ... That's right. **50x** speedup, and **86x** less space. We could do even more, but I think I've made my point. **How you build your docker images matters.**
 
