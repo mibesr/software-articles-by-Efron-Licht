@@ -1,12 +1,17 @@
 # Docker should be fast, not slow: a practical guide to building fast, small docker images
+A software article by Efron Licht\
+July 2023 
 
- Annotated July 2023 by Efron Licht
 
+Part 2 of a series on building fast, resilient software. 
+- [start fast: a guide to booting go programs quickly](https://eblog.fly.dev/startfast.html)
+- [docker should be fast, not slow: a practical guide to building fast, small docker images](https://eblog.fly.dev/fastdocker.html)
+- [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
 ## Intro
 
  Your average build process is glacially slow. I firmly believe most projects build between 50-200x slower than they should, and produce images 10-100x larger than they should. This costs your average software house hundreds of thousands of dollars a year in wasted developer time and hardware/cloud costs. Docker was a tool designed to help solve this problem, but it's widely misused in a way that makes the problem worse, not better. In this article, we'll talk about the costs of slow builds, quickly review the basics of Docker, and then annotate & optimize a real-world dockerfile: the one that generates the very website you're reading! We'll get a `50x` speedup in build time, and a nearly `100x` reduction in image size.
 
- This article is thematically connected to my previous article, [start fast: a guide to booting go programs quickly](https://eblog.fly.dev/startfast.html), but you don't need to read that to understand this one.
+ This article is thematically connected to my previous article, ), but you don't need to read that to understand this one.
 
 ## Motivation & back-of-the-envelope math
 

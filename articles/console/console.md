@@ -1,3 +1,4 @@
+### IN PROGRESS. IF YOU SEE THIS, IT'S NOT DONE YET. READ ONLY IF YOU'RE CURIOUS.
 
 # advanced go: reflection-based debug console
 

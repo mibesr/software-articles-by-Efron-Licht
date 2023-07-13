@@ -1,8 +1,15 @@
 # start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`
 
-##### A programming article by Efron Licht
+A software article by Efron Licht\
+June 2023
 
-##### July 2023
+Part 1 of a series on building fast, resilient software.
+
+- [start fast: a guide to booting go programs quickly](https://eblog.fly.dev/startfast.html)
+- [docker should be fast, not slow: a practical guide to building fast, small docker images](https://eblog.fly.dev/fastdocker.html)
+- [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+
+## Intro
 
 **The only thing a program does every time is boot, so it should boot as fast as possible**. This used to be a given, but modern programs are often extraordinarily slow to start. It's not unusual for simple programs to take 10s of seconds to start: it's expensive, frustrating, and totally preventable. In this article, I'll show you how to make your programs start in milliseconds, not seconds.
 
@@ -126,8 +133,8 @@ func init() {
 ```
 
 Or even worse, this:
- 
-```go 
+
+```go
 var data []byte
 func init() {
     var buf bytes.Buffer
