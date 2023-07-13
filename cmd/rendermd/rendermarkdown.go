@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -89,15 +90,25 @@ func main() {
 	}
 }
 
+var findtitleRE = regexp.MustCompile(`^# (.+)`) // like # Golang Quirks & Intermediate Tricks, Pt 1: Declarations, Control Flow, & Typesystem
+
 func renderMarkdown(path string) []byte {
+	b := markdown.NormalizeNewlines(must(os.ReadFile(path)))
+	var title string
+	if match := findtitleRE.FindSubmatch(b); len(match) > 1 {
+		title = strings.TrimSpace(string(match[1])) // use title from markdown
+	} else {
+		title = strings.TrimSuffix(filepath.Base(path), ".md") // default to filename
+	}
+
 	renderer := html.NewRenderer(html.RendererOptions{
 		Icon:           "/favicon.ico",
 		AbsolutePrefix: "",
 		CSS:            "/s.css",
 		Flags:          html.CommonFlags | html.CompletePage,
-		Title:          strings.TrimSuffix(filepath.Base(path), ".md"),
+		Title:          title,
 	})
-	html := markdown.ToHTML(markdown.NormalizeNewlines(must(os.ReadFile(path))), nil, renderer)
+	html := markdown.ToHTML(b, nil, renderer)
 	doc := must(goquery.NewDocumentFromReader(bytes.NewReader(html)))
 	// find code-parts via css selector and replace them with highlighted versions
 	doc.Find("code[class*=\"language-\"]").Each(func(i int, s *goquery.Selection) {

@@ -88,21 +88,25 @@ Hello, docker!
 Docker works pretty much the same way.
 
 ```dockerfile
-# FROM chooses a base image: this is a 'fresh' install of ubuntu
 FROM ubuntu:20.04
-# RUN is just like running a shell command in the terminal.
-# no need for sudo, since docker runs as root in the container.
-RUN apt-get update && apt-get install -y golang 
-# write our program to main.go. 
-RUN echo 'package main; import "fmt"; func main() {fmt.Println("Hello, docker!")}' > main.go
-# compile our program into an executable called helloworld
-RUN go build -o helloworld main.go # compile our program into an executable called helloworld
-# run our program
-ENTRYPOINT ./helloworld # run our program
 ```
 
-We build a docker image from this Dockerfile like this:
+# FROM chooses a base image: this is a 'fresh' install of ubuntu
 
+```dockerfile
+RUN apt-get update && apt-get install -y golang 
+RUN echo 'package main; import "fmt"; func main() {fmt.Println("Hello, docker!")}' > main.go
+RUN go build -o helloworld main.go # compile our program into an executable called helloworld
+```
+
+`RUN` executes a command in the container. Here, we install go, write our program to a file, and compile it.
+
+```dockerfile
+ENTRYPOINT ./helloworld # run our program
+```
+Entry point is the command that runs when we run the container. Here, we run our program.
+
+We build a docker image from this Dockerfile like this:
 IN
 
 ```sh
@@ -475,8 +479,6 @@ Our final image just needs to run our application, not build it, so we can start
 
 ## Results
 
-
-
 I timed the builds with `time docker build .`, using the `real` time as the metric, and I used `docker images ls` to get the size of the final image. I also did a few runs using debian-based images to see what using alpine savesus.
 
 Here, 'cache' means that we only had to rebuild starting from `builder`. 'no-cache' means that we had to rebuild starting from `tooling`. I'm not counting the initial download of the base image in either case.
@@ -522,6 +524,9 @@ Let's run it and see what happens:
 | `golang:alpine` |  build | ❌ | `4.432s`  | `10%` | `15.5  MiB` | `1.16%` |
 | `golang:alpine` | build |     ✅|  `2.420s` | `2%` | `15.5  MiB` | `1.16%` |
 
+If we go the whole hog and `strip` the final `app` binary, we get to 12.5MiB, **less than 1%** of the size of the naive build. (But I wouldn't recommend it: it's good to leave debug symbols in your production binaries. A 'mere' 86x improvement is just fine.)
+
+If we go the whole hog and `strip` the final `app` binary, we get to 12.5MiB, **less than 1%** of the size of the naive build. (But I wouldn't recommend it: it's good to leave debug symbols in your production binaries. A 'mere' 86x improvement is just fine.)
 ... That's right. **50x** speedup, and **86x** less space. We could do even more, but I think I've made my point. **How you build your docker images matters.**
 
 As dramatic as these numbers are, I honestly believe they're the norm, not the exception. `eblog` is a hobby project deliberately designed to have as few dependencies and features as possible. Most software projects are far less disciplined in design and have sprawling dependency graphs. They have far more to lose from a poorly designed build process and far, far more to gain from a good one. I have personally got >30x speedups and >300x size reductions on corporate projects.
