@@ -56,20 +56,20 @@ func main() {
 		}
 	}
 
-	{ // sort results
-		var less func(i, j int) bool
-		switch *sortBy {
-		case "none":
-			goto PRINT
-		case "allocs":
-			less = func(i, j int) bool { return results[i].allocs < results[j].allocs }
-		case "name":
-			less = func(i, j int) bool { return results[i].name < results[j].name }
-		case "runtime":
-			less = func(i, j int) bool { return results[i].ns < results[j].ns }
-		}
-		sort.Slice(results, less)
+	// sort results
+	var less func(i, j int) bool
+	switch *sortBy {
+	case "none":
+		goto PRINT
+	case "allocs":
+		less = func(i, j int) bool { return results[i].allocs < results[j].allocs }
+	case "name":
+		less = func(i, j int) bool { return results[i].name < results[j].name }
+	case "runtime":
+		less = func(i, j int) bool { return results[i].ns < results[j].ns }
 	}
+	sort.Slice(results, less)
+
 PRINT:
 	for _, res := range results {
 		fmt.Printf("|%s|%.3g|%.3g|%0.3g|%.3g|%0.3g|%.3g|%0.3g|\n", res.name, res.runs, res.ns, (res.ns/maxNS)*100, res.bytes, (res.bytes/maxBytes)*100, res.allocs, (res.allocs/maxAllocs)*100)
