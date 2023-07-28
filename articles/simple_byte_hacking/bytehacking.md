@@ -4,17 +4,26 @@
 
 #### Jan 2023
 
-## [more articles](https://eblog.fly.dev)
-
-- [bytehacking](./bytehacking.html) [markdown](./bytehacking.md)
-- [tale of two stacks](./faststack.html) [markdown] (./faststack.md)
-- [go quirks & tricks, pt 1](./quirks.html) [markdown] (./quirks.md)
-- [go quirks & tricks, pt 2](./quirks2.html) [markdown] (./quirks2.md)
-
-
 Many junior & intermediate programmers can be a little skittish around around byte-level hacking. You shouldn't be. It's not as hard as it's made out to be, and getting comfortable with low-level programming can make for simpler, more efficient code, In this article, we'll take an example of a real-world problem with a solution that was best discovered and implemented with byte-level programming.
 
 We'll build a few command-line tools and benchmark results along the way.
+
+#### **more articles**: 
+- go quirks & tricks
+
+  1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
+  2. [concurrency, unsafe, reflect](https://eblog.fly.dev/quirks2.html)
+  3. [arrays, validation, build constraints](https://eblog.fly.dev/quirks3.html)
+
+- starting software
+
+    1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
+    1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
+    1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+- [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
+- [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
+
+
 
 ## Intro
 

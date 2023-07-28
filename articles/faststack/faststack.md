@@ -3,12 +3,20 @@
 
 #### A programming article by Efron Licht
 
-## [more articles](./index.html)
+#### **more articles**: 
+- go quirks & tricks
 
-- [bytehacking](./bytehacking.html) [markdown](./bytehacking.md)
-- [tale of two stacks](./faststack.html) [markdown] (./faststack.md)
-- [go quirks & tricks, pt 1](./quirks.html) [markdown] (./quirks.md)
-- [go quirks & tricks, pt 2](./quirks2.html) [markdown] (./quirks2.md)
+  1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
+  2. [concurrency, unsafe, reflect](https://eblog.fly.dev/quirks2.html)
+  3. [arrays, validation, build constraints](https://eblog.fly.dev/quirks3.html)
+
+- starting software
+
+    1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
+    1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
+    1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+- [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
+- [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
 
 ## gin's panic handler
 
@@ -700,5 +708,5 @@ At some point, it's important to take a step back and ask yourself _whether or n
 
 We'll talk about panics, logging, and recovery more in a later article: stay tuned.
 
-Like this article? Hire me, or bring me in to consult. Professional enquiries at
-[efron.dev@gmail.com](efron.dev@mail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)
+Like this article? Need help making great software, or just want to save a couple hundred thousand dollars on your cloud bill? Hire me, or bring me in to consult. Professional enquiries at
+[efron.dev@gmail.com](efron.dev@gmail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)

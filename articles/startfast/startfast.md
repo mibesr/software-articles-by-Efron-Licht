@@ -1,17 +1,30 @@
 # start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`
 
 A software article by Efron Licht\
-June 2023
+June 202
 
-Part 1 of a series on building fast, resilient software.
-
-- [start fast: a guide to booting go programs quickly](https://eblog.fly.dev/startfast.html)
-- [docker should be fast, not slow: a practical guide to building fast, small docker images](https://eblog.fly.dev/fastdocker.html)
-- [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
-
-## Intro
 
 **The only thing a program does every time is boot, so it should boot as fast as possible**. This used to be a given, but modern programs are often extraordinarily slow to start. It's not unusual for simple programs to take 10s of seconds to start: it's expensive, frustrating, and totally preventable. In this article, I'll show you how to make your programs start in milliseconds, not seconds.
+## more articles
+
+### go quirks & tricks
+
+- [go quirks & tricks 1: declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
+- [go quirks & tricks 2: concurrency, unsafe, reflect](https://eblog.fly.dev/quirks2.html)
+- [go quirks & tricks 3: arrays, validation, build constraints](https://eblog.fly.dev/quirks3.html)
+
+### starting software
+
+- [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
+- [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
+- [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+
+### code dives
+
+- [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
+- [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
+
+
 
 ## Table-setting
 
@@ -478,4 +491,5 @@ Next we're going to talk about how to make your program _compile_ and _deploy_ q
 After that, I plan on an article about _why_ boot time and compile time matter.
 If you liked this article, check out more, like [this one on lesser-known go features](https://eblog.fly.dev/quirks.html).
 
-I'm currently **looking for work**. Please check out my [**linkedin**](https://www.linkedin.com/in/efronlicht/) or send me an email at <efron.dev@gmail.com> for professional enquiries.
+Like this article? Need help making great software, or just want to save a couple hundred thousand dollars on your cloud bill? Hire me, or bring me in to consult. Professional enquiries at
+[efron.dev@gmail.com](efron.dev@gmail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)

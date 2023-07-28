@@ -1,14 +1,25 @@
-# Golang Quirks & Tricks, Pt 3
+# go quirks & tricks 3
 
-#### A Programming Article by Efron Licht
+#### a programming article by Efron Licht
 
-#### July 2023
+#### july 2023
 
-This is the third in a series of articles about intermediate-to-advanced go programming techniques. This one is a bit short, but I hope you find it useful.
+Go is generally considered a 'simple' language, but it has more edge cases and tricks than most might expect. This is the third in a series of articles about intermediate-to-advanced go programming techniques. [In part 1](https://eblog.fly.dev/quirks.html), we covered unusual parts of declaration, control flow, and the type system]. In [part 2]((https://eblog.fly.dev/quirks2.html)), we touched concurrency, `unsafe`, and `reflect`. Here in part 3, we'll mostly talk about arrays, validation, and build constraints.
 
-- [Go Quirks & Tricks 1](https://eblog.fly.dev/quirks.html)
-- [Go Quirks & Tricks 2](https://eblog.fly.dev/quirks2.html)
-- [Go Quirks & Tricks 3](https://eblog.fly.dev/quirks3.html)
+#### **more articles**: 
+- go quirks & tricks
+
+  1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
+  2. [concurrency, unsafe, reflect](https://eblog.fly.dev/quirks2.html)
+  3. [arrays, validation, build constraints](https://eblog.fly.dev/quirks3.html)
+
+- starting software
+
+    1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
+    1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
+    1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+- [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
+- [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
 
 ### arrays can be initialized using a map-like syntax
 
@@ -160,6 +171,7 @@ func Logged[T any](t T) T {
     return t
 }
 ```
+
 Or to assert properties of a value as it's initialized.   In particular, **combined with the enum/array lookup table approach mentioned earlier**, we can validate that all enum variants have a value a lookup table:
 
 ```go
@@ -185,9 +197,11 @@ switch v := reflect.ValueOf(v); v.Kind() {
         }
 }
 ```
+
 And we'll get an immediate runtime error if we forget to fill in a value, complete with the file:line where we initialized the array. **Most IDEs recognize the file:line format and will let you command-click on it to jump to the offending line**. Knowing we missed a variant at compile time is much better than finding out at runtime.
 
 Let's demonstrate. Suppose we forget to initalize `UNARMED` in our array:
+
 ```go
 // https://go.dev/play/p/Du-AaY-L4mR
 var names = MustNonZero([GunKindN]string{
@@ -200,7 +214,6 @@ var names = MustNonZero([GunKindN]string{
 ```
 panic: /tmp/sandbox1262377932/prog.go:19: [4]string[0] unexpectedly zero
 ```
-
 
 Obviously, you could create tests for each array/slice, but that's both a lot of boilerplate and rather distant from where it's defined. I find this approach to be simpler and more direct.
 
@@ -255,10 +268,10 @@ const haveArchSin = false
 
 ```go
 func Sin(x float64) float64 {
-	if haveArchSin { // set by build constraint
-		return archSin(x)
-	}
-	return sin(x)
+ if haveArchSin { // set by build constraint
+  return archSin(x)
+ }
+ return sin(x)
 }
 ```
 
@@ -354,8 +367,7 @@ OUT
 ```
 // many lines omitted from disassembler of identical (except addresses output)
 
-
-vvfunc main() {                                                   func main() {
+func main() {                                                   func main() {
   0x481060              493b6610                CMPQ 0x10(R14     0x481060              493b6610                CMPQ 0x10(R14
   0x481064              7656                    JBE 0x4810bc      0x481064              7656                    JBE 0x4810bc
   0x481066              4883ec40                SUBQ $0x40, S     0x481066              4883ec40                SUBQ $0x40, S
@@ -372,19 +384,15 @@ vvfunc main() {                                                   func main() {
   0x481099              488d05a8650300          LEAQ go:itab.     0x481099              488d05a8650300          LEAQ go:itab.
   0x4810a0              488d4c2428              LEAQ 0x28(SP)     0x4810a0              488d4c2428              LEAQ 0x28(SP)
   0x4810a5              bf01000000              MOVL $0x1, DI     0x4810a5              bf01000000              MOVL $0x1, DI
-  ``````
+```
 
 You may note _slightly_ different addresses, but the code is otherwise identical (except for the `fmt.Println` call, of course). Even whitespace changes will generate _this_ kind of difference, though: these are 'identical enough'.
 
-
 ## Conclusion
 
-Hope you find some of these techniques handy. I've been using most of these pretty heavily while working on my game. 
+Hope you find some of these techniques handy. I've been using most of these pretty heavily while working on my game.
 
-If you liked this article, you may enjoy my series on **starting software**: 
-- [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
-- [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
-- [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+If you liked this article, you may enjoy my series on **starting software**:
 
 Like this article? Need help making great software, or just want to save a couple hundred thousand dollars on your cloud bill? Hire me, or bring me in to consult. Professional enquiries at
 [efron.dev@gmail.com](efron.dev@gmail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)

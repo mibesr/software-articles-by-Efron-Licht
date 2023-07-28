@@ -4,12 +4,23 @@ A software article by Efron Licht
 
 July 2023.
 
-Part of a series on _starting software_:
+#### **more articles**: 
+- go quirks & tricks
 
-- [docker should be fast, not slow: a practical guide to building fast, small docker images](https://eblog.fly.dev/fastdocker.html)
-- [start fast: booting go programs quickly with inittrace and nonblocking[T]](https://eblog.fly.dev/startfast.html)
+  1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
+  2. [concurrency, unsafe, reflect](https://eblog.fly.dev/quirks2.html)
+  3. [arrays, validation, build constraints](https://eblog.fly.dev/quirks3.html)
 
-You don't have to read those ones to read this, but they're thematically related.
+- starting software
+
+    1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
+    1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
+    1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+- [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
+- [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
+
+
+
 
 ## Introduction: "Restart, Reboot, Reinstall"
 
@@ -27,7 +38,8 @@ The third and final step is usually:
 
 This holy trinity: "Restart, Reboot, Reinstall" - has a higher success rate than any other debug or repair strategy since the first MOS 6502 rolled off the assembly line in 1975. **They are remarkably universal and effective repair strategies**.
 
-They are so universal and effective that we sometimes don't think of them as strategies at all. How many times over the last few days have you had to do one or more of these things? All of these events took place over the last 72 hours:
+They are so universal and effective that we sometimes don't think of them as strategies at all. 
+How many times over the last few days have you had to do one or more of these things? All of these events took place over the last 72 hours:
 
 |device|program|problem|restart, reboot, reinstall?| did it work?| time to fix?| total time|
 |---|---|---|---|---|---| ---|
@@ -360,7 +372,5 @@ After graceful shutdown or an _extremely_ short timeout (like 500ms), it should 
 
 **Turning it on and off again** is the lived reality of software engineering, whether we like it or not. Let's stop pretending our programs won't fail, and design them to make that failure as painless and transitory as possible.
 
-Like this article? Need some help making great software (or just saving a couple hundred thousand dollars)?
- Open to professional enquiries or software chats at <efron.dev@gmail.com> or [linkedin.com/in/efronlicht](https://www.linkedin.com/in/efronlicht/).
-
-See more articles by going to <https://eblog.fly.dev>
+Like this article? Need help making great software, or just want to save a couple hundred thousand dollars on your cloud bill? Hire me, or bring me in to consult. Professional enquiries at
+[efron.dev@gmail.com](efron.dev@gmail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)

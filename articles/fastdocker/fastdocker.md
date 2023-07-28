@@ -1,13 +1,24 @@
 # Docker should be fast, not slow: a practical guide to building fast, small docker images
+
 A software article by Efron Licht\
-July 2023 
+July 2023\
 
+Part 2 of a series on starting software.
 
-Part 2 of a series on building fast, resilient software. 
-- [start fast: a guide to booting go programs quickly](https://eblog.fly.dev/startfast.html)
-- [docker should be fast, not slow: a practical guide to building fast, small docker images](https://eblog.fly.dev/fastdocker.html)
-- [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
-## Intro
+#### **more articles**: 
+- go quirks & tricks
+
+  1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
+  2. [concurrency, unsafe, reflect](https://eblog.fly.dev/quirks2.html)
+  3. [arrays, validation, build constraints](https://eblog.fly.dev/quirks3.html)
+
+- starting software
+
+    1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
+    1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
+    1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+- [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
+- [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
 
  Your average build process is glacially slow. I firmly believe most projects build between 50-200x slower than they should, and produce images 10-100x larger than they should. This costs your average software house hundreds of thousands of dollars a year in wasted developer time and hardware/cloud costs. Docker was a tool designed to help solve this problem, but it's widely misused in a way that makes the problem worse, not better. In this article, we'll talk about the costs of slow builds, quickly review the basics of Docker, and then annotate & optimize a real-world dockerfile: the one that generates the very website you're reading! We'll get a `50x` speedup in build time, and a nearly `100x` reduction in image size.
 
@@ -109,6 +120,7 @@ RUN go build -o helloworld main.go # compile our program into an executable call
 ```dockerfile
 ENTRYPOINT ./helloworld # run our program
 ```
+
 Entry point is the command that runs when we run the container. Here, we run our program.
 
 We build a docker image from this Dockerfile like this:
@@ -540,4 +552,5 @@ As dramatic as these numbers are, I honestly believe they're the norm, not the e
 
 There's no reason your docker builds can't be fast and your deployments small. It just takes a little bit of work to get there. Keep an eye on your build process and you'll reap the rewards of faster builds and smaller images... and the significant cost savings that come with them. I hope you enjoyed the article! I'm not done talking about starting up fast, though. We've covered Docker and Boot time, but there's plenty left to talk about.
 
-Like this article? Feel like building great software or just saving a couple hundred thousand dollars a year on your cloud bill? Professional inquiries at <https://www.linkedin.com/in/efronlicht> or <efron.dev@gmail.com>.
+Like this article? Need help making great software, or just want to save a couple hundred thousand dollars on your cloud bill? Hire me, or bring me in to consult. Professional enquiries at
+[efron.dev@gmail.com](efron.dev@gmail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)

@@ -4,18 +4,28 @@
 
 #### Feb 2023
 
-#### [more articles](https://eblog.fly.dev)
-
-- [bytehacking](./bytehacking.html) --  [markdown](./bytehacking.md)
-- [tale of two stacks](./faststack.html)    -- [markdown](./faststack.md)
-- [go quirks & tricks, pt 1](./quirks.html) -- [markdown](./quirks.md)
-- [go quirks & tricks, pt 2](./quirks2.html)   -- [markdown](./quirks2.md)
-
 Go is generally considered a 'simple' language, but it has more edge cases and tricks than most might expect. In my [last article](./quirks.html), we covered intermediate topics, like declaration, control flow, and the type system. Now we're going to get into more advanced topics: concurrency, `unsafe`, and `reflect`.
 
 By their nature, these articles are somewhat of a grab-bag without unifying theme, but the extremely positive response to the last one has convinced me they're worthwhile as a kind of whirlwind tour of more advanced topics.
 
 As before, I'll link to the Go spec where appropriate. Most code examples link to a demonstration on the go playground.
+
+
+#### **more articles**: 
+- go quirks & tricks
+
+  1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
+  2. [concurrency, unsafe, reflect](https://eblog.fly.dev/quirks2.html)
+  3. [arrays, validation, build constraints](https://eblog.fly.dev/quirks3.html)
+
+- starting software
+
+    1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
+    1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
+    1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+- [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
+- [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
+
 
 ### generics
 
@@ -388,5 +398,5 @@ In general, the unsafe package is best avoided in production code, but sometimes
 
 I hope this was helpful! I think this is the end of this series; I'm planning to do some deeper dives next time.
 
-Like this article? Hire me, or bring me in to consult. Professional enquiries at
-[efron.dev@gmail.com](efron.dev@mail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)
+Like this article? Need help making great software, or just want to save a couple hundred thousand dollars on your cloud bill? Hire me, or bring me in to consult. Professional enquiries at
+[efron.dev@gmail.com](efron.dev@gmail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)

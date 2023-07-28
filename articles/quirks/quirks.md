@@ -4,20 +4,26 @@
 
 #### Feb 2023
 
-## [more articles](https://eblog.fly.dev)
+#### **more articles**: 
+- go quirks & tricks
 
-- bytehacking [html](./bytehacking.html) [markdown](./bytehacking.md)
-- [tale of two stacks](./faststack.html) [markdown] (./faststack.md)
-- [go quirks & tricks, pt 1](./quirks.html) [markdown] (./quirks.md)
-- [go quirks & tricks, pt 2](./quirks2.html) [markdown] (./quirks2.md)
+  1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
+  2. [concurrency, unsafe, reflect](https://eblog.fly.dev/quirks2.html)
+  3. [arrays, validation, build constraints](https://eblog.fly.dev/quirks3.html)
 
-#### On: Go, Programming Languages
+- starting software
+
+    1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
+    1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
+    1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+- [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
+- [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
 
 Go is generally considered a 'simple' language, but it has more edge cases and tricks than most might expect.
 
 You can be a productive go programmer without knowing about or using most or any of these tricks, but some of them are pretty handy. I'll link to the [go spec](https://go.dev/ref/spec) where appropriate throughout the article.
 
-This is part 1 of what I hope to be a continuing series.
+This is part 1 of ~~what I hope to be~~ a continuing series.
 
 ## multi-statement lines with semicolons
 
@@ -624,5 +630,5 @@ That's right: this ugly SOB has a
 - Unsafe
 - Runtime shenanigans
 
-Like this article? Hire me, or bring me in to consult. Professional enquiries at
-[efron.dev@gmail.com](efron.dev@mail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)
+Like this article? Need help making great software, or just want to save a couple hundred thousand dollars on your cloud bill? Hire me, or bring me in to consult. Professional enquiries at
+[efron.dev@gmail.com](efron.dev@gmail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)
