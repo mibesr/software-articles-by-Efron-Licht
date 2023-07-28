@@ -610,6 +610,5 @@ Still, regardless of whether this has a meaningful performance impact, I'm happy
 
 With luck, you've learned something about benchmarking, bytes, or UUIDs. And remember: if you're not sure where to start, try _just looking at it_.
 
-Like this article? Hire me, or bring me in to consult. Professional enquiries at
-[efron.dev@gmail.com](efron.dev@mail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)
-A
+Like this article? Need help making great software, or just want to save a couple hundred thousand dollars on your cloud bill? Hire me, or bring me in to consult. Professional enquiries at
+[efron.dev@gmail.com](efron.dev@gmail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)
