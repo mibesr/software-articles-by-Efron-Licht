@@ -400,7 +400,7 @@ We can cleanly abstract both 'classic' lazy initialization and the nonblocking e
 // nonblocking[T] is a lazy-initialized value of type T.
 // build a nonblocking[T] with NewLazy[T]() or NewEager[T]()
 type nonblocking[T any] struct { 
-    once sync.Once
+    once sync.Once // guards initialization
     val T // result of initialization, once initialized
     err  error  // error from initialization, once initialized
     fn   func() (T, error) // initializing function, called with Once().

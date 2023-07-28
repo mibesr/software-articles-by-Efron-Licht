@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math"
 	"net"
 	"net/http"
 	"os"
@@ -72,14 +71,17 @@ func Run(ctx context.Context) (err error) {
 			case r.Method != "GET":
 				w.WriteHeader(http.StatusMethodNotAllowed)
 			case p == "/debug/uptime":
-				elapsed := time.Since(Meta.StartTime)
-				_, _ = fmt.Fprintf(w, "%3vh %02vm %02vs", math.Floor(elapsed.Hours()), math.Floor(elapsed.Minutes()), math.Floor(elapsed.Seconds()))
+				d := (time.Since(start).Seconds())
+				const MIN = 60
+				const HOUR = 60 * MIN
+				const DAY = 24 * HOUR
+				_, _ = fmt.Fprintf(w, "%2dd %02dh %02dm %02ds", int(d/DAY), int(d/HOUR)%24, int(d/MIN)%60, int(d)%60)
 			case p == "/debug/meta":
 				_, _ = w.Write(metaJSON)
 			case p == "":
 				http.Redirect(w, r, "./index.html", http.StatusPermanentRedirect)
 			default:
-				// fonts are immutable and large, so we can cache them for a long time.
+				// fonts are immutable and large, so we can cache them for a long time.~
 				// everything else is tiny and might change, so we don't cache it.
 				if strings.Contains(r.URL.Path, ".woff2") {
 					r.Header.Add("cache-control", "immutable")

@@ -16,7 +16,7 @@ func main() {
 	html := []byte(`<!DOCTYPE html><html><head>
 	<title>index.html</title>
 	<meta charset="utf-8"/>
-	<link rel="stylesheet" type="text/css" href="/s.css"/>
+	<link rel="stylesheet" type="text/css" href="/dark.css"/>
 	</head>
 	<body>
 	<h1> articles </h1>

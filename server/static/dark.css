@@ -1,0 +1,259 @@
+/* fonts */
+@font-face {
+  font-family: "Source Code Pro";
+  font-weight: 300;
+  src: local("Source Code Pro"), url("/SourceCodePro-Regular.tff.woff2"),
+    format("woff2");
+  font-display: fallback;
+}
+
+@font-face {
+  font-display: fallback;
+  font-family: "Open Sans";
+  font-weight: 400;
+  src: local("Open Sans"), url("/OpenSans-Regular.woff2") format("woff2"), url(https://fonts.gstatic.com/s/opensans/v13/cJZKeOuBrn4kERxqtaUH3T8E0i7KZn-EPnyo3HZu7kw.woff) format("woff");
+}
+
+@font-face {
+  font-display: fallback;
+  font-family: "JetBrains Mono";
+  font-weight: 400;
+  src: local('JetBrains Mono'),
+    url("/JetBrainsMono-Regular.woff2") format("woff2");
+}
+
+
+/* formatting: non syntax-highlighting */
+body {
+  padding-top: 2ch;
+  padding-bottom: 2ch;
+  padding-left: 8ch;
+  text-align: left;
+  background-color: rgb(30, 16, 16);
+
+
+  font-family: "Open Sans", "Source Code Pro", "Monaco", "Helvetica";
+  color: rgb(175, 232, 229);
+  font-size: 14px;
+  max-width: 100ch;
+  line-height: 130%;
+}
+
+code {
+  color: rgb(65, 223, 118);
+  font-family: "JetBrains Mono", Menlo, Bitstream Vera Sans Mono,
+    DejaVu Sans Mono, Monaco, Consolas, monospace;
+  line-height: 130%;
+  font-size: 14x;
+}
+
+blockquote {
+
+  font-size: 15px;
+  color: #478eba;
+  line-height: 130%;
+
+}
+
+/* tables */
+table {
+  font-size: 18px;
+  margin-top: 12px;
+  margin-bottom: 4px;
+  font-family: "Open Sans";
+  table-layout: auto;
+  max-width: 100ch;
+  width: 100%;
+  justify-items: flex-start;
+  border-collapse: collapse;
+  border: 1px solid gray;
+  line-height: 130%;
+
+}
+
+td {
+  margin: 2px;
+  border-right: 1px solid;
+  padding-left: 2px;
+  border-left: 1px solid;
+  border-color: grey;
+  width: max-content;
+  line-height: 130%;
+
+}
+
+tr {
+  padding-left: 4px;
+  overflow: scroll;
+  line-height: 130%;
+
+  font-family: "Open Sans";
+
+}
+
+tr:nth-child(even) {
+  /* table zebra-striping */
+  background-color: #3a3535;
+}
+
+th {
+  border: 1px solid grey;
+  border-bottom: 2px inset grey;
+  table-layout: fixed;
+  padding-left: 4px;
+  text-align: center;
+  color: #ea87b5;
+  font-weight: bolder;
+
+}
+
+header {
+  text-align: center;
+  font-family: "Open Sans";
+}
+
+/* headers */
+h1,
+h2,
+h3 {
+  text-align: center;
+  line-height: 130%;
+  font-variant: titling-caps;
+  color: rgb(188, 235, 229);
+  text-shadow: 0 0 1px #c8c8c8;
+}
+
+h1 {
+  font-size: 34px;
+  text-shadow: 0 0 1px #c8c8c8;
+
+}
+
+h2 {
+  font-size: 30px;
+}
+
+h3 {
+  font-size: 24px;
+}
+
+a:link {
+  color: #4695c7
+}
+
+a:visited {
+  color: rgb(157, 157, 227)
+}
+
+
+
+
+/* code blocks*/
+pre {
+  background-color: #2b2727;
+  overflow-x: auto;
+
+  margin-top: 8px;
+  margin-bottom: 8px;
+  padding-left: 10px;
+  font-size: 16px;
+  padding-top: 2px;
+  padding-bottom: 4px;
+  border-radius: 10px;
+  line-height: 130%;
+  max-width: 100ch;
+  border-color: grey;
+  font-family: 'JetBrains Mono', Menlo, Bitstream Vera Sans Mono, DejaVu Sans Mono, Monaco,
+    Consolas, monospace;
+  border-spacing: 15px;
+  border-top-style: groove;
+}
+
+.pln {
+  color: rgb(238, 135, 135);
+}
+
+ol.linenums {
+  margin-top: 0;
+  margin-bottom: 0;
+  color: #ccc;
+}
+
+li.L0,
+li.L1,
+li.L2,
+li.L3,
+li.L4,
+li.L5,
+li.L6,
+li.L7,
+li.L8,
+li.L9 {
+  padding-left: 1em;
+  background-color: #fff;
+  list-style-type: decimal;
+}
+
+span.language-go {
+  text-align: left;
+}
+
+/* syntax highlighting */
+@media screen {
+
+  .str {
+    color: #bac8f2;
+  }
+
+  .kwd {
+    color: #e08db4;
+  }
+
+  .com {
+    color: #c8c9c8;
+  }
+
+  .typ {
+    color: #40c0eb;
+  }
+
+  .lit {
+    color: #edaddf;
+  }
+
+  .pun {
+    color: rgb(201, 193, 193);
+  }
+
+  .opn {
+    color: rgb(211, 130, 130);
+  }
+
+  .clo {
+    color: rgb(211, 130, 130);
+  }
+
+  .tag {
+    color: rgb(157, 157, 227);
+  }
+
+  .atn {
+    color: #b592eb;
+  }
+
+  .atv {
+    color: #a2b2e4;
+  }
+
+  .dec {
+    color: rgb(237, 255, 255);
+  }
+
+  .var {
+    color: rgb(61, 248, 123);
+  }
+
+  .fun {
+    color: rgb(247, 210, 116);
+  }
+}

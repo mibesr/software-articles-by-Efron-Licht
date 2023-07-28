@@ -25,7 +25,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestUptime(t *testing.T) {
-	if got := testGet(t, "debug/uptime"); !regexp.MustCompile(`\d+h \d+m \d+s`).MatchString(got) {
+	if got := testGet(t, "debug/uptime"); !regexp.MustCompile(`\d+d \d+h \d+m \d+s`).MatchString(got) {
 		t.Fatal(`expected \d+h \d+m \d+s: got `, got)
 	}
 }
