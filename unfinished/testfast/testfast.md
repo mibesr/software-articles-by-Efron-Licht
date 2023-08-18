@@ -6,42 +6,64 @@ READ AT YOUR OWN RISK.
 A software article by Efron Licht\
 July 2023
 
-Part 1 of a series on building fast, resilient software, fast.
-
 - [start fast: a guide to booting go programs quickly](https://eblog.fly.dev/startfast.html)
 - [docker should be fast, not slow: a practical guide to building fast, small docker images](https://eblog.fly.dev/fastdocker.html)
 - [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
 - [test fast](https://eblog.fly.dev/testfast.html)
 
-# Intro
+# Intro: What's wrong with my tests, anyway?
 
-The days of cowboy coding where ideas went straight to production are fading into the rearview mirror. Your average software project contains hundreds to thousands of tests that run before each and every deploy.
+Programming work varies wildly in scope. Some programming work is the exciting kind where you come up with clever algorithms, pack bits, or implement clever new features. But just as much programming work is 'routine': fixing spelling errors, updating configuration, adding an extra URL parameter to a HTTP request. The software engineering 
 
-## tests should be
 
-- fast. FAST! Only the rarest and most important tests should take longer than a millisecond to run. If a test _does_ take longer than that, it must be both
+Your average software project contains hundreds to thousands of tests that run before each and every deploy. While this has a number of important benefits, such as
+
+
+- finding bugs before they hit production
+- guarding against potential regressions introduced by new features or other bugfixes
+- acting as a "living" set of documentation and examples for the codebase
+- giving a nice warm fuzzy feeling to engineers & managers,
+  
+**Tests are not a universal panacea: in fact, slow or unreliable tests can cause more damage than they prevent.** A healthy test suite is about far more than coverage: useful tests are _fast_, _reliable_, and _deterministic_. In this article, we'll cover _why_ speed & consistency so crucial to a healthy test suite, and then go over _how_ to achieve them in practice.
+
+This article is a loose sequel to some of my other posts on infrastructure and speed. I'll link to them where appropriate, but you don't need to read them to understand this article.
+
+## why do speed & determinism matter so much?
+
+Programming work varies wildly in scope. Some programming work is the exciting kind where you come up with clever algorithms, pack bits, or implement clever new features. But just as much programming work is 'routine': fixing spelling errors, updating configuration, adding an extra URL parameter to a HTTP request. We build automated test suites to give ourselves a confidence that when we make changes like this that we haven't broken anything.
+
+ but many bugs are incredibly trivial: spelling an environment variable as `DBNAME` instead of `DB_NAME`, checking an error, adding an extra URL parameter to a HTTP request - the kind of bug that _should_ take thirty seconds to fix. Much of the most valuable programming work consists of quick iteration on problems of this kind as they shape the codebase into something useful. Only one problem: for the vast majority of professional codebases, the software test suite takes ten, thirty, or sixty minutes to run. By the time the test suite finishes, the programmer has been called into a meeting, pulled away by another bug, been out to lunch, or simply lost their train of thought. Either way, what should have been a 'quick fix' drags into the next day, or week, or month. **_Slow tests are an enormous productivity killer, a hidden demon sabotaging every attempt to build quality software._**
+
+This problem gets so much worse when flaky tests enter the picture. There is nothing quite so damaging to test infrastructure as a flaky test: a test that _sometimes_ passes and sometimes fails. Software Engineers universally develop a defense mechanism against flaky tests: they ignore them. Now, remember, **the entire purpose of a test suite is to tell you that your code needs to be fixed**. But since flaky tests are not a reliable indicator, developers ignore them, and they are training themselves and others to ignore the test suite, making the entire suite less and less reliable. Over time, as the flaky tests build up, developers assume _all_  failures are flaky, and they start simply ignoring _all_ failures and over-riding the safeguards that prevent broken code from being deployed. This concept, called "alarm fatigue", is well known in a variety of other fields. Disasters from [plane crashes](http://www.nytimes.com/1997/08/08/world/pilot-error-is-suspected-in-crash-on-guam.html?scp=8&sq=Korean%20Guam&st=cse) to  [exploding oil rigs](http://www.nytimes.com/2010/07/24/us/24hearings.html?scp=1&sq=Deepwater%20alarm&st=cse) to the famous meltdown at the chernobyl nuclear power plant were all, in part, due to alarm fatigue.
+
+It's hard to overstate how demoralizing this can be to a Software Engineer who is bursting  w/ good ideas about where and how to fix the problem. Some of the worst nights of programmers' lives involve convincing themselves they'll stick around "just until they fix this simple bug", only to find themselves still at the office at 1am, exhausted, waiting for yet another agoniizingly slow test run to finish. The product managers have to explain to the execs how a seemingly 'trivial' bug took days or weeks to fix. The exhausted progammers are then berated for their lack of productivity, or worse yet, their lack of 'ownership' of the problem, when they've run themselves ragged trying to fix it. This tendency to blame [individuals rather than systems](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1117770/pdf/768.pdf) for problems is well-known in organizational psychology. But because **infrastructure is all-too-often effictively invisible to leadership, it rarely gets prioritized**, even when it's the root cause of what leadership sees as a 'productivity' problem. Often times, the leadership is too far away to see the problem, and the junior engineers who are most affected by it are too 'close' to the problem to be able to really see it. They know something's wrong - everything takes too
+long, everything is too hard - but they don't know _why_ - and even if they do, they have no idea how to fix it.
+
+And in an attempt to regain the lost speed and regain the trust of leadership & product management, programmers will start cutting  _more_ corners: ignoring _more_ tests, and over-riding _more_ safeguards. It's a death spiral through good intentions.
+
+## Good tests
+
+OK, so if that's what BAD tests are like, what are good tests like?
+**Ideally**, Good tests are:
+
+- 
+- Start fast. Tests should have little or no 'initialization lag' before they start running. This means they should avoid I/O, network calls, and other slow operations, and they should avoid setting up dependencies, allocating memory, or other expensive operations unless absolutely necessary.
+- 
+- Fail fast.
+- Fast. FAST! Only the rarest and most important tests should take longer than a millisecond to run. If a test _does_ take longer than that, it must be both
   - important
   - run in parallel with other tests!
 - Parallelizable.
-- Deterministic. Flaky tests (that is, tests that sometimes fail and sometimes succeed) are a cancer on a test suite. They erode trust. They lead to developers ignoring failures, and they erode your hard-earned speed gains by having developers retry the test suite over and over on doomed PRs because a test _might_ just be flaky.
+- Deterministic. They should always pass or always fail, **and they should do so for the same reason every time**.
+- Have as few dependencies as possible.
 
-## slow but important tests
 
-Despite our best efforts, some tests are slow, taking hundreds of milliseconds or even seconds to run. We can mitigate the expense of these tests with these techniques.
+## test parti
+## fast
 
-- Run them in parallel, either within the test process or in separate processes using multiple machines.
-- Start them as early as possible so they can 'catch up' with the rest of the test/deploy process.
-- Find ways to cut them down into smaller sub-processes, perhaps by caching results from previous runs. This can be hard to explain, so let's go into a bit more detail
-- This can be dangerous, though, as it can lead to your tests getting out of sync with your code. Use with caution.
-- Run tests probabilistically. Let's suppose we're a big company with big scale. We have 1000 tests in the 'slow' category that take on average 1s each (after accounting for parallelism, etc), leading to a 15-minute integration test stage. Since we _are_ a big company, though, we have 100 PRs a day. If we test a _random subset_ of those tests on each run, we will probabilistically get full coverage rather quickly.
+Test binaries are just programs, and tests are just functions. To a certain extent, you make tests fast the same way you make any other program fast: by use of appropriate data structures, avoiding I/O and allocation, and so on. However, a test has an unusual structure for a program: it usually spends most of it's time initializing, and very little time actually running. From a developer's point of view, though, tests run _more_ often than the main program, so initialization speed is even more important.
 
-## just use maps for table-driven tests
-
-Go programs often use tables to describe their test cases. I like this a lot.
-
-## quickly initializing tests
-
-Test binaries are just programs, and tests are just functions.  From a developer's point of view, though, tests run _more_ often than the main program, so initialization speed is even more important. The fact that test binaries are run in parallel means that commonly-imported packages have to initialize many times for a 'single' call to `go test ./...`. This can compound the pain of initialization time. Mostly, the techniques for speeding up how fast tests boot are the same as those for ordinary programs, a [topic I covered in detail previously](https://eblog.fly.dev/startfast.html), but to summarize:
+Go, for instance, builds multiple test binaries, one for each package with tests, and runs them in parallel. This means that _each test binary_ has to initialize all the packages it imports, and then the test binary itself has to initialize. This means that a single package may have to be initialized dozens or hundreds of times in a single `go test ./...` invocation, compounding the pain of initialization time. Mostly, the techniques for speeding up how fast tests boot are the same as those for ordinary programs, a [topic I covered in detail previously](https://eblog.fly.dev/startfast.html), but to summarize:
 
 - measure your initialization time to see if and where you have a problem (`GODEBUG=inittrace=1` still works here)
 - use traditional optimization techniques to shave time off hot-spots
@@ -76,6 +98,16 @@ func init() {
  log.Printf("%-8s loaded %d files in %s", "all", len(Audio)+len(Img)+len(Fonts)+len(Shader), time.Since(start))
 }
 ```
+
+## slow but important tests
+
+Despite our best efforts, some tests are slow, taking hundreds of milliseconds or even seconds to run. We can mitigate the expense of these tests with these techniques.
+
+- Run them in parallel, either within the test process or in separate processes using multiple machines.
+- Start them as early as possible so they can 'catch up' with the rest of the test/deploy process.
+- Find ways to cut them down into smaller sub-processes, perhaps by caching results from previous runs. This can be hard to explain, so let's go into a bit more detail
+- This can be dangerous, though, as it can lead to your tests getting out of sync with your code. Use with caution.
+- Run tests probabilistically. Let's suppose we're a big company with big scale. We have 1000 tests in the 'slow' category that take on average 1s each (after accounting for parallelism, etc), leading to a 15-minute integration test stage. Since we _are_ a big company, though, we have 100 PRs a day. If we test a _random subset_ of those tests on each run, we will probabilistically get full coverage rather quickly.
 
 You can also avoid this issue by avoiding import-time behavior entirely or using the lazy-load and eager-nonblocking techniques discussed in my previous article.
 
@@ -284,79 +316,112 @@ func TestFindLinesMatching(t *testing.T) {
 }
 ```
 
-
 Readers may be tempted to extend this to mocking out dependencies with some kind of framework. I find this to be a _very bad idea_. Mocks take a lot of space, both within the code and in your head, and they are both fragile to maintain and of questionable value. If you want to see if a database call works, you _need to test the database_. The false sense of confidence mocks give is worse than useless.
 
-### grouping tests
-
-group tests by speed and 'dependency group'. The most common & useful grouping is extremely coarse: "short" and "long" tests.
-
-**Short** tests run in <5ms, require no outside dependencies, and are fully parallelizable. Most tests should be short tests.
-**Long** tests fail one or more of the above criteria.  
-
-Skip a long test by calling `t.Skip()` after checking `testing.Short()`
-
-```go
-func TestWriteFile(t *testing.T) {
-    if testing.Short() {
-        t.Skipf("SKIP %s: touches filesystem", t.Name()) // t.Name() is the name of the current test: here, "TestWriteFile"
-    }
-    // ... test code goes here ...//
-}
-```
-
-IN
-
-```
-go test -short -v ./...
-```
-
-OUT
-
-```
-=== RUN   TestWriteFile
-    testfast_test.go:7: SKIP TestWriteFile: touches filesystem
---- SKIP: TestWriteFile (0.00s)
-```
-
-Make sure to call `t.Skip()` or `t.Skipf()` _before_ `t.Parallel()`: forgetting to do so can cause unintuitive behavior or panics. Even long tests should be as short and simple as possible: the longer your tests
-take to run, the less often you can afford to run them.
 
 ### dependency management
 
 #### choose dependencies with fast and reliable tests
 
-Everything I've said so far about YOUR tests goes
+Everything I've said so far about YOUR tests goes for other people's tests, too.
 
 #### run your dependencies tests
 
-People do not do this and I find it insane. If you don't trust _your_ code without tests, why would you trust anyone else?
+People do not do this and I find it insane. If you don't trust _your_ code without tests, why would you trust anyone else? If their tests are slow, maybe don't run them _every time_, but at least run them a good thirty times every time you update a version to make sure _their_ tests are reliable.
 
 #### have as few dependencies as possible
 
-This is becoming a bit of a refrain. Dependencies add complexity to your code, length to the compilation, and size to the binary. You need to run your _Dep
+This is becoming a bit of a refrain. Dependencies add complexity to your code, length to the compilation, and size to the binary. They also add a lot of potential points of failure. If YOU write a piece of code, and it breaks, at least you have some idea how and why you wrote it.
 
 ### timing
 
-We often sleep in functions when we're waiting for some condition to be met. We may wait 100ms for a database to be available, for instance. This sets an artifical floor on the latency of your tests (that is, you make them **at least that slow**, when they could potentially be a dozen times faster).
+We often sleep in functions when we're waiting for some condition to be met. We may wait 1s for a database to be available, for instance, a pattern that looks like this:
 
-In general, try to avoid sleeping entirely by using a channel, mutex, waitgroup, or condition variable to signal when the condition is met, roughly in that order of preference. That is, **push** synchronization events from your dependencies to the test setup code. If you can't do that (e.g, you're waiting for a database to be available), you can set up repeated polls at `1-2ms` intervals and then push updates from there. Waiting and guessing is by far the worst way to synchronize.
+```go
+func TestMain(m *testing.M) {
+    // EXAMPLE ONLY: don't do this
+    go func() {
+        db, err = setupPostgres()
+        if err != nil {
+            log.Fatalf("postgres: %v", err)
+        }
+    }
+    go func() {
+        redis, err = setupRedis()
+        if err != nil {
+            log.Fatalf("redis: %v", err)
+        }
+    }
+    time.Sleep(1 * time.Second) // wait for the database to be available
+    m.Run()
+}
+```
+
+This sets an artifical floor on the latency of your tests (that is, you make them **at least that slow**, when they could potentially be a dozen times faster).
+
+In general, try to avoid sleeping entirely by using a channel, mutex, waitgroup, or condition variable to signal when the condition is met, roughly in that order of preference. That is, **push** synchronization events from your dependencies to the test setup code.
+
+Sometimes the service you're depending on isn't nice enough to signal _you_ when it's ready and you need to poll it instead. If you absolutely must, set up repeated polls at 1-2ms and then push updates from there. Go's channels can be a good way to do this: send an error or nil for each dependency on a channel, and just drain one for each dependency you're waiting on.
+
+The folowing example shows **one way**  to convert a poll into a push:
+
+```go
+
+package main_test
+
+var redis *redis.Client
+var db *sql.DB
+
+func TestMain(m *testing.M) {
+   // setup dependencies. when each dependency finishes or times out, send a message on the channel
+   res := make(chan error, 2) // postgres & redis
+   ctx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
+   defer cancel()
+   go func() {
+      var err error
+      db, err = setupPostgres()
+      if err != nil {
+         res <- fmt.Errorf("postgres: %w", err)
+         return
+      }
+      for {
+        switch err := db. 
+      }
+
+
+   }()
+   go func() {
+      var err error
+      redis, err = setupRedis()
+        if err != nil {
+            log.Fatalf(" to redis: %v", err)
+        }
+        for { // keep pinging until we get a response or time out
+            switch err := redis.PingContext(ctx);  {
+                case err == nil:
+                    res <- nil
+                    return
+                case errors.Is(err, context.DeadlineExceeded:)
+                    res <- fmt.Errorf("redis: %w", err)
+                    return
+                default:
+                    time.Sleep(2 * time.Millisecond)
+            }
+        }
+   }
+    // wait for all dependencies to be ready
+    for i := 0; i < 2; i++ {
+        if err := <-res; err != nil {
+            log.Fatalf("failed to connect to %s: %v", err)
+        }
+    }
+   os.Exit(m.Run())
+}
+```
 
 Tests are just programs, so the same advice for quick initialization applies as in traditional program.s
 
 If you _must_ wait, do so _within_ the tests, _past_ the point where `t.Parallel()` is called. This will free Go's scheduler to run other tests while dependencies are being set up.
-
-    ```go
-    func main() {
-        go setupRedis()
-        go setupPostgres()
-        go setupRabbitMQ()
-
-        time.Sleep(1*time.Second) // wait for redis, postgres, and rabbitmq to be ready
-        serveHTTP()
-    }
-
-```
 
 To quickly review the math, for any given test, if we run it with probability `p`, then the probability of _not_ running it is `1-p`. If we run it `n` times, the probability of _never_ running it is `(1-p)^n`. If we want to be 99% sure we've run it at least once, we can solve for `n`:  `(1-p)^n = 0.01`, or `n = ln(0.01) / log(1-p)` To expand that out to any target probability, we can use `n = ln(1 - target) / log(1 - p)`.
 
@@ -470,16 +535,11 @@ deploy_prod:
 
 ## Flaky tests: public enemy #1
 
-There is nothing quite so damaging to test infrastructure as a flaky test: a test that _sometimes_ passes and sometimes fails. They are quite literally worse than useless:
-
-- they take time to run
-- they tell you nothing about the correctness (or lack thereof) of your code
-- they erode trust in the test suite
-- developers get used to ignoring failures or simply retrying a failing test suite, meaning a suite is not treated as truly failed until multiple runs have failed.
-
 ## dependency resolution
 
 There are three main strategies for dependencies in tests.
 "Mock" - replace the dependency with a fake implementation that returns canned responses. **In general**, mocks are a bad idea.
+
+"Injection" - pass the dependency in as a parameter to the function. This is the best option in general, but it can be a lot of work to refactor a codebase to use it.
 
 Instead of having a function like this:
