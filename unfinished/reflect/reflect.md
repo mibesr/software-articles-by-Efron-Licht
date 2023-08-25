@@ -184,14 +184,21 @@ We also might want to suggest known savefiles for the `load` and `save` operatio
 
 
 ```go
-
+// completions is a struct that holds all the possible completions for a given prompt.
+// see suggestedCompletion for how it's used.
 type completions struct {
-  ops    []string
-  fields []string
-  aliases 
+  ops    []string // operations: toggle, mod, set, etc. only valid for the first word in a prompt.
+  fields []string // fields and methods: player.x, ui.healthbar.enabled, etc. valid for any word in a prompt.
+  // augment-assignment operators:  +=, -=, *=, /=, =, &=, |=, ^=, %=, <<=, >>=, &^=
+  assignops []string 
+
+  saveFiles []string // valid for the third word in a prompt, during 'save' or 'load'  
+
+  // aliases is a map from alias to the aliased value.
+  aliases map[string]string 
 }
-func suggestedCompletion(line string, cursor int) string {
-// find completions
+
+func suggestCompletion(c *completions, line string, cursor int) string {
 		if cursor < len(line) {
       return "" // cursor is in the middle of a line: no suggestions
 		} 
@@ -208,15 +215,34 @@ func suggestedCompletion(line string, cursor int) string {
       if completion := autocomplete(c.completions.ops, line); completion != "" {
         return completion
       }
-        c.suggestedCompletion = autocomplete(c.completions.fields, line)
-      }
-    case i == j: // second word: choose a field
-      return line[:i+1] + autocomplete(c.completions.fields, strings.TrimSpace(line[i+1:]))
-    case strings.Contains(line, "save"),
-      strings.Contains(line, "load"): // third word during 'save' or 'load': choose a file
-      return line[:j+1] + autocomplete(c.saveFiles, line[j+1:])
+
+    case i == j: // second word.
+        firstWord, rem := line[:i], line[i:]
+
+        // was the first word an alias?
+        if alias, ok := c.aliases[firstWord]; ok {
+           firstWord = alias // yes: replace it with the alias
+        }
+
+        // is the first word an op?
+        if k := sort.SearchStrings(c.completions.ops, firstWord); k >= 0 && k < len(c.completions.ops) && c.completions.ops[k] == firstWord {
+          // yes: autocomplete the rest of the line as a field. e.g, "toggle ui.healthbar"
+          return line[:i+1] + autocomplete(c.completions.fields, strings.TrimSpace(rem))
+        }
+
+        // was the first word a field?
+        if k := sort.SearchStrings(c.completions.fields, firstWord); k >= 0 && k < len(c.completions.fields) && c.completions.fields[k] == firstWord {
+          // yes: allow autocomplete for augment-assignment operators. e.g, "player.x += player.y"
+          return line[:i+1] + autocomplete(c.completions.assignops, strings.TrimSpace(rem))
+        }
+
+        // we don't know: allow autocomplete for fields anyways.
+        return line[:i+1] + autocomplete(c.completions.fields, strings.TrimSpace(rem))
+    case strings.Contains(line, "save"),  strings.Contains(line, "load"): 
+      // third word during 'save' or 'load': choose a file
+        return line[:j+1] + autocomplete(c.saveFiles, line[j+1:])
     default: // third word, not during 'save' or 'load': choose a field, like for 'player.x += player.y'
-      return line[:j+1] + autocomplete(c.completions.fields, line[j+1:])
+        return line[:j+1] + autocomplete(c.completions.fields, line[j+1:])
     }
 }
 ```
