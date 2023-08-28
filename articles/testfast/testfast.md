@@ -644,3 +644,6 @@ Keep repeating this process until you've hit all the low-hanging fruit and have 
 
 Keeping your tests fast and reliable is fundamental to having them work for you instead of against you. Strive to keep the _performance_ of your tests in mind, not just coverage, or you'll strangle a codebase you thought you were nurturing.
 
+
+Like this article? Need help making great software, or just want to save a couple hundred thousand dollars on your cloud bill? Hire me, or bring me in to consult. Professional enquiries at
+[efron.dev@gmail.com](efron.dev@gmail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)
