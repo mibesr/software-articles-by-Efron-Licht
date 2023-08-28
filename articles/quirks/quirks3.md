@@ -6,18 +6,21 @@
 
 Go is generally considered a 'simple' language, but it has more edge cases and tricks than most might expect. This is the third in a series of articles about intermediate-to-advanced go programming techniques. [In part 1](https://eblog.fly.dev/quirks.html), we covered unusual parts of declaration, control flow, and the type system]. In [part 2]((https://eblog.fly.dev/quirks2.html)), we touched concurrency, `unsafe`, and `reflect`. Here in part 3, we'll mostly talk about arrays, validation, and build constraints.
 
-#### **more articles**: 
+#### **more articles**
+
 - go quirks & tricks
 
   1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
-  2. [concurrency, unsafe, reflect](https://eblog.fly.dev/quirks2.html)
-  3. [arrays, validation, build constraints](https://eblog.fly.dev/quirks3.html)
+  1. [concurrency, unsafe, reflect](https://eblog.fly.dev/quirks2.html)
+  1. [arrays, validation, build constraints](https://eblog.fly.dev/quirks3.html)
 
 - starting software
 
     1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
     1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
     1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+    1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
+
 - [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
 - [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
 

@@ -123,21 +123,130 @@ For some things, like 'infinite HP', this is fine. But for other things, like 'e
 
 The default API for general-purpose inputs is the command line. That is, prompt that takes a line of text, parses it as a command, and executes it.
 
-A basic API might look like this:
-|command|description|example| example output |
-|---|---|---|---|
-| `<field> = <value>` | set the field to the value | `player.hp = 100` | player.hp -> 100
-| `print <field>`| print the value of the field | `print player.hp` | player.hp: 100
+Our console has an two layers: the input layer, which parses the user's input into a command, and the command layer, which executes the command.
 
-Let's see how we might implement this.
+#### 4.1: The input layer
 
-A traditional CLI is pretty simple: we grab input and put it into a buffer until we hit a newline. In the C tradition, it might look like this:
+We use command-line prompts all the time, but we rarely think through their command sets. The standard command-line prompt allows you to edit a line of text by adding or removing characters at any point, and navigate a history of commands. A summary of "standard" command-line editing features is below:
 
- For now, I'm going to ignore rendering the prompt, and just focus on parsing the input.
+| key(s) | description |
+| --- | --- |
+| `'a'..'z'` or other printable characters | insert the character at the cursor |
+| `←` and `→` | move the cursor left and right |
+| `⇧` + `←`, `⇧` + `→` | move the cursor left and right a word |
+| `⌫` | delete the character to the left of the cursor |
+| `⇧` + `⌫` | delete a word to the left of the cursor |
+| `␡` | delete the character to the right of the cursor |
+| `⇧` + `␡` | delete a word to the right of the cursor |
+| `↑` and `↓` | navigate the history, if there is one: they don't wrap. |
+| `⇧` + `↑` and `⇧` + `↓` | go to the start and end of the history. 
+
+We could represent the state of the console and a frame's worth of input as follows:
+
+```go
+const MaxHistory = 100
+type Console struct {
+    Cursor int // cursor position
+    HistoryIndex int // index in the history
+    History []string // previous lines of text.
+    Text string // current line of text.
+}
+
+type Input struct {
+    Up, Down bool // arrows: move up and down in the history
+    Left, Right bool // arrows: adjust the cursor
+    Backspace, Delete bool // delete the character before or after the cursor
+    Shift bool // shift: modify the effect of other keys
+    PrintableThisFrame []rune // printable characters pressed this frame; in no particular order.
+}
+```
+We can implement the editing features as follows:
+
+```go
+func b2i(b bool) int {if b {return 1};return 0 }
+// Update updates the console state based on the given input.
+// If the user pressed enter, return the current line of text.
+func (c *Console) Update(in Input) (string, error) {
+    defer func() {
+        // restore invariants: cursor & history index should be in bounds
+        c.Cursor = max(0, min(c.Cursor, len(c.Text))) // cursor can be 1 'beyond' the end of the line
+        c.HistoryIndex = max(0, min(c.HistoryIndex, len(c.History)-1)) // but history index can't
+    }()
+    switch navCount := b2i(in.Up) + b2i(in.Down) + b2i(in.Left) + b2i(in.Right) + b2i(in.Backspace) + b2i(in.Delete); 
+    case navCount > 1: 
+        return errors.New("multiple navigation keys pressed")
+    case navCount == 1 && len(c.PrintableThisFrame) > 0:
+        return errors.New("navigation and printable keys pressed")
+    case navCount == 0 && len(c.PrintableThisFrame) > 0:
+        // insert the printable characters at the cursor
+        c.Text = c.Text[:c.Cursor] + string(c.PrintableThisFrame) + c.Text[c.Cursor:]
+        c.Cursor += len(c.PrintableThisFrame)
+    case navCount == 0:
+        // no navigation or printable keys pressed: nothing to do.
+        return nil, nil
+    // --- navigation keys: we've already checked that exactly one was pressed ---
+    default:
+        return nil // still reachable if we, e.g, try to backspace on an empty line
+    case in.Up:
+        c.HistoryIndex--
+    case in.Shift && in.Up: // go to the start of the history
+        c.HistoryIndex = 0
+    case in.Down: // go to the end of the history
+        c.HistoryIndex++
+    case in.Shift && in.Down: // go to the end of the history
+        c.HistoryIndex = len(c.History)-1
+    case in.Left:  // move the cursor left one
+        c.Cursor--
+    case in.Right:  
+        c.Cursor++
+    case in.Backspace && c.Cursor > 0:
+        c.Text = c.Text[:c.Cursor-1] + c.Text[c.Cursor:]
+        c.Cursor--
+    case in.Backspace && in.Shift && c.Cursor > 0: 
+        if i := strings.LastIndexByte(c.Text[:c.Cursor], ' '); i != -1 { // there's a space before the cursor: delete up to that space
+            c.Text = c.Text[:i] + c.Text[c.Cursor:]
+            c.Cursor = i
+        } else if { // no space before the cursor: delete everything
+            c.Text = c.Text[c.Cursor:]
+            c.Cursor = 0
+        }
+        c.Cursor--
+    case in.Delete && c.Cursor < len(c.Text): // delete the character after the cursor
+        c.Text = c.Text[:c.Cursor] + c.Text[c.Cursor+1:]
+    case in.Delete && in.Shift && c.Cursor < len(c.Text): // delete the word after the cursor
+        if i := strings.IndexByte(c.Text[c.Cursor:], ' '); i != -1 { // there's a space after the cursor: delete up to that space
+            c.Text = c.Text[:c.Cursor] + c.Text[c.Cursor+i:]
+        } else { // no space after the cursor: delete everything until the end of the line
+            c.Text = c.Text[:c.Cursor]
+        }
+    
+    // --- wrap the cursor ---  
+
+        
+
+    
+
+
+
+}
+
+(in tacticaltapir itself, I use a compressed bitset to represent the entire state of the keyboard, but this is simpler to follow).
+
+
+
+We'd like the following editing features:
+
+Let's start with two basic commands: `set` and `print`. `set` will set a field to a value, and `print` will print the value of a field.
+
+| op [args] | description | example|
+|---|---|---|
+| `set` | `set <path> <literal_or_path>` | `set player.health 100` |
+| `print` | `print <path>` | `print player.health` |
 
 ```go
 type Prompt struct {
-    Cursor int
+    Cursor int // current cursor position
+    History []string // previous lines of text.
     Text string // current line of text.
     buf []byte // underlying buffer; should have the contents of Text.
 }
@@ -165,19 +274,21 @@ func (p *Prompt) Update(input Input) (line string, pressedEnter bool) {
 
     }
 }
+
 ```
 
-- Print a prompt to the screen that fills in with the user's input.
-- Parse that input into a command when the user presses enter.
-- Debug access should be opt-out, not opt-in.
+### Handling input
 
-The first game I played with a Debug Console was 1996's quake: TODO: PICTURE
-And it's still a staple of modern games
+A command-line interface should have the following features:
 
-- Factorio <TODO: PICTURE>
-- Doom 2016  <TODO: PICTURE>
+- Display a prompt to the user that fills in at the cursor position with the user's input as they type.
+- Enter submits the current line of text as a command.
+- Backspace deletes the character before the cursor; Delete deletes the character after the cursor.
+- Left and right arrow keys move the cursor left and right.
+- Parse the input into a command when the user presses enter.
+- A moveable cursor that can move left and right, and delete characters.
 
-Many game developers inject a LUA interpreter for this reason. LUA is a fast & flexible language with an incredibly small runtime, and there may be pre-existing Go bindings for it - if you're in this situation, you may want to start there.
+###
 
 ## 4: Reflection
 
@@ -188,6 +299,7 @@ We have four separate problems to solve.
 - Parsing user input into executable commands, usually in the form `op <path> <value>`. See the previous section for more details.
 
 The remaininng three problems all require reflection:
+
 - Resolving paths into a specific field of a struct or slice.
 - Converting the user-provided value into the correct type.
 - Setting the field to the new value.
@@ -413,24 +525,12 @@ How to handle literals depends on the type of the field we're setting.
 - **strings** require no processing.
 - **numbers** can be treated as floats, and then converted to the correct type using `reflect.Value.Convert`. This loses some precision, but if it's good enough for javascript, it's good enough for us.
 - **bools** can be parsed using `strconv.ParseBool`.
-- **other types** can use the `encoding.TextUnmarshaler` interface, which is implemented by many types in the standard library, including `*time.Time` and `net.IP`. A note here: most of the time, these types require a _pointer_ for the method, so we might occasionally need to add a level of indirection to satisfy the interface.
+- **other types** can use the `encoding.TextUnmarshaler` interface, which is implemented by many types in the standard library, including `*time.Time` and `net.IP`. A note here: most of the time, these types require a _pointer_ for the method, so we might occasionally need to add a level of indirection to satisfy the interface. **This will have the highest priority**. While it is possible for a type to implement `encoding.TextUnmarshaler` without a pointer receiver (some maps, for example), we will _omit this case_. After all, this console doesn't need to solve _all_ problems, just the problems I have.
 
 Let's see what this looks like in code:
 
 ```go
-// https://go.dev/play/p/xB6o7TAmuwn
-var textUnmarshalerType = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
-// part of a software article by Efron Licht.
-package main
-
-import (
- "encoding"
- "fmt"
- "net"
- "reflect"
- "strconv"
-)
-
+// https://go.dev/play/p/Tf7l07jp4za
 var textUnmarshalerType = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
 
 // SetString interprets src as a string literal, and attempts to set dst to that value.
@@ -440,42 +540,42 @@ var textUnmarshalerType = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem(
 // Otherwise, if dst is a bool, set it to the result of strconv.ParseBool(src)
 // Otherwise, if dst is a numeric type, set it to the result of strconv.ParseFloat(src, 64).
 func SetString(dst reflect.Value, src string) error {
- // let's make sure we didn't dereference too far.
- if dst.CanAddr() { 
-  dst = dst.Addr()
- }
- for i := 0; dst.Kind() == reflect.Ptr || dst.Kind() == reflect.Interface; i++ {
-  if dst.Type().Implements(textUnmarshalerType) {
-   return dst.Interface().(encoding.TextUnmarshaler).UnmarshalText([]byte(src))
-  }
-  dst = dst.Elem()
-  if i > 32 {
-   panic("dereferenced 32 pointers, but still got a pointer or interface")
-  }
- }
- switch dst.Kind() {
- default:
-  return fmt.Errorf("cannot convert %s to %s", src, dst.Type())
- case reflect.String:
-  dst.SetString(src)
-  return nil
- case reflect.Bool:
-  b, err := strconv.ParseBool(src)
-  if err != nil {
-   return fmt.Errorf("cannot convert %s to %s", src, dst.Type())
-  }
-  dst.SetBool(b)
-  return nil
- case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-  reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
-  reflect.Uintptr, reflect.Float32, reflect.Float64:
-  f, err := strconv.ParseFloat(src, 64)
-  if err != nil {
-   return fmt.Errorf("cannot convert %s to %s: %w", src, dst.Type(), err)
-  }
-  dst.Set(reflect.ValueOf(f).Convert(dst.Type()))
-  return nil
- }
+    // let's make sure we didn't dereference too far.
+    if dst.CanAddr() {
+        dst = dst.Addr()
+    }
+    for i := 0; dst.Kind() == reflect.Ptr || dst.Kind() == reflect.Interface; i++ {
+        if dst.Type().Implements(textUnmarshalerType) {
+            return dst.Interface().(encoding.TextUnmarshaler).UnmarshalText([]byte(src))
+        }
+        dst = dst.Elem()
+        if i > 32 {
+            panic("dereferenced 32 pointers, but still got a pointer or interface")
+        }
+    }
+    switch dst.Kind() {
+    default:
+        return fmt.Errorf("cannot convert %s to %s", src, dst.Type())
+    case reflect.String:
+        dst.SetString(src)
+        return nil
+    case reflect.Bool:
+        b, err := strconv.ParseBool(src)
+        if err != nil {
+            return fmt.Errorf("cannot convert %s to %s", src, dst.Type())
+        }
+        dst.SetBool(b)
+        return nil
+    case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+        reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+        reflect.Uintptr, reflect.Float32, reflect.Float64:
+        f, err := strconv.ParseFloat(src, 64)
+        if err != nil {
+            return fmt.Errorf("cannot convert %s to %s: %w", src, dst.Type(), err)
+        }
+        dst.Set(reflect.ValueOf(f).Convert(dst.Type()))
+        return nil
+    }
 }
 ```
 
@@ -483,29 +583,30 @@ Let's try it out on each of our cases:
 
 ```go
 func main() {
- ip := new(net.IP) // implements encoding.TextUnmarshaler
- if err := SetString(reflect.ValueOf(ip), "192.168.1.1"); err != nil {
-  panic(err)
- }
- fmt.Println(ip) // 192.168.1.1
+    // https://go.dev/play/p/Tf7l07jp4za
+    ip := new(net.IP) // implements encoding.TextUnmarshaler
+    if err := SetString(reflect.ValueOf(ip), "192.168.1.1"); err != nil {
+        panic(err)
+    }
+    fmt.Println(ip) // 192.168.1.1
 
- n := 0
- if err := SetString(reflect.ValueOf(&n), "22"); err != nil {
-  panic(err)
- }
- fmt.Println(n) // 22
+    n := 0
+    if err := SetString(reflect.ValueOf(&n), "22"); err != nil {
+        panic(err)
+    }
+    fmt.Println(n) // 22
 
- s := "foo"
- if err := SetString(reflect.ValueOf(&s), "somestring"); err != nil {
-  panic(err)
- }
- fmt.Println(s) // somestring
+    s := "foo"
+    if err := SetString(reflect.ValueOf(&s), "somestring"); err != nil {
+        panic(err)
+    }
+    fmt.Println(s) // somestring
 
- b := false
- if err := SetString(reflect.ValueOf(&b), "true"); err != nil {
-  panic(err)
- }
- fmt.Println(b) // true
+    b := false
+    if err := SetString(reflect.ValueOf(&b), "true"); err != nil {
+        panic(err)
+    }
+    fmt.Println(b) // true
 }
 ```
 
@@ -532,7 +633,7 @@ func SetVal(dst, src reflect.Value) error {
 We can use this to implement `set`:
 
 ```go
-func Set(root reflect.Value, dstPath, litOrSrcPath string) error {
+func set(root reflect.Value, dstPath, litOrSrcPath string) error {
     dst, err := ResolvePath(root, dstPath)
     if err != nil {
         return err
@@ -553,13 +654,6 @@ func Set(root reflect.Value, dstPath, litOrSrcPath string) error {
     return SetVal(dst, src)
 }
 ```
-fResolve
-Let's start with two basic commands: `set` and `print`. `set` will set a field to a value, and `print` will print the value of a field.
-
-| op [args] | description | example|
-|---|---|---|
-| `set` | `set <path> <literal_or_path>` | `set player.health 100` |
-| `print` | `print <path>` | `print player.health` |
 
 Let's assume we have a complete line of user input:
 
@@ -594,58 +688,109 @@ func exec[T any](pt *T, line string) (logMsg string, err error) {
         if len(args) != 2 {
             return "", fmt.Errorf("set: expected 2 arguments, got %d", len(args))
         }
-        lhs, err := ResolvePath(root, args[0])
-        if err != nil {
-            return "", err
-        }
-        // two cases: either the rhs is a literal, or it's a path.
-        // if it's surrounded by quotes, it's DEFINITELY a literal.
-        // if it's not, it MAY be a literal, but it may also be a path.
-        if strings.HasPrefix(args[1], `"`) && strings.HasSuffix(args[1], `"`) {
-            // it's a literal. we need to parse it into the correct type.
-            // we'll use the type of the lhs as a guide.
-
-        }
-        rhs, err := ResolvePath(root, args[1])
-        if 
-
-     
-    }
-}
-```
-
-- We want to be able to set variables without worrying too much about types. That is, we want to be "stringly typed":
-
--
-
-```
-set player.health 100
-```
-
-should succeed regardless of whether player.health is an int16 or float32.
-
-- By default, we should be able to set any field on any struct, but we need some way to filter out fields that are too 'fragile' to be modified at runtime. Go already has a convention for this: fields that start with a lowercase letter are not exported, and cannot be accessed outside of the package. It turns out the reflect package respects this convention, and will not allow you to set an unexported field. Since the GameState struct is at the "root" of our program, in main, and nothing else will actually import it, we can just use capital letters to denote fields that are safe to modify at runtime.
-
-```go
-type Gamestate struct {
-    Player struct {
-        Health int
-        Ammo int
-        X, Y int
-        dangerousField unsafe.Pointer // this field is not exported, and cannot be modified at runtime
+        return set(root, args[0], args[1])
     }
 }
 ```
 
 ### bonus: combining reflect and unsafe for true arbitrary modification
 
+The `reflect` package tries only to expose operations that are valid in 'normal' go. Normal rules about type-safety and visibility are respected where possible. Sometimes you need to do something drastic, like directly modify an unexported field or field of unexported (possibly unknown) type!
 
+_Any addressable value of known size_ (that is, native go values with a known location in memory) can be set to an arbitrary byte pattern at runtime. Please do not do this unless you are _absolutely sure_ you both
+
+- know what you're doing
+- have no or only very bad alternatives
+
+The basic idea is this: we use the tools of `reflect` to find the address of the field we want to modify. We then convert both that address (the "destination" address) to byte slices of equal length using `unsafe.Slice`. We then do a raw `copy` of the bytes from the source to the destination.
+
+This doesn't so much subvert Go's type system as break it over its knee. It is **your job** to maintain all the invariants of the type system. You won't even get friendly panics if you mess up: at _best_ you'll get a segfault: at worst, anything could happen.
+
+Let's demonstrate:
+
+```go
+// https://go.dev/play/p/eZLxNfFBfeV
+func main() {
+    var s S
+    func() { // this guy panics as follows:
+        // reflect: reflect.Value.SetInt using value obtained using unexported field
+        defer func() {
+            if r := recover(); r != nil {
+                log.Println(r)
+            }
+        }()
+        reflect.ValueOf(&s).Elem().FieldByName("n").SetInt(2)
+
+    }()
+    fmt.Println(s)
+    // but this does not:
+    src := 2
+    dst := reflect.ValueOf(&s).Elem().FieldByName("n")
+    copy(
+        // take the address of the source: reinterpret it as a slice
+        unsafe.Slice((*byte)(dst.Addr().UnsafePointer()), dst.Type().Size()),
+        // take the address of the source: reinterpret it
+        unsafe.Slice((*byte)(unsafe.Pointer(&src)), unsafe.Sizeof(src)), //
+    )
+    fmt.Println(s)
+
+}
+```
+
+We can restate this as a general-purpose function, using generics to make sure our _source_ at least is an addressable value of known size and protecting ourselves against size mismatches:
+
+```go
+// https://go.dev/play/p/eZLxNfFBfeV
+
+// SetUnsafe sets the value of dst to the value of src, without obeying the usual rules about
+// type conversions, field & type visibility, etc. Go wild.
+// dst must be an addressable Value with a type that is the same size as src.
+func SetUnsafe[T any](dst reflect.Value, src *T) {
+    size := unsafe.Sizeof(*src)
+    if size != dst.Type().Size() {
+        panic(fmt.Sprintf("cannot set %v (size %d) to %v (size %d)", src, size, dst.Type(), dst.Type().Size()))
+    }
+    copy(
+        unsafe.Slice((*byte)(dst.Addr().UnsafePointer()), int(size)),
+        unsafe.Slice((*byte)(unsafe.Pointer(src)), int(size)),
+    )
+}
+```
+
+What if we already have a slice of bytes? That's simpler: just omit the mainpulation of `src`:
+
+```go
+// https://go.dev/play/p/eZLxNfFBfeV
+
+// SetUnsafeBytes sets the value of dst to the value of src, without obeying the usual rules about type conversions, field & type visibility, etc. 
+// dst must be an addressable Value with a type that is the same size as the length of src (but it DOESN'T have to be conventionally settable).
+//len(src) must be equal to the size of dst, or it will panic.
+func SetUnsafeBytes(dst reflect.Value, src []byte) {
+    if uintptr(len(src)) != dst.Type().Size() {
+        panic(fmt.Sprintf("cannot set %v (size %d) via slice of len %d", dst.Type(), dst.Type().Size(), len(src)))
+    }
+    copy(
+        unsafe.Slice((*byte)(dst.Addr().UnsafePointer()), len(src)),
+        src,
+    )
+}
+```
+
+There's one last corner case I want to mention: suppose `src` is a `reflect.Value` already? If src is addressable, we can just use the same technique on `src` as we do on `dst`: if it's not, we'll have to copy `src` to a temporary value which _is_ addressable. See example:
 
 ```go
 func SetUnsafeValue(dst, src reflect.Value) {
+// https://go.dev/play/p/eZLxNfFBfeV
     if src.Type().Size() != dst.Type().Size() {
         panic(fmt.Sprintf("cannot set %v (size %d) to %v (size %d)", src, src.Type().Size(), dst.Type(), dst.Type().Size()))
     }
+    if !src.CanAddr() {
+        // we can't take the address of src, so we'll have to copy it to something which _is_ addressable.
+        src2 := reflect.New(src.Type()).Elem() // reflect.New creates a pointer to a new zero value of the given type... so it's elem is addressable.
+        src2.Set(src) // we can safely set the value of src2 to the value of src, since they're the same type.
+        src = src2  // and now src is addressable.
+    }
+    // nothing we can do about dst not being addressable, though: we'll simply panic.
     copy(
         unsafe.Slice((*byte)(dst.Addr().UnsafePointer()), int(dst.Type().Size())),
         unsafe.Slice((*byte)(src.Addr().UnsafePointer()), int(src.Type().Size())),
@@ -655,26 +800,26 @@ func SetUnsafeValue(dst, src reflect.Value) {
 // type conversions, field & type visibility, etc. Go wild.
 // dst must be an addressable Value with a type that is the same size as src.
 func SetUnsafe[T any](dst reflect.Value, src *T) {
-	size := unsafe.Sizeof(*src)
-	if size != dst.Type().Size() {
-		panic(fmt.Sprintf("cannot set %v (size %d) to %v (size %d)", src, size, dst.Type(), dst.Type().Size()))
-	}
-	copy(
-		unsafe.Slice((*byte)(dst.Addr().UnsafePointer()), int(size)),
-		unsafe.Slice((*byte)(unsafe.Pointer(src)), int(size)),
-	)
+    size := unsafe.Sizeof(*src)
+    if size != dst.Type().Size() {
+        panic(fmt.Sprintf("cannot set %v (size %d) to %v (size %d)", src, size, dst.Type(), dst.Type().Size()))
+    }
+    copy(
+        unsafe.Slice((*byte)(dst.Addr().UnsafePointer()), int(size)),
+        unsafe.Slice((*byte)(unsafe.Pointer(src)), int(size)),
+    )
 }
 
 // SetUnsafeBytes sets the value of dst to the value of src, without obeying the usual rules about type conversions, field & type visibility, etc. 
 // dst must be an addressable Value with a type that is the same size as the length of src (but it DOESN'T have to be conventionally settable).
 //len(src) must be equal to the size of dst, or it will panic.
 func SetUnsafeBytes(dst reflect.Value, src []byte) {
-	if uintptr(len(src)) != dst.Type().Size() {
-		panic(fmt.Sprintf("cannot set %v (size %d) via slice of len %d", dst.Type(), dst.Type().Size(), len(src)))
-	}
-	copy(
-		unsafe.Slice((*byte)(dst.Addr().UnsafePointer()), len(src)),
-		src,
-	)
+    if uintptr(len(src)) != dst.Type().Size() {
+        panic(fmt.Sprintf("cannot set %v (size %d) via slice of len %d", dst.Type(), dst.Type().Size(), len(src)))
+    }
+    copy(
+        unsafe.Slice((*byte)(dst.Addr().UnsafePointer()), len(src)),
+        src,
+    )
 
 }

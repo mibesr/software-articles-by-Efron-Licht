@@ -5,18 +5,21 @@ July 2023\
 
 Part 2 of a series on starting software.
 
-#### **more articles**: 
+#### **more articles**
+
 - go quirks & tricks
 
   1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
-  2. [concurrency, unsafe, reflect](https://eblog.fly.dev/quirks2.html)
-  3. [arrays, validation, build constraints](https://eblog.fly.dev/quirks3.html)
+  1. [concurrency, unsafe, reflect](https://eblog.fly.dev/quirks2.html)
+  1. [arrays, validation, build constraints](https://eblog.fly.dev/quirks3.html)
 
 - starting software
 
     1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
     1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
     1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+    1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
+
 - [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
 - [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
 
