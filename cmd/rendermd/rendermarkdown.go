@@ -58,19 +58,29 @@ func main() {
 			return fs.SkipDir
 		}
 		_ = must(0, err)
-		if filepath.Ext(srcPath) != ".md" {
+		switch filepath.Ext(srcPath) {
+		default:
+			return nil
+		case ".gif", ".png":
+			b := must(os.ReadFile(srcPath))
+			dstPath := filepath.Join(dstDir, filepath.Base(srcPath))
+			if err := os.WriteFile(dstPath, b, 0o777); err != nil {
+				log.Fatal(err)
+			}
+			ch <- res{md: srcPath, html: dstPath}
+			return nil
+		case ".md":
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				dstPath := strings.ReplaceAll(filepath.Join(dstDir, filepath.Base(srcPath)), ".md", ".html")
+
+				fmt.Fprintf(tw, format, srcPath, dstPath)
+				must(0, os.WriteFile(dstPath, renderMarkdown(srcPath), 0o777))
+				ch <- res{md: srcPath, html: dstPath}
+			}()
 			return nil
 		}
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			dstPath := strings.ReplaceAll(filepath.Join(dstDir, filepath.Base(srcPath)), ".md", ".html")
-
-			fmt.Fprintf(tw, format, srcPath, dstPath)
-			must(0, os.WriteFile(dstPath, renderMarkdown(srcPath), 0o777))
-			ch <- res{md: srcPath, html: dstPath}
-		}()
-		return nil
 	}
 
 	err := filepath.WalkDir(srcDir, walkFunc)

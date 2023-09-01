@@ -1,4 +1,4 @@
-# fly.toml app configuration file generated for eblog on 2023-07-28T09:11:03-07:00
+# fly.toml app configuration file generated for eblog on 2023-09-01T15:09:24-07:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
@@ -7,6 +7,8 @@ app = "eblog"
 primary_region = "lax"
 kill_signal = "SIGINT"
 kill_timeout = "5s"
+
+[build]
 
 [[services]]
   protocol = "tcp"
@@ -30,4 +32,3 @@ kill_timeout = "5s"
     interval = "15s"
     timeout = "2s"
     grace_period = "1s"
-    restart_limit = 0

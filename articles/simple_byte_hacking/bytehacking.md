@@ -8,7 +8,10 @@ Many junior & intermediate programmers can be a little skittish around around by
 
 We'll build a few command-line tools and benchmark results along the way.
 
-#### **more articles**: 
+#### **more articles**
+
+- advanced go & gamedev
+  1. [advanced go: reflection-based debug console](https://eblog.fly.dev/console.html)
 - go quirks & tricks
 
   1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
@@ -20,10 +23,10 @@ We'll build a few command-line tools and benchmark results along the way.
     1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
     1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
     1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+    1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
+
 - [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
 - [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
-
-
 
 ## Intro
 

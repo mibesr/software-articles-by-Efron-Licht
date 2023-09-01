@@ -7,11 +7,13 @@ Part 2 of a series on starting software.
 
 #### **more articles**
 
+- advanced go & gamedev
+  1. [advanced go: reflection-based debug console](https://eblog.fly.dev/console.html)
 - go quirks & tricks
 
   1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
-  1. [concurrency, unsafe, reflect](https://eblog.fly.dev/quirks2.html)
-  1. [arrays, validation, build constraints](https://eblog.fly.dev/quirks3.html)
+  2. [concurrency, unsafe, reflect](https://eblog.fly.dev/quirks2.html)
+  3. [arrays, validation, build constraints](https://eblog.fly.dev/quirks3.html)
 
 - starting software
 

@@ -13,11 +13,13 @@ As before, I'll link to the Go spec where appropriate. Most code examples link t
 
 #### **more articles**
 
+- advanced go & gamedev
+  1. [advanced go: reflection-based debug console](https://eblog.fly.dev/console.html)
 - go quirks & tricks
 
   1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
-  1. [concurrency, unsafe, reflect](https://eblog.fly.dev/quirks2.html)
-  1. [arrays, validation, build constraints](https://eblog.fly.dev/quirks3.html)
+  2. [concurrency, unsafe, reflect](https://eblog.fly.dev/quirks2.html)
+  3. [arrays, validation, build constraints](https://eblog.fly.dev/quirks3.html)
 
 - starting software
 
@@ -28,6 +30,7 @@ As before, I'll link to the Go spec where appropriate. Most code examples link t
 
 - [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
 - [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
+
 
 ### generics
 
