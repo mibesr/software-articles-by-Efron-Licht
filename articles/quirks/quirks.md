@@ -6,8 +6,19 @@
 
 #### **more articles**
 
+# advanced go: reflection-based debug console pt. 1
+
+#### A programming article by Efron Licht
+
+#### September 2023
+
+##### more articles
+
 - advanced go & gamedev
+
   1. [advanced go: reflection-based debug console](https://eblog.fly.dev/console.html)
+  2. [reflection-based debug console: autocomplete](https://eblog.fly.dev/console-autocomplete.html)
+
 - go quirks & tricks
 
   1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
@@ -16,14 +27,14 @@
 
 - starting software
 
-    1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
-    1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
-    1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
-    1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
+  1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
+  1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
+  1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+  1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
 
-- [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
-- [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
-
+- miscellaneous
+  1. [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
+  1. [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
 
 Go is generally considered a 'simple' language, but it has more edge cases and tricks than most might expect.
 
@@ -49,7 +60,7 @@ Go methods are just functions. Given a type and method:
 
 ```go
 type Point struct{X, Y float64}
-func (p Point) Add(q Point) Point{ 
+func (p Point) Add(q Point) Point{
     return Point{X: p.X+q.X, Y: p.Y+q.Y}
 }
 ```
@@ -66,7 +77,7 @@ fmt.Println(p.Add(q))
 Or you can use the method as an ordinary, "bare" function via `typeName.funcName(arg0, arg1, arg2`)
 
 ```go
-p, q := Point{1, 1}, Point(2,2); 
+p, q := Point{1, 1}, Point(2,2);
 fmt.Println(Point.Add(p, q))
 ```
 
@@ -133,7 +144,7 @@ locked:
 
 The following code [playground](https://go.dev/play/p/Bn8DbOzely0) gives a terse and unhelpful compiler error:
 
-```go  
+```go
 
 func main() { // https://go.dev/play/p/CLu4AXg5qYW
  type Q struct{ A, B [3]int }
@@ -197,27 +208,27 @@ switch a, err := f(); err.(type) {
 
 If you omit the _second_ part of the switch, you can do a "normal" boolean-value switch statement:
 
- ```go
+```go
 // some kind of low-level networking call:
 var try int
 var packets []Packet
 READ:
 for {
-    switch packet, err := readPacket(ctx, conn, buf);  { // note semicolon
-        case errors.Is(err, io.EOF): 
-            packets = append(packets, packet)
-            break READ
-        case err == nil:
-            packets = append(packets, packet)
-            try = 0
-        case errors.As(err, fatalErr) || try == maxTries:
-            return fmt.Errorf("fatal error after %d retries: %v", i, err)
-        default:
-            const wait = 100*time.Millisecond
-            log.Printf("error: retrying in %d", wait)
-            try++
-            time.Sleep(wait)
-    }
+   switch packet, err := readPacket(ctx, conn, buf);  { // note semicolon
+       case errors.Is(err, io.EOF):
+           packets = append(packets, packet)
+           break READ
+       case err == nil:
+           packets = append(packets, packet)
+           try = 0
+       case errors.As(err, fatalErr) || try == maxTries:
+           return fmt.Errorf("fatal error after %d retries: %v", i, err)
+       default:
+           const wait = 100*time.Millisecond
+           log.Printf("error: retrying in %d", wait)
+           try++
+           time.Sleep(wait)
+   }
 }
 
 ```
@@ -358,7 +369,7 @@ func main() { // playground: https://go.dev/play/p/vAkgOTnEg7d
 
 ```
 
-> output:  `{1 4}`
+> output: `{1 4}`
 
 This obeys the ordinary block-scope rules, so this would be a compiler error:
 
@@ -367,7 +378,7 @@ func main() { // https://go.dev/play/p/_ytvmPewLTA
     {
         type Point struct{X, Y float64}
     }
-    var p Point 
+    var p Point
 }
 ```
 
@@ -450,13 +461,13 @@ func SelectUser(ctx context.Context, db *sql.DB, userID uuid.UUID) (username str
 }
 ```
 
-Suppose at some point we need to mock this for a test. *sql.DB is a struct, and it's not immediately apparent what we'd call the interface we'd replace it with. `DBer?` `QueryRowContexter`? In this case,  we can be clearest by omitting the name entirely: all the reader needs to know is that the DB has a function that looks like QueryRowContext().
+Suppose at some point we need to mock this for a test. \*sql.DB is a struct, and it's not immediately apparent what we'd call the interface we'd replace it with. `DBer?` `QueryRowContexter`? In this case, we can be clearest by omitting the name entirely: all the reader needs to know is that the DB has a function that looks like QueryRowContext().
 
 We can make this mockable by just changing the function signature to use an _anonymous interface_.
 
 ```go
 func SelectUser(
-    ctx context.Context, 
+    ctx context.Context,
     db interface{QueryRowContext(context.Context, string, ...args) *sql.Row},
     userID uuid.UUID
 ) (username string, createdAt time.Time, err error) {
@@ -508,69 +519,69 @@ Struct types can have unreachable fields using the [blank identifier](https://go
 
 - To pad a struct to a specific size or alignment.
 
-    This is occasionally handy for cool `unsafe` stuff like serializing or deserializing stuff straight from a bytestream.
+  This is occasionally handy for cool `unsafe` stuff like serializing or deserializing stuff straight from a bytestream.
 
-    ```go
-     func main() { // https://go.dev/play/p/4H7V_kKDw5m
-     type Point struct{ X, Y, Z uint16 }
-     type PaddedPoint struct {
-      X, Y, Z uint16
-      _       uint16
-     }
-     const format = "%12v\t%v\t%v\n"
-     fmt.Printf(format, "type", "size", "align")
-     fmt.Printf(format, "Point", unsafe.Sizeof(Point{}), unsafe.Alignof(Point{}))
-     fmt.Printf(format, "PaddedPoint", unsafe.Sizeof(PaddedPoint{}), unsafe.Alignof(PaddedPoint{}))
-    }
-    ```
+  ```go
+   func main() { // https://go.dev/play/p/4H7V_kKDw5m
+   type Point struct{ X, Y, Z uint16 }
+   type PaddedPoint struct {
+    X, Y, Z uint16
+    _       uint16
+   }
+   const format = "%12v\t%v\t%v\n"
+   fmt.Printf(format, "type", "size", "align")
+   fmt.Printf(format, "Point", unsafe.Sizeof(Point{}), unsafe.Alignof(Point{}))
+   fmt.Printf(format, "PaddedPoint", unsafe.Sizeof(PaddedPoint{}), unsafe.Alignof(PaddedPoint{}))
+  }
+  ```
 
-    ```text
-            type size align
-            Point    6     2
-        PaddedPoint  8    2
-    ```
+  ```text
+          type size align
+          Point    6     2
+      PaddedPoint  8    2
+  ```
 
 - A blank field makes it difficult to initialize a struct without specifying key names. So as not to waste space, use a [`zero-sized type`](#zero-sized-type) for this.
 
-    This means that if you add a field to the struct later, it's not a breaking change for users.
+      This means that if you add a field to the struct later, it's not a breaking change for users.
 
-    ```go
-    type LogOptions struct {
-        _ [0]int 
-        Level int8
-        LogTime, LogFile, LogLine bool
-    }
-    ```
+      ```go
+      type LogOptions struct {
+          _ [0]int
+          Level int8
+          LogTime, LogFile, LogLine bool
+      }
+      ```
 
-    Be careful with this: sometimes you _want_ changes to the API to be breaking changes, and changing the size of commonly-used types can have unforseen performance ramifications.
+      Be careful with this: sometimes you _want_ changes to the API to be breaking changes, and changing the size of commonly-used types can have unforseen performance ramifications.
 
-    > **WEIRD EDGE CASE WARNING:** **A ZERO-SIZED TYPE IS ONLY ZERO-SIZED IF IT'S NOT THE FINAL MEMBER OF THE STRUCT**.
-    >
-    > That is, do this:
->
-    > ```go
-    > type s struct {
-    >        _ [0]func()
-    >        a int
-    > }
-    > ```
->
-    > And not this:
->
-    > ```go
-    > type s struct {
-    >    a int
-    >    _ [0]func()
-    > }
-    > ```
->
-    > See [issue 58483](https://github.com/golang/go/issues/58483). I found this out in a response to this article!
+      > **WEIRD EDGE CASE WARNING:** **A ZERO-SIZED TYPE IS ONLY ZERO-SIZED IF IT'S NOT THE FINAL MEMBER OF THE STRUCT**.
+      >
+      > That is, do this:
 
-    Blank fields should be used sparingly, but can be nice for configuration.
+  > ```go
+  > type s struct {
+  >        _ [0]func()
+  >        a int
+  > }
+  > ```
+  >
+  > And not this:
+  >
+  > ```go
+  > type s struct {
+  >    a int
+  >    _ [0]func()
+  > }
+  > ```
+  >
+  > See [issue 58483](https://github.com/golang/go/issues/58483). I found this out in a response to this article!
+
+      Blank fields should be used sparingly, but can be nice for configuration.
 
 - Adding a field of uncomparable type makes the entire struct uncomparable.
 
-    Structs comprised only of [comparable](https://go.dev/ref/spec#Comparison_operators) types (that is, ones where you can use the `==` operator) are themselves comparable, and can be used as keys in hashmaps or compared using `==`. The compiler implements these by generating comparison and hash functions for each comparable type in your code. This (very slightly) bloats the binary & compilation time. You may not want this to happen. Prevent this having a blank field of uncomparable type (the usual candidate is the ZST `[0]func()`). If you have the kind of performance requirements that need this, you'll know. Don't do it "just because"; it's confusing.
+  Structs comprised only of [comparable](https://go.dev/ref/spec#Comparison_operators) types (that is, ones where you can use the `==` operator) are themselves comparable, and can be used as keys in hashmaps or compared using `==`. The compiler implements these by generating comparison and hash functions for each comparable type in your code. This (very slightly) bloats the binary & compilation time. You may not want this to happen. Prevent this having a blank field of uncomparable type (the usual candidate is the ZST `[0]func()`). If you have the kind of performance requirements that need this, you'll know. Don't do it "just because"; it's confusing.
 
 - Blank fields can provide hints to tooling like `go vet` about how a type should be used. The most famous example of this is `copylock`. See [go issue #8005](https://github.com/golang/go/issues/8005#issuecomment-190753527) for more details.
 
@@ -602,7 +613,7 @@ The usual way Go programs have handled this is by making a separate context key 
 ```go
 type key[T] struct{}
 // FromCtx returns the value of type T stored in the context, if any:
-func FromCtx[T](ctx context) (T, bool) { 
+func FromCtx[T](ctx context) (T, bool) {
     t, ok := context.Value(key[T]{}).(T)
     return t, ok
 }
@@ -626,7 +637,7 @@ That's right: this ugly SOB has a
 - with a blank identifier
 - in a method expression
 - on a semi-colon terminated multi-statement line
-  
+
 ... please don't do this.
 
 ### Next time(?)

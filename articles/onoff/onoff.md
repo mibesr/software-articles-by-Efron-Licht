@@ -6,8 +6,19 @@ July 2023.
 
 #### **more articles**
 
+# advanced go: reflection-based debug console pt. 1
+
+#### A programming article by Efron Licht
+
+#### September 2023
+
+##### more articles
+
 - advanced go & gamedev
+
   1. [advanced go: reflection-based debug console](https://eblog.fly.dev/console.html)
+  2. [reflection-based debug console: autocomplete](https://eblog.fly.dev/console-autocomplete.html)
+
 - go quirks & tricks
 
   1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
@@ -16,16 +27,13 @@ July 2023.
 
 - starting software
 
-    1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
-    1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
-    1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
-    1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
+  1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
+  1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
+  1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+  1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
 
 - [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
 - [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
-
-
-
 
 ## Introduction: "Restart, Reboot, Reinstall"
 
@@ -43,30 +51,30 @@ The third and final step is usually:
 
 This holy trinity: "Restart, Reboot, Reinstall" - has a higher success rate than any other debug or repair strategy since the first MOS 6502 rolled off the assembly line in 1975. **They are remarkably universal and effective repair strategies**.
 
-They are so universal and effective that we sometimes don't think of them as strategies at all. 
+They are so universal and effective that we sometimes don't think of them as strategies at all.
 How many times over the last few days have you had to do one or more of these things? All of these events took place over the last 72 hours:
 
-|device|program|problem|restart, reboot, reinstall?| did it work?| time to fix?| total time|
-|---|---|---|---|---|---| ---|
-|amd64/win pc| docker through wsl | wouldn't start | reboot | ✅ | 60s| 60s
-|amd64/win pc| xbox game bar | froze on startup | reinstall | ✅ | 180s| 240s
-|amd64/win pc (windows)| visual studio code | incorrect syntax highlighting | restart | ✅| 40s | 280s
-|amd64/win pc| steam | wouldn't load game | restart | ✅ | 20s | 300s
-|amd64/win pc| visual studio code | incorrect import cache | restart | ✅ | 40s | 340s
-|amd64/win pc| discord | failed to load recently-joined server | restart | ✅ | 10s | 350s
-|amd64/win pc| wifi adapter | failed to load recently-joined server |  reboot | ✅| 370s  | 720s
-|arm64/android phone|youtube|wouldn't load video|restart|✅ | 30s | 750s
-|arm64/android phone|youtube|wouldn't refresh list of videos|restart|✅ | 30s | 780s
-|mazda3 infotainment|bluetooth|wouldn't connect to phone|reboot|✅| 300s|  1080s
-|mazda3 infotainment|everything|crashed|reboot|✅| 300s |  1380s
-|sony ps5|spotify|wouldn't load|reboot|✅ | 180s | 1560s
-|linksys router|firmware?| wifi down | reboot | ✅ | 300s | 1860s
+| device                 | program            | problem                               | restart, reboot, reinstall? | did it work? | time to fix? | total time |
+| ---------------------- | ------------------ | ------------------------------------- | --------------------------- | ------------ | ------------ | ---------- |
+| amd64/win pc           | docker through wsl | wouldn't start                        | reboot                      | ✅           | 60s          | 60s        |
+| amd64/win pc           | xbox game bar      | froze on startup                      | reinstall                   | ✅           | 180s         | 240s       |
+| amd64/win pc (windows) | visual studio code | incorrect syntax highlighting         | restart                     | ✅           | 40s          | 280s       |
+| amd64/win pc           | steam              | wouldn't load game                    | restart                     | ✅           | 20s          | 300s       |
+| amd64/win pc           | visual studio code | incorrect import cache                | restart                     | ✅           | 40s          | 340s       |
+| amd64/win pc           | discord            | failed to load recently-joined server | restart                     | ✅           | 10s          | 350s       |
+| amd64/win pc           | wifi adapter       | failed to load recently-joined server | reboot                      | ✅           | 370s         | 720s       |
+| arm64/android phone    | youtube            | wouldn't load video                   | restart                     | ✅           | 30s          | 750s       |
+| arm64/android phone    | youtube            | wouldn't refresh list of videos       | restart                     | ✅           | 30s          | 780s       |
+| mazda3 infotainment    | bluetooth          | wouldn't connect to phone             | reboot                      | ✅           | 300s         | 1080s      |
+| mazda3 infotainment    | everything         | crashed                               | reboot                      | ✅           | 300s         | 1380s      |
+| sony ps5               | spotify            | wouldn't load                         | reboot                      | ✅           | 180s         | 1560s      |
+| linksys router         | firmware?          | wifi down                             | reboot                      | ✅           | 300s         | 1860s      |
 
 That's a **31 minutes**: a half hour of of my life - spent on "Restart, Reboot, Reinstall" so far this week. By the end of the year, this will be nearly a full day.
 
 I am a computer programmer, so I have to deal with more software than most people, but _no one's life is free of software_ nowadays. Everyone is sitting in their car or their office or on their couch, turning software off and on again. And yet, we don't design software with this in mind. We design software as if it will never break, and if it does, it will be a rare and exceptional event. It's _all_ buggy. It's [**software**.](https://youtu.be/o_AIw9bGogo?t=1100).
 
-Even the longest-lived, most-used, most-loved software has bugs, from [sudo](https://www.sudo.ws/security/advisories/unescape_overflow/) to [task manager](https://learn.microsoft.com/en-us/windows/release-health/status-windows-11-22h2#task-manager-might-not-display-in-expected-colors). The linux kernel, one of the most scrutinized and fought-over pieces of software, has [3709](https://bugs.launchpad.net/bugs/bugtrackers/linux-kernel-bugs) bugs that _we know about_ listed in it's issue tracker as of 2023-07-12.  And a surprising amount of these bugs can be mitigated by "Restart, Reboot, Reinstall".
+Even the longest-lived, most-used, most-loved software has bugs, from [sudo](https://www.sudo.ws/security/advisories/unescape_overflow/) to [task manager](https://learn.microsoft.com/en-us/windows/release-health/status-windows-11-22h2#task-manager-might-not-display-in-expected-colors). The linux kernel, one of the most scrutinized and fought-over pieces of software, has [3709](https://bugs.launchpad.net/bugs/bugtrackers/linux-kernel-bugs) bugs that _we know about_ listed in it's issue tracker as of 2023-07-12. And a surprising amount of these bugs can be mitigated by "Restart, Reboot, Reinstall".
 
 Maybe it's time that we started admitting that our designs will fail, and we should design for failure by making it as easy as possible to get back on the happy path. More concretely:
 
@@ -81,7 +89,7 @@ We'll get into more details about _how_ to do this in a second, but first, a few
 
 While working for a large telecom, we had a couple of dozen servers that were slowly leaking memory and filehandles over a few days. This was a slow process, but after about three days the server would be pretty much useless.
 
-We noticed that after deploys, all of our servers would perform well. That is, **if you turned them on and off again**, it fixed the probem. I wrote a quick script to kill and reboot individual servers while we started tracking down the bug, but  after a few weeks, we still hadn't found it.
+We noticed that after deploys, all of our servers would perform well. That is, **if you turned them on and off again**, it fixed the probem. I wrote a quick script to kill and reboot individual servers while we started tracking down the bug, but after a few weeks, we still hadn't found it.
 
 In a fit of frustration, I wrote a library that would kill and reboot servers at random. It looked more or less like this:
 
@@ -109,7 +117,7 @@ func Roulette(stddev, mean time.Duration, cancel func()) {
 
 The context being cancelled would trigger a graceful shutdown of the server, which would restart itself. We tweaked the numbers to have each server restart itself roughly every two days (using the normal distribution so that servers wouldn't 'sync up' and all restart at the same time and drop traffic).
 
-It was **kind** of a joke, but we figured what the hell, we'd try it. It solved the problem. _permanently_. We never figured out what was causing the leaks, but we never had to. It turned out our servers just worked better when we  **turned them off and on again** every so often.
+It was **kind** of a joke, but we figured what the hell, we'd try it. It solved the problem. _permanently_. We never figured out what was causing the leaks, but we never had to. It turned out our servers just worked better when we **turned them off and on again** every so often.
 
 The practice spread to more servers as various leaks were discovered, and before we knew it most of our services had some variant of `russianroulette` in service. Our response times were down and our availibility was up.
 
@@ -135,14 +143,14 @@ And even if the software would be trivial to fix for the next revision, we still
 
 I would estimate that between 20% and 30% of the bikes that would otherwise be available for service were sitting in a warehouse at any given time, waiting for their backup batteries to die. Let's say 20%. Since we had to buy more to keep our desired availability, that's like adding a 25% surcharge to the cost of every bike! As a startup, you can't really afford to burn cash like that. Let's do a little table of costs here:
 
-| cost/bike | % idle | total bikes, USD | wasted money , USD|
-| ----|----|---|---|
-|  $100 | 20 | 5000 | $100,000 |
-|  $100 | 30 | 5000 | $150,000
-| $100 | 20 | 20,000 | $500,000 |
-| $100 | 30 | 20,000 | $750,000 |
+| cost/bike | % idle | total bikes, USD | wasted money , USD |
+| --------- | ------ | ---------------- | ------------------ |
+| $100      | 20     | 5000             | $100,000           |
+| $100      | 30     | 5000             | $150,000           |
+| $100      | 20     | 20,000           | $500,000           |
+| $100      | 30     | 20,000           | $750,000           |
 
-If we had focused on making it **easy and fast to  turn on and off again**, we never would have had such a problem. A few months down the line, we had a big meeting where we were going to design a new bike. Everyone got to pitch features. I asked for a big button that physically disconnected power to everything. Everyone laughed. I told them I wasn't joking, and that it was cruical to reliability. They said they'd think about it. I never got to find out, because instead of a new button, we got a nice round of layoffs when the company ran into financial trouble. Who knows - maybe if we'd had to buy fewer bikes, we'd have had more money to keep going.
+If we had focused on making it **easy and fast to turn on and off again**, we never would have had such a problem. A few months down the line, we had a big meeting where we were going to design a new bike. Everyone got to pitch features. I asked for a big button that physically disconnected power to everything. Everyone laughed. I told them I wasn't joking, and that it was cruical to reliability. They said they'd think about it. I never got to find out, because instead of a new button, we got a nice round of layoffs when the company ran into financial trouble. Who knows - maybe if we'd had to buy fewer bikes, we'd have had more money to keep going.
 
 C'est la vie. Let's talk about booting up and shutting down.
 
@@ -334,7 +342,7 @@ We want to start the shutdown signal exactly once.
 
         const timeout = 500*time.Millisecond // force-shutdown timeout
         gamelog.Warnf("got an interrupt: shutting down in %s", timeout)
-    
+
         go func() { // force-shutdown goroutine.
             time.Sleep(timeout)
             // tell main that the shutdown failed due to timeout.
@@ -349,7 +357,7 @@ We want to start the shutdown signal exactly once.
             wg := new(sync.WaitGroup)
             wg.Add(2)
             go func() {
-                defer wg.Done() 
+                defer wg.Done()
                 err := g.PlayState.AutoSave()
                 if err != nil {
                     gamelog.Errorf("error autosaving: %v", err)

@@ -1,12 +1,14 @@
-
 # a tale of two stacks: optimizing gin's panic recovery handler
 
-#### A programming article by Efron Licht
+A programming article by Efron Licht
 
-#### *#### **more articles**
+#### more articles
 
 - advanced go & gamedev
+
   1. [advanced go: reflection-based debug console](https://eblog.fly.dev/console.html)
+  2. [reflection-based debug console: autocomplete](https://eblog.fly.dev/console-autocomplete.html)
+
 - go quirks & tricks
 
   1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
@@ -15,13 +17,14 @@
 
 - starting software
 
-    1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
-    1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
-    1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
-    1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
+  1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
+  1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
+  1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+  1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
 
-- [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
-- [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
+- miscellaneous
+  1. [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
+  1. [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
 
 ## gin's panic handler
 
@@ -109,7 +112,9 @@ Let's take a look into the implementation to find out _how_ Gin does it, and see
 ## Investigating Gin
 
 Luckily, the stack trace itself gives us nearly all the clues we need:
+
 > `/home/efron/go/pkg/mod/github.com/gin-gonic/gin@v1.8.2/recovery.go:101 (0x71a5ec)
+
         CustomRecoveryWithWriter.func1: c.Next()`
 
 which contains a function `stack()`, which is simple and clearly documented. From now on, I'm going to call it `slowstack()`, and we'll call our eventual optimized version `faststack()`.
@@ -259,7 +264,7 @@ This approach has one limitation: we have to specify a max stack size to pass to
 
 ### always reads a whole file instead of a single line
 
- Even with an incredibly simple handler, like ours, `slowstack` reads 7 files into memory, totalling 276KiB.
+Even with an incredibly simple handler, like ours, `slowstack` reads 7 files into memory, totalling 276KiB.
 
 - main.go (.3 KiB)
 - gin/context.go (37 KiB)
@@ -269,7 +274,7 @@ This approach has one limitation: we have to specify a max stack size to pass to
 - net/http/server.go (114 KiB)
 - asm_amd64.s (59KiB)
 
-The longest lines of a `.go` or `.s` file are roughly 200 bytes, so this is using  roughly 1300x the bytes it needs to.
+The longest lines of a `.go` or `.s` file are roughly 200 bytes, so this is using roughly 1300x the bytes it needs to.
 
 ### reading a line at a time
 
@@ -377,7 +382,7 @@ type debugInfo struct {
 
 This requires a few structural changes: rather than formatting the frames as we ascend the callstack, we put them all in a slice, populate them all, resort-them with their original order, and _then_ format them into our output buffer.
 
-If there are few or no repeated files, this will use more peak memory than the previous approach,  but it's a solid solution that saves us from the pathological cases we outlined above. And since our minimal test case proves _any_ Gin handler will have some repeated cases, we always save _some_ work.
+If there are few or no repeated files, this will use more peak memory than the previous approach, but it's a solid solution that saves us from the pathological cases we outlined above. And since our minimal test case proves _any_ Gin handler will have some repeated cases, we always save _some_ work.
 
 ```go
 func stack_03(skip int) (formatted []byte) {
@@ -488,7 +493,7 @@ Here, we use a `sync.Once` to lazily-check whether or not we can access the file
 ```go
 // local source is not always available. for example, the executable may be running on a system without the source
  // or the -trimpath buildflag could have been provided to go tool.
- // if we can't find the source for THIS file, we are unlikely to be able to find it for any file.  
+ // if we can't find the source for THIS file, we are unlikely to be able to find it for any file.
 var localSourceOnce sync.Once
 var localSourceNotFound bool
 func localSourceUnavailable() bool {
@@ -635,55 +640,56 @@ Let's examine the first case:
 
 ### bench: linux(wsl): SSD
 
-|name|runs|ns/op|%/max|bytes|%/max|allocs|%/max|
-|---|---|---|---|---|---|---|---|
-|FastStack/depth=16-24             |7.76e+03|1.42e+05|0.0624|1.66e+04|0.0194|242|0.42|
-|FastStack/depth=32-24             |4.93e+03|2.18e+05|0.0959|3.3e+04|0.0385|403|0.7|
-|FastStack/depth=64-24             |4.21e+03|3.04e+05|0.133|4.59e+04|0.0536|651|1.13|
-|FastStack/depth=128-24            |3.85e+03|2.98e+05|0.131|4.59e+04|0.0536|651|1.13|
-|FastStack/depth=256-24            |4.3e+03|2.77e+05|0.122|4.59e+04|0.0536|651|1.13|
-|FastStack/depth=512-24            |4.31e+03|2.75e+05|0.121|4.59e+04|0.0536|651|1.13|
-|FastStack/depth=1024-24           |4.19e+03|3.06e+05|0.134|4.59e+04|0.0536|651|1.13|
-|FastStack/depth=2048-24           |3.45e+03|2.92e+05|0.128|4.59e+04|0.0536|651|1.13|
-|FastStack/depth=4096-24           |4.03e+03|2.98e+05|0.131|4.59e+04|0.0536|651|1.13|
-|SlowStack/depth=0016-24           |4.95e+03|2.42e+05|0.106|5.32e+05|0.62|313|0.543|
-|SlowStack/depth=0032-24           |2.74e+03|3.99e+05|0.175|8.66e+05|1.01|538|0.934|
-|SlowStack/depth=0064-24           |1.72e+03|7.07e+05|0.311|1.53e+06|1.79|988|1.71|
-|SlowStack/depth=0128-24            |814|1.44e+06|0.631|2.87e+06|3.35|1.89e+03|3.28|
-|SlowStack/depth=0256-24            |384|3.29e+06|1.44|5.54e+06|6.46|3.68e+03|6.4|
-|SlowStack/depth=0512-24            |152|7.44e+06|3.27|1.09e+07|12.7|7.28e+03|12.6|
-|SlowStack/depth=1024-24             |52|2.07e+07|9.1|2.16e+07|25.2|1.45e+04|25.1|
-|SlowStack/depth=2048-24             |18|6.6e+07|29|4.29e+07|50.1|2.88e+04|50.1|
-|SlowStack/depth=4096-24              |5|2.28e+08|100|8.57e+07|100|5.76e+04|100|
+| name                    | runs     | ns/op    | %/max  | bytes    | %/max  | allocs   | %/max |
+| ----------------------- | -------- | -------- | ------ | -------- | ------ | -------- | ----- |
+| FastStack/depth=16-24   | 7.76e+03 | 1.42e+05 | 0.0624 | 1.66e+04 | 0.0194 | 242      | 0.42  |
+| FastStack/depth=32-24   | 4.93e+03 | 2.18e+05 | 0.0959 | 3.3e+04  | 0.0385 | 403      | 0.7   |
+| FastStack/depth=64-24   | 4.21e+03 | 3.04e+05 | 0.133  | 4.59e+04 | 0.0536 | 651      | 1.13  |
+| FastStack/depth=128-24  | 3.85e+03 | 2.98e+05 | 0.131  | 4.59e+04 | 0.0536 | 651      | 1.13  |
+| FastStack/depth=256-24  | 4.3e+03  | 2.77e+05 | 0.122  | 4.59e+04 | 0.0536 | 651      | 1.13  |
+| FastStack/depth=512-24  | 4.31e+03 | 2.75e+05 | 0.121  | 4.59e+04 | 0.0536 | 651      | 1.13  |
+| FastStack/depth=1024-24 | 4.19e+03 | 3.06e+05 | 0.134  | 4.59e+04 | 0.0536 | 651      | 1.13  |
+| FastStack/depth=2048-24 | 3.45e+03 | 2.92e+05 | 0.128  | 4.59e+04 | 0.0536 | 651      | 1.13  |
+| FastStack/depth=4096-24 | 4.03e+03 | 2.98e+05 | 0.131  | 4.59e+04 | 0.0536 | 651      | 1.13  |
+| SlowStack/depth=0016-24 | 4.95e+03 | 2.42e+05 | 0.106  | 5.32e+05 | 0.62   | 313      | 0.543 |
+| SlowStack/depth=0032-24 | 2.74e+03 | 3.99e+05 | 0.175  | 8.66e+05 | 1.01   | 538      | 0.934 |
+| SlowStack/depth=0064-24 | 1.72e+03 | 7.07e+05 | 0.311  | 1.53e+06 | 1.79   | 988      | 1.71  |
+| SlowStack/depth=0128-24 | 814      | 1.44e+06 | 0.631  | 2.87e+06 | 3.35   | 1.89e+03 | 3.28  |
+| SlowStack/depth=0256-24 | 384      | 3.29e+06 | 1.44   | 5.54e+06 | 6.46   | 3.68e+03 | 6.4   |
+| SlowStack/depth=0512-24 | 152      | 7.44e+06 | 3.27   | 1.09e+07 | 12.7   | 7.28e+03 | 12.6  |
+| SlowStack/depth=1024-24 | 52       | 2.07e+07 | 9.1    | 2.16e+07 | 25.2   | 1.45e+04 | 25.1  |
+| SlowStack/depth=2048-24 | 18       | 6.6e+07  | 29     | 4.29e+07 | 50.1   | 2.88e+04 | 50.1  |
+| SlowStack/depth=4096-24 | 5        | 2.28e+08 | 100    | 8.57e+07 | 100    | 5.76e+04 | 100   |
+
 We note the following:
 
 - `faststack` is always faster than `slowstack`; it starts out roughly 40% faster and gets better from there.
-- `faststack` always uses  _significantly_ less memory.
-- faststack's resource usage stops  increasing after depth 64, as we'd expect (since we hard-limited the callstack).
+- `faststack` always uses _significantly_ less memory.
+- faststack's resource usage stops increasing after depth 64, as we'd expect (since we hard-limited the callstack).
 - slowstack's memory usage and runtime increase linearly with the depth of the callstack, using nearly a MiB per call for even a 32-deep callstack.
 
 ### bench: Windows (HDD)
 
-|name|runs|ns/op|%/max|bytes|%/max|allocs|%/max|
-|---|---|---|---|---|---|---|---|
-|FastStack/depth=16-24              |861|1.34e+06|0.29|3e+04|0.0346|250|0.434|
-|FastStack/depth=32-24              |532|2.25e+06|0.487|4.66e+04|0.0538|410|0.711|
-|FastStack/depth=64-24              |322|3.63e+06|0.784|8e+04|0.0922|653|1.13|
-|FastStack/depth=128-24             |324|3.61e+06|0.78|8e+04|0.0923|653|1.13|
-|FastStack/depth=256-24             |328|3.69e+06|0.798|8e+04|0.0923|653|1.13|
-|FastStack/depth=512-24             |326|3.58e+06|0.774|8e+04|0.0923|653|1.13|
-|FastStack/depth=1024-24            |338|3.61e+06|0.78|8e+04|0.0923|653|1.13|
-|FastStack/depth=2048-24            |322|3.64e+06|0.786|8e+04|0.0923|653|1.13|
-|FastStack/depth=4096-24            |327|3.67e+06|0.794|8e+04|0.0923|653|1.13|
-|SlowStack/depth=0016-24            |752|1.6e+06|0.346|5.38e+05|0.621|317|0.55|
-|SlowStack/depth=0032-24            |427|2.84e+06|0.613|8.76e+05|1.01|542|0.94|
-|SlowStack/depth=0064-24            |232|5.11e+06|1.11|1.55e+06|1.79|992|1.72|
-|SlowStack/depth=0128-24            |120|1.02e+07|2.22|2.9e+06|3.35|1.89e+03|3.28|
-|SlowStack/depth=0256-24             |57|2.02e+07|4.37|5.61e+06|6.47|3.69e+03|6.4|
-|SlowStack/depth=0512-24             |31|4e+07|8.66|1.1e+07|12.7|7.28e+03|12.6|
-|SlowStack/depth=1024-24             |13|8.56e+07|18.5|2.18e+07|25.2|1.45e+04|25.1|
-|SlowStack/depth=2048-24              |6|1.93e+08|41.8|4.35e+07|50.1|2.89e+04|50.1|
-|SlowStack/depth=4096-24              |3|4.62e+08|100|8.68e+07|100|5.76e+04|100|
+| name                    | runs | ns/op    | %/max | bytes    | %/max  | allocs   | %/max |
+| ----------------------- | ---- | -------- | ----- | -------- | ------ | -------- | ----- |
+| FastStack/depth=16-24   | 861  | 1.34e+06 | 0.29  | 3e+04    | 0.0346 | 250      | 0.434 |
+| FastStack/depth=32-24   | 532  | 2.25e+06 | 0.487 | 4.66e+04 | 0.0538 | 410      | 0.711 |
+| FastStack/depth=64-24   | 322  | 3.63e+06 | 0.784 | 8e+04    | 0.0922 | 653      | 1.13  |
+| FastStack/depth=128-24  | 324  | 3.61e+06 | 0.78  | 8e+04    | 0.0923 | 653      | 1.13  |
+| FastStack/depth=256-24  | 328  | 3.69e+06 | 0.798 | 8e+04    | 0.0923 | 653      | 1.13  |
+| FastStack/depth=512-24  | 326  | 3.58e+06 | 0.774 | 8e+04    | 0.0923 | 653      | 1.13  |
+| FastStack/depth=1024-24 | 338  | 3.61e+06 | 0.78  | 8e+04    | 0.0923 | 653      | 1.13  |
+| FastStack/depth=2048-24 | 322  | 3.64e+06 | 0.786 | 8e+04    | 0.0923 | 653      | 1.13  |
+| FastStack/depth=4096-24 | 327  | 3.67e+06 | 0.794 | 8e+04    | 0.0923 | 653      | 1.13  |
+| SlowStack/depth=0016-24 | 752  | 1.6e+06  | 0.346 | 5.38e+05 | 0.621  | 317      | 0.55  |
+| SlowStack/depth=0032-24 | 427  | 2.84e+06 | 0.613 | 8.76e+05 | 1.01   | 542      | 0.94  |
+| SlowStack/depth=0064-24 | 232  | 5.11e+06 | 1.11  | 1.55e+06 | 1.79   | 992      | 1.72  |
+| SlowStack/depth=0128-24 | 120  | 1.02e+07 | 2.22  | 2.9e+06  | 3.35   | 1.89e+03 | 3.28  |
+| SlowStack/depth=0256-24 | 57   | 2.02e+07 | 4.37  | 5.61e+06 | 6.47   | 3.69e+03 | 6.4   |
+| SlowStack/depth=0512-24 | 31   | 4e+07    | 8.66  | 1.1e+07  | 12.7   | 7.28e+03 | 12.6  |
+| SlowStack/depth=1024-24 | 13   | 8.56e+07 | 18.5  | 2.18e+07 | 25.2   | 1.45e+04 | 25.1  |
+| SlowStack/depth=2048-24 | 6    | 1.93e+08 | 41.8  | 4.35e+07 | 50.1   | 2.89e+04 | 50.1  |
+| SlowStack/depth=4096-24 | 3    | 4.62e+08 | 100   | 8.68e+07 | 100    | 5.76e+04 | 100   |
 
 This is slower, but not by as much as we might expect. Probably the operating system's in-memory read cache is doing the heavy lifting here.
 
@@ -693,7 +699,7 @@ Only the truly deep calls start taking nearly a second (though that's _really_ s
 
 Everything comes at a cost. In this case, `faststack` cuts down on the memory usage and clock time significantly by using a more efficient algorithm and limiting the total stack depth, at the cost of doubling the length of the code and increasing it's complexity. `slowstack` was trivial to understand, and `faststack` is definitely not; it requires a new data structure, global variables, lazy initialization, it's _own_ panic recovery handler, and two separate sorts.
 
-Why do we have a panic recovery handler in the first place?  To provide continuous service, even in the presence of software bugs. That is, a panic recovery handler is supposed to be a last-ditch protection against a bug that never should have made it into production.
+Why do we have a panic recovery handler in the first place? To provide continuous service, even in the presence of software bugs. That is, a panic recovery handler is supposed to be a last-ditch protection against a bug that never should have made it into production.
 These panics are _supposed_ to be rare; prevented by a suite of tests, CI, etc. In practice, well, all software is buggy, and Go programs can panic a lot. When I worked at an ISP, I had production bugs that triggered 20K recovery handlers, per minute, per server (on ~5 servers). If those stacks have 20 frames each, on average, and the files those frames came from average 20K, _8GiB_ of allocations a minute per server, or 40GiB of allocations per minute: - that's enough to bring most containers to a crawl, and even a relatively beefy modern PC might struggle to clean up all that garbage. **This** server only has 256MiB of RAM (as of my last edit.) Admittedly, that's a pretty niche scenario.
 
 More worryingly, there's two performance problems that _faststack_ can't help with: first, most storage mediums can't do concurrent IO. If _something else_ on the server needs to touch the disks the panic handler is reading, then they'll block each other for as long as those reads take.

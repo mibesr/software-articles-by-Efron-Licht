@@ -1,13 +1,16 @@
 # test fast: a practical guide to a livable test suite
 
 A software article by Efron Licht
+
 August 2023
 
-
-#### **more articles**
+#### more articles
 
 - advanced go & gamedev
+
   1. [advanced go: reflection-based debug console](https://eblog.fly.dev/console.html)
+  2. [reflection-based debug console: autocomplete](https://eblog.fly.dev/console-autocomplete.html)
+
 - go quirks & tricks
 
   1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
@@ -16,14 +19,14 @@ August 2023
 
 - starting software
 
-    1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
-    1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
-    1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
-    1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
+  1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
+  1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
+  1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+  1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
 
-- [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
-- [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
-
+- miscellaneous
+  1. [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
+  1. [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
 
 ## Introduction: what's wrong with my tests?
 
@@ -59,7 +62,7 @@ Your average software project contains hundreds of tests that run before each an
 - guarding against potential regressions introduced by new features or other bugfixes
 - acting as a "living" set of documentation and examples for the codebase
 - giving a nice warm fuzzy feeling to engineers & managers
-  
+
 **Tests are not a universal panacea: slow or unreliable tests can cause more damage than they prevent.**
 A healthy test suite is about far more than coverage: useful tests are _fast_, _reliable_, and _deterministic_. In this article, we'll cover
 
@@ -74,12 +77,12 @@ This article is a loose sequel to some of my other posts on infrastructure and s
 
 Programming work varies wildly in scope. Some programming work is the exciting kind where you come up with clever algorithms, pack bits, or implement clever new features. More programming work is 'routine': fixing spelling errors, updating configuration, adding an extra URL parameter to a HTTP request - the kind of task that _should_ take thirty seconds. The most productive programming consists of quick iteration on problems of this kind: make a change, test them, rinse, repeat. Only one problem: for the vast majority of professional codebases, the software test suite takes minutes or hours to run. By the time the test suite finishes, the programmer has been called into a meeting, pulled away by another bug, been out to lunch, or simply lost their train of thought. Either way, what should have been a 'quick fix' drags into the next day, or week, or month. **_Slow tests are an enormous productivity killer, a hidden demon sabotaging every attempt to build quality software._**
 
-There is nothing quite so damaging to test infrastructure as a flaky test: a test that _sometimes_ passes and sometimes fails. Software Engineers universally develop a defense mechanism against flaky tests: they ignore them. Now, remember, the entire purpose of a test suite is to tell you that your code needs to be fixed; **but since flaky tests are not a reliable indicator, they train developers to treat failures as noise, not signal.** Over time, as the flaky tests build up, developers assume _all_  failures are flaky, and they start simply ignoring _all_ failures and over-riding the safeguards that prevent broken code from being deployed. This concept, called "alarm fatigue", is well known in a variety of other fields. Disasters from [plane crashes](http://www.nytimes.com/1997/08/08/world/pilot-error-is-suspected-in-crash-on-guam.html?scp=8&sq=Korean%20Guam&st=cse) to  [exploding oil rigs](http://www.nytimes.com/2010/07/24/us/24hearings.html?scp=1&sq=Deepwater%20alarm&st=cse) to the famous meltdown at the chernobyl nuclear power plant were all, in part, due to alarm fatigue.
+There is nothing quite so damaging to test infrastructure as a flaky test: a test that _sometimes_ passes and sometimes fails. Software Engineers universally develop a defense mechanism against flaky tests: they ignore them. Now, remember, the entire purpose of a test suite is to tell you that your code needs to be fixed; **but since flaky tests are not a reliable indicator, they train developers to treat failures as noise, not signal.** Over time, as the flaky tests build up, developers assume _all_ failures are flaky, and they start simply ignoring _all_ failures and over-riding the safeguards that prevent broken code from being deployed. This concept, called "alarm fatigue", is well known in a variety of other fields. Disasters from [plane crashes](http://www.nytimes.com/1997/08/08/world/pilot-error-is-suspected-in-crash-on-guam.html?scp=8&sq=Korean%20Guam&st=cse) to [exploding oil rigs](http://www.nytimes.com/2010/07/24/us/24hearings.html?scp=1&sq=Deepwater%20alarm&st=cse) to the famous meltdown at the chernobyl nuclear power plant were all, in part, due to alarm fatigue.
 
-It's hard to overstate how demoralizing this can be to a Software Engineer who is bursting  w/ good ideas about where and how to fix the problem. Some of the worst nights of programmers' lives involve convincing themselves they'll stick around "just until they fix this simple bug", only to find themselves still at the office at 1am, exhausted, waiting for yet another agoniizingly slow test run to finish. The product managers have to explain to the execs how a seemingly 'trivial' bug took days or weeks to fix. The exhausted progammers are then berated for their lack of productivity, or worse yet, their lack of 'ownership' of the problem, when they've run themselves ragged trying to fix it. This tendency to blame [individuals rather than systems](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1117770/pdf/768.pdf) for problems is well-known in organizational psychology. But because **infrastructure is all-too-often effictively invisible to leadership, it rarely gets prioritized**, even when it's the root cause of what leadership sees as a 'productivity' problem. Often times, the leadership is too far away to see the problem, and the junior engineers who are most affected by it are too 'close' to the problem to be able to really see it. They know something's wrong - everything takes too
+It's hard to overstate how demoralizing this can be to a Software Engineer who is bursting w/ good ideas about where and how to fix the problem. Some of the worst nights of programmers' lives involve convincing themselves they'll stick around "just until they fix this simple bug", only to find themselves still at the office at 1am, exhausted, waiting for yet another agoniizingly slow test run to finish. The product managers have to explain to the execs how a seemingly 'trivial' bug took days or weeks to fix. The exhausted progammers are then berated for their lack of productivity, or worse yet, their lack of 'ownership' of the problem, when they've run themselves ragged trying to fix it. This tendency to blame [individuals rather than systems](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1117770/pdf/768.pdf) for problems is well-known in organizational psychology. But because **infrastructure is all-too-often effictively invisible to leadership, it rarely gets prioritized**, even when it's the root cause of what leadership sees as a 'productivity' problem. Often times, the leadership is too far away to see the problem, and the junior engineers who are most affected by it are too 'close' to the problem to be able to really see it. They know something's wrong - everything takes too
 long, everything is too hard - but they don't know _why_ - and even if they do, they have no idea how to fix it.
 
-And in an attempt to regain the lost speed and regain the trust of leadership & product management, programmers will start cutting  _more_ corners: ignoring _more_ tests, and over-riding _more_ safeguards. It's a death spiral through good intentions.
+And in an attempt to regain the lost speed and regain the trust of leadership & product management, programmers will start cutting _more_ corners: ignoring _more_ tests, and over-riding _more_ safeguards. It's a death spiral through good intentions.
 
 But it's one you can prevent with fast and reliable tests.
 
@@ -100,25 +103,26 @@ The best tests are also:
 
 - #### Understandable
 
-    A test is **understandable** if you can read a failure and understand what went wrong, without having to know underlying implementation details. This usually just means being careful with failure messages.
-    A template like "funcname(arg1, arg2): got \<something\>, want \<somethingelse\>" is usually fine. Cryptic failures that just said something like "assertion failed", with (or worse, without) accompanying stack traces are not.
+  A test is **understandable** if you can read a failure and understand what went wrong, without having to know underlying implementation details. This usually just means being careful with failure messages.
+  A template like "funcname(arg1, arg2): got \<something\>, want \<somethingelse\>" is usually fine. Cryptic failures that just said something like "assertion failed", with (or worse, without) accompanying stack traces are not.
 
-    No need to get fancy: this is fine:
+  No need to get fancy: this is fine:
 
-    > FAIL: TestAdd/2+3=5 (0.00s)\
-    >   Add(2, 3) = 6, want 5
+  > FAIL: TestAdd/2+3=5 (0.00s)\
+  >  Add(2, 3) = 6, want 5
 
 - #### Deterministic
 
-    A test is **deterministic** if when it fails, it always fails.
+  A test is **deterministic** if when it fails, it always fails.
 
 - #### Fast
 
-    A test is **fast** if it takes `<=1ms` to run on the slowest developer machine anyone uses. Parallelizable tests are allowed a little leeway - say `<10ms`. This may seem extreme, but larger projects may have tens of thousands of tests. If even a hundred of these take `100ms`, you're talking about ten seconds to run.
+  A test is **fast** if it takes `<=1ms` to run on the slowest developer machine anyone uses. Parallelizable tests are allowed a little leeway - say `<10ms`. This may seem extreme, but larger projects may have tens of thousands of tests. If even a hundred of these take `100ms`, you're talking about ten seconds to run.
 
 - #### Parallelizable
 
-    A test is **parallelizable** if it can be run in any order or simultaneously with any other test, including multiple copies of itself in other binaries. Weaker forms of concurrency are such as the following are not as good, but still better than nothing:
+  A test is **parallelizable** if it can be run in any order or simultaneously with any other test, including multiple copies of itself in other binaries. Weaker forms of concurrency are such as the following are not as good, but still better than nothing:
+
   - "at the same time as other tests _on other machines_"
   - "if nothing else is touching the environment variables"
   - "not at the same time as another copy of itself"
@@ -129,7 +133,7 @@ The best tests are also:
 
 - #### Dependency free
 
-    A test is **dependency free** if it doesn't communicate with anything outside the Go runtime. This includes but is not limited to interaction with:
+  A test is **dependency free** if it doesn't communicate with anything outside the Go runtime. This includes but is not limited to interaction with:
 
   - command line arguments
   - environment variables (reading or writing)
@@ -143,15 +147,15 @@ The best tests are also:
 
 - #### **unit** tests
 
-  Are **understandable**, **deterministic**, **fast**, preferably **parellizable**, and **dependecy-free**.  We should be able to run these immediately, all the time, and the entire unit test suite should run in `<3s`, preferably `<1s`.
+  Are **understandable**, **deterministic**, **fast**, preferably **parellizable**, and **dependecy-free**. We should be able to run these immediately, all the time, and the entire unit test suite should run in `<3s`, preferably `<1s`.
 
 - #### **integration tests**
 
-    **integration** tests are **understandable** and **deterministic** and make best-effort attempts at the other three.
+  **integration** tests are **understandable** and **deterministic** and make best-effort attempts at the other three.
 
 - #### **end-to-end** tests
 
-    ... aren't the subject of this article.
+  ... aren't the subject of this article.
 
 OK. enough table-setting.
 
@@ -170,7 +174,7 @@ While all of these techniques apply to any programming langauge, all examples wi
 
 #### Making tests deterministic
 
-Make tests deterministic by removing all sources of nondeterminism. This is basically the list of dependencies above, plus global variables and conccurrency.  If a test continues to be flaky, skip it with an error message that explains why as best you can, and try and write a better test (or better code!) as soon as you can.
+Make tests deterministic by removing all sources of nondeterminism. This is basically the list of dependencies above, plus global variables and conccurrency. If a test continues to be flaky, skip it with an error message that explains why as best you can, and try and write a better test (or better code!) as soon as you can.
 
 You don't want to pretend the problem doesn't exist, but it's even worse to have the flaky test clogging up your deployment pipeline while providing no value.
 
@@ -204,7 +208,7 @@ func TestMul(t *testing.T) {
     }
 }
 
-// TestAdd runs in parallel with TestSub, and it's subtests will run in parallel both with each other and TestSub. 
+// TestAdd runs in parallel with TestSub, and it's subtests will run in parallel both with each other and TestSub.
 func TestAdd(t *testing.T) {
     t.Parallel() // Add will run in parallel with other tests in this package from this point on
 
@@ -228,7 +232,7 @@ func TestAdd(t *testing.T) {
 // TestSub will run in parallel with other tests in this package,
 // but only one of its subtests will run at a time
 func TestSub(t *testing.T) {
-    t.Parallel() 
+    t.Parallel()
 
     for _, tt := range []struct{
         a, b, want int
@@ -369,7 +373,7 @@ As mentioned previously, the `go test ./...` command builds and executes a test 
 
 Let's examine that last point in more detail. Many programs require a variety of assets to run (images, sounds, etc), which may either be loaded from disk or embedded in the binary. In either case, loading and processing these assets can take a long time, and this process will have to be repeated for every package that imports the assets package. But your 'short' tests shouldn't need these at all. Consider skipping loading them entirely, or falling back to a default asset.
 
-Nothing prevents us from checking the `testing.Short()` flag in non-test code, so we can use that to skip loading assets in short tests.  A quick gotcha: you can't use `testing.Short()` until the `testing` package has been initialized and CLI flags have been parsed. A program like this:
+Nothing prevents us from checking the `testing.Short()` flag in non-test code, so we can use that to skip loading assets in short tests. A quick gotcha: you can't use `testing.Short()` until the `testing` package has been initialized and CLI flags have been parsed. A program like this:
 
 ```go
 
@@ -448,8 +452,7 @@ Dependencies kill software by turning structured programs into a loose graph of 
 
 ### run your dependencies' tests
 
-I don't understand the mindset that tests your OWN code to the brink of insanity, but happily relies on dozens of other people's software packages without even running their tests. Don't do that. Test your dependencies. If they're slow, don't run them every time, but at least run them once in a while to make sure they're reliable. At a bare minimum, run _every_ dependency's tests when you update a version of _any_ dependency. This means that speed & reliability are important for your  dependencies' tests, too.
-
+I don't understand the mindset that tests your OWN code to the brink of insanity, but happily relies on dozens of other people's software packages without even running their tests. Don't do that. Test your dependencies. If they're slow, don't run them every time, but at least run them once in a while to make sure they're reliable. At a bare minimum, run _every_ dependency's tests when you update a version of _any_ dependency. This means that speed & reliability are important for your dependencies' tests, too.
 
 ### Inject dependencies to avoid I/O and allocation
 
@@ -568,7 +571,7 @@ In general, try to avoid sleeping entirely by using a channel, mutex, waitgroup,
 
 Sometimes the service you're depending on isn't nice enough to signal _you_ when it's ready and you need to poll it instead. If you absolutely must, set up repeated polls at 1-2ms and then push updates from there. Go's channels can be a good way to do this: send an error or nil for each dependency on a channel, and just drain one for each dependency you're waiting on.
 
-The folowing example shows **one way**  to convert a poll into a push:
+The folowing example shows **one way** to convert a poll into a push:
 
 ```go
 
@@ -590,7 +593,7 @@ func TestMain(m *testing.M) {
          return
       }
       for {
-        switch err := db. 
+        switch err := db.
       }
 
 
@@ -633,20 +636,20 @@ The above advice is handy for writing _new_ tests, but what if you're already in
   - Mark any package which takes `>20ms` to initialize as slow.
   - Mark any test which fails _some_ of the time as flaky and skip it unconditionally.
 - Unplug the internet and run your test suite again under `-short` using `GODEBUG=inittrace=1` to find packages which are slow to initialize.
-     ```sh
-     GODEBUG=inittrace=1 go test -short  ./... 
-     ``` 
+
+  ```sh
+  GODEBUG=inittrace=1 go test -short  ./...
+  ```
+
   - Mark any **function** which fails as dependency-heavy and skip it using the `-short` flag.
   - Mark any **package** which takes `>20ms` to initialize as slow. If possible, refactor the package to lazily load dependencies or skip loading during `-short` until it doesn't.
   - If a **package** fails entirely, refactor the package to lazily load dependencies or skip loading during `-short` until it doesn't.
 
-Keep repeating this process until you've hit all the low-hanging fruit and have a _unit test_ step which runs in a reasonable amount of time. In general, you can get this done in a day or so, and this will free up your team to start fixing the underlying problems.    
-
+Keep repeating this process until you've hit all the low-hanging fruit and have a _unit test_ step which runs in a reasonable amount of time. In general, you can get this done in a day or so, and this will free up your team to start fixing the underlying problems.
 
 ## Conclusion
 
 Keeping your tests fast and reliable is fundamental to having them work for you instead of against you. Strive to keep the _performance_ of your tests in mind, not just coverage, or you'll strangle a codebase you thought you were nurturing.
-
 
 Like this article? Need help making great software, or just want to save a couple hundred thousand dollars on your cloud bill? Hire me, or bring me in to consult. Professional enquiries at
 [efron.dev@gmail.com](efron.dev@gmail.com) or [linkedin](https://www.linkedin.com/in/efronlicht)

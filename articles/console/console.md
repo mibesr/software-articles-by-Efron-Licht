@@ -1,12 +1,39 @@
-# advanced go: reflection-based debug console
+# advanced go: reflection-based debug console pt. 1
+
+#### A programming article by Efron Licht
+
+#### September 2023
+
+##### more articles
+
+- advanced go & gamedev
+
+  1. [advanced go: reflection-based debug console](https://eblog.fly.dev/console.html)
+  2. [reflection-based debug console: autocomplete](https://eblog.fly.dev/console-autocomplete.html)
+
+- go quirks & tricks
+
+  1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
+  2. [concurrency, unsafe, reflect](https://eblog.fly.dev/quirks2.html)
+  3. [arrays, validation, build constraints](https://eblog.fly.dev/quirks3.html)
+
+- starting software
+
+  1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
+  1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
+  1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+  1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
+
+- [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
+- [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
 
 In this article, we'll cover how and why to build a fully-featured debug console that allows live editing of a program's state, such as:
 
-## moving around the player, enemies, or UI elements
+- moving around the player, enemies, or UI elements
 
 ![ref_move_ui.mp4.gif](./ref_move_ui.mp4.gif)
 
-## live debug watch window of anything in the game state (& modifying it)
+- live debug watch window of anything in the game state (& modifying it)
 
 ![ref_ui_color_modification.mp4.gif](./ref_ui_color_modification.mp4.gif)
 
@@ -16,18 +43,18 @@ and much more.
 
 For the last few months I've been working nearly full-time on my own 2D Game, 'Tactical Tapir', a top-down shooter a-la Nuclear Throne.
 
-some concept art:
+Some concept art from the excellent [Brian Mulligan](https://infinitebrians.neocities.org/):
 
 ![./tt_concept_art.png](./tt_concept_art.png)
 
 ![./barry_concept_art.png](./barry_concept_art.png)
 
-some in-game art:
+some in-game art (also by Brian):
 
 ![./tt_tt.png](./tt_tt.png)
 ![./cpt_barry.png](./cpt_barry.png)
 
-Working with games is a new domain for me: systems are not as isolable as they are in web development or device drivers. In some ways, the questions game development asks are much more subjective: instead of asking "is this code correct?", you ask "does this feel nice?" "Testing" games is very different rather from say, a web server: you have 'squishy', subjective requirements like 'does this feel nice?' or 'is this fun?' rather than 'does this code meet the spec?'. There's no spec for fun, at least as far as I know.
+Unlike most games, I'm not using a conventional engine: it's almost all hand-written Go code, using `[ebiten](https://ebiten.org/)` to sit between my code & the GPU and do some input handling. Working with games is a new domain for me: systems are not as isolable as they are in web development or device drivers. In some ways, the questions game development asks are much more subjective: instead of asking "is this code correct?", you ask "does this feel nice?" "Testing" games is very different rather from say, a web server: you have 'squishy', subjective requirements like 'does this feel nice?' or 'is this fun?' rather than 'does this code meet the spec?'. There's no spec for fun, at least as far as I know.
 
 That is, I need to answer questions like this:
 
@@ -118,7 +145,7 @@ This works pretty well. In fact, we can visualize it as a kind of table:
 Which naturally suggests using a map to store the cheats:
 
 ```go
-var cheats map[Key]struct { 
+var cheats map[Key]struct {
     description string
     apply func(*Game)
 } {
@@ -140,7 +167,7 @@ func applyCheats(g *Game, input Inputs, cheats map[Key]struct {
     apply func(*Game)
 }) {
     if input.Held[KeyShift] && input.Held[KeyCtrl] {// check for cheats: if no ctrl+shift, no cheats
-        for key, cheat := range cheats { 
+        for key, cheat := range cheats {
             if input.JustPressed[key]
                 log.Println(cheat.description)
                 cheat.f(g)
@@ -185,19 +212,19 @@ type Console struct {
 
 A basic terminal includes the following navigational features:
 
-| key(s) | description | gif
-| --- | --- | ---|
-| `'a'..'z'` or other printable characters | insert the character at the cursor | ![insert char](./ref_inschar.mp4.gif)
-| `←` and `→` | move the cursor left and right | ![cursor left and right](./ref_cursorchar.mp4.gif)
-| `⇧` + `←`, `⇧` + `→` | move the cursor left and right a word | ![cursor word](./ref_cursorword.mp4.gif)
-| `⌫` | delete the character to the left of the cursor | ![bschar](./ref_bschar.mp4.gif)
-| `⇧` + `⌫` | delete a word to the left of the cursor | ![bsword](./ref_bsword.mp4.gif)
-| `␡` | delete the character to the right of the cursor | ![delrchar](./ref_delrchar.mp4.gif)
-| `⇧` + `␡` | delete a word to the right of the cursor | ![delrword](./ref_delrword.mp4.gif)
-| `↑` and `↓` | navigate the history, if there is one: they don't wrap. | ![usehist](./ref_usehist.mp4.gif)
-| `⇧` + `↑` and `⇧` + `↓` | go to the start and end of the history. | ![usehist](./ref_usehist.mp4.gif)
-| `⌤` (enter) | submit the current line of text | **SEE BELOW**
-| `↹` (tab) | autocomplete the current line of text | ![autocomplete](./ref_autocomplete.mp4.gif)
+| key(s)                                   | description                                             | gif                                                |
+| ---------------------------------------- | ------------------------------------------------------- | -------------------------------------------------- |
+| `'a'..'z'` or other printable characters | insert the character at the cursor                      | ![insert char](./ref_inschar.mp4.gif)              |
+| `←` and `→`                              | move the cursor left and right                          | ![cursor left and right](./ref_cursorchar.mp4.gif) |
+| `⇧` + `←`, `⇧` + `→`                     | move the cursor left and right a word                   | ![cursor word](./ref_cursorword.mp4.gif)           |
+| `⌫`                                      | delete the character to the left of the cursor          | ![bschar](./ref_bschar.mp4.gif)                    |
+| `⇧` + `⌫`                                | delete a word to the left of the cursor                 | ![bsword](./ref_bsword.mp4.gif)                    |
+| `␡`                                      | delete the character to the right of the cursor         | ![delrchar](./ref_delrchar.mp4.gif)                |
+| `⇧` + `␡`                                | delete a word to the right of the cursor                | ![delrword](./ref_delrword.mp4.gif)                |
+| `↑` and `↓`                              | navigate the history, if there is one: they don't wrap. | ![usehist](./ref_usehist.mp4.gif)                  |
+| `⇧` + `↑` and `⇧` + `↓`                  | go to the start and end of the history.                 | ![usehist](./ref_usehist.mp4.gif)                  |
+| `⌤` (enter)                              | submit the current line of text                         | **SEE BELOW**                                      |
+| `↹` (tab)                                | autocomplete the current line of text                   | ![autocomplete](./ref_autocomplete.mp4.gif)        |
 
 Working backwards, we'll need to keep track of the following:
 
@@ -205,7 +232,7 @@ Working backwards, we'll need to keep track of the following:
 - the cursor position
 - the history of previous lines of text
 - our last viewed index in the history
-- the suggestion for the current line of text, if any.  
+- the suggestion for the current line of text, if any.
 
 Additionally, there are a few gotchas we'd like to avoid:
 
@@ -255,6 +282,7 @@ func (k Keys) Held(ebiten.Key) bool {}
 ```
 
 I.E, if on five frames we got the following inputs for the letter 'E':
+
 > 0, 1, 1, 0, 0
 
 The functions would return the following:
@@ -302,16 +330,16 @@ func (k Keys) Released(key ebiten.Key) bool {
 That knocks us down to 218 bytes, but we can do better. Why store a bool for each key when we can store a single bit? We can use a bitset to store the state of each key by splitting the keys into two groups of 64 bits and do some bit twiddling to access them:
 
 ```go
-struct Keys {thisFrame, lastFrame struct { low, hi uint64 }}        
+struct Keys {thisFrame, lastFrame struct { low, hi uint64 }}
 
 
 func (k Keys) Held(key ebiten.Key) bool {
     // read as: "check whether the key'th bit is set in thisFrame.low"
-    if key < 64 { 
+    if key < 64 {
         return k.thisFrame.low & (1 << key) != 0
     }
     // read as: "check whether the (key-64)th bit is set in thisFrame.hi"
-    key -= 64 
+    key -= 64
     return k.thisFrame.hi & (1 << key) != 0
 }
 func (k Keys) Pressed(key ebiten.Key) bool {
@@ -319,20 +347,20 @@ func (k Keys) Pressed(key ebiten.Key) bool {
         return k.thisFrame.low & (1 << key) != 0 && k.lastFrame.low & (1 << key) == 0
     }
 
-    key -= 64 
+    key -= 64
     return k.thisFrame.hi & (1 << key) != 0 && k.lastFrame.hi & (1 << key) == 0
 }
 
 func (k Keys) Released(key ebiten.Key) bool {
-    if key < 64 { 
+    if key < 64 {
         return k.thisFrame.low & (1 << key) == 0 && k.lastFrame.low & (1 << key) != 0
     }
-    key -= 64 
+    key -= 64
     return k.thisFrame.hi & (1 << key) == 0 && k.lastFrame.hi & (1 << key) != 0
 }
 ```
 
-With this design, we can store the state of every key on the keyboard in only 32 bytes (or four 64-bit words). This makes the input state small enough to cheaply copy wherever we need it. Additonally, if we ever needed to access it concurrently, we could use atomic operations to do so without any locks!  Additionally, this opens up the possibility of using bit operations to enable or disable 'groups' of keys at once in very few instructions.
+With this design, we can store the state of every key on the keyboard in only 32 bytes (or four 64-bit words). This makes the input state small enough to cheaply copy wherever we need it. Additonally, if we ever needed to access it concurrently, we could use atomic operations to do so without any locks! Additionally, this opens up the possibility of using bit operations to enable or disable 'groups' of keys at once in very few instructions.
 
 OK, that's enough about the input API. Let's get back to updating the terminal.
 
@@ -396,7 +424,7 @@ func UpdateTerm(t *Terminal, keys input.Keys) (cmd *Command, err error) {
         del = keys.Pressed(ebiten.KeyDelete)
     }
     // how many navigation keys are pressed? if more than one, we do nothing rather than guess.
-    
+
     /* -- design note --
         this is the most important part of this function, since it massively reduces the number of cases we need to handle. rather than worrying about what to do if the user presses both left and right, or if they both insert a character and delete a character, we just ignore those cases, assuming they're user error or bouncing keys.
         the original design of this function was hundreds of lines longer and distinctly buggier. This is the fourth revision.
@@ -526,12 +554,12 @@ Our commands will have an `OPCODE` and zero or more `ARGS`. `ARGS` will be liter
 
 I resolve this problem by _not making structs like that_, but it's worth noting this limitation.
 
-|ITEM|description| example
-|---|---|---|
-|`OPCODE`| specifies a console command | `watch`, `mod`, `cpin`
-|`PATH`| a path to a field of the game state. | `player.hp`, `player.pos.x`
-|`AUGOP`| an augmented assignment operator. | `+=`, `*=`, `%=`
-|`LITERAL`| a literal value, interpreted by the OP | `100`, `hello`
+| ITEM      | description                            | example                     |
+| --------- | -------------------------------------- | --------------------------- |
+| `OPCODE`  | specifies a console command            | `watch`, `mod`, `cpin`      |
+| `PATH`    | a path to a field of the game state.   | `player.hp`, `player.pos.x` |
+| `AUGOP`   | an augmented assignment operator.      | `+=`, `*=`, `%=`            |
+| `LITERAL` | a literal value, interpreted by the OP | `100`, `hello`              |
 
 Commands will be of the form: `OP arg1 arg2 ... argN`, but we'll also allow the form `arg1 AUGOP arg2`, which is equivalent to `mod arg1 AUGOP arg2`. (That is, `mod` is implied as the opcode.)
 
@@ -598,7 +626,7 @@ type Watch struct {
 type Cpin struct {
     Path string
     Value reflect.Value
-}   
+}
 func (c Mod) Opcode() Op { return Mod }
 func (c Mod) Exec(v reflect.Value) (string, error) {
     // ...
@@ -620,18 +648,18 @@ func (c Cpin) Exec(v reflect.Value) (string, error) {
 
 - A third, best option exists, but we can't use it in Go. Languages with sum types (sometimes called "tagged unions" or "enums") could express a `Command` like this:
 
-    ```rust
-    // this is rust code: don't worry about it too much.
-    enum AugOp { Add, Sub, Mul, Div, Mod, Pow, BitAnd, BitOr, BitXor, BitClear, Shl, Shr }
-    enum Command {
-        Set(Path, Value),
-        Watch(Path),
-        Cpin(Path, Value),
-        AugAssign(path: Path, op: AugOp, value: Value),
-    }
-    ```
+  ```rust
+  // this is rust code: don't worry about it too much.
+  enum AugOp { Add, Sub, Mul, Div, Mod, Pow, BitAnd, BitOr, BitXor, BitClear, Shl, Shr }
+  enum Command {
+      Set(Path, Value),
+      Watch(Path),
+      Cpin(Path, Value),
+      AugAssign(path: Path, op: AugOp, value: Value),
+  }
+  ```
 
-    This would combine the best of both worlds: we'd have a single type to represent all commands, but we could guarantee the proper structure of each.
+  This would combine the best of both worlds: we'd have a single type to represent all commands, but we could guarantee the proper structure of each.
 
 Go doesn't have sum types, so **I chose the single struct approach to minimize the total amount of code**.
 
@@ -643,7 +671,7 @@ func ParseCommand(fields []string) (Command, error) {
    switch op := strings.ToLower(fields[0]); op {
     default: // unknown opcode
       // is this an augmented assignment operator?
-      if len(fields) == 3 && augassignops[fields[1]] != nil { 
+      if len(fields) == 3 && augassignops[fields[1]] != nil {
           return Command{MOD, fields[1:]}, nil
       }
       return Command{}, fmt.Errorf("unknown operation %q: expected one of %v", op, opNames)
@@ -674,84 +702,84 @@ First, a few examples to get the idea across.
 
 - #### Get the value of struct fields by name, regardless of type
 
-    ```go
-    // https://go.dev/play/p/gh7TMf2-JlE
+  ```go
+  // https://go.dev/play/p/gh7TMf2-JlE
 
-    var f64type = reflect.TypeOf(0.0)   
-    //  get the value of "`X`" and "`Y`" fields of a struct, regardless of what type the struct is, as long as they're both _any_ numeric type, even if X or Y are embedded in another struct.
-    func getXY(v reflect.Value) (x, y float64, ok bool) {   
-        if v.Type().Kind() != reflect.Struct { // make sure we have a struct
-            return 0, 0, false
-        }
-        // check if v.X or v.Y would be valid expressions at compile time on the type of v
-        vx, vy := v.FieldByName("X"), v.FieldByName("Y")
+  var f64type = reflect.TypeOf(0.0)
+  //  get the value of "`X`" and "`Y`" fields of a struct, regardless of what type the struct is, as long as they're both _any_ numeric type, even if X or Y are embedded in another struct.
+  func getXY(v reflect.Value) (x, y float64, ok bool) {
+      if v.Type().Kind() != reflect.Struct { // make sure we have a struct
+          return 0, 0, false
+      }
+      // check if v.X or v.Y would be valid expressions at compile time on the type of v
+      vx, vy := v.FieldByName("X"), v.FieldByName("Y")
 
-        if !vx.IsValid() || !vy.IsValid() { 
-            // they're not, so we can't do it at runtime either
-            return 0, 0, false
-        }
-        // and that f64(v.X) and f64(v.Y) would be valid conversions at compile time
-        if !vx.CanConvert(f64type) || !vy.CanConvert(f64type) {
-            // they're not, so we can't do it at runtime either
-            return 0, 0, false
+      if !vx.IsValid() || !vy.IsValid() {
+          // they're not, so we can't do it at runtime either
+          return 0, 0, false
+      }
+      // and that f64(v.X) and f64(v.Y) would be valid conversions at compile time
+      if !vx.CanConvert(f64type) || !vy.CanConvert(f64type) {
+          // they're not, so we can't do it at runtime either
+          return 0, 0, false
 
-        }
-        // they are: convert them to float64s and return them
-        x, y = vx.Convert(f64type).Float(), vy.Convert(f64type).Float()
-        return x, y, true
-    }
-    ```
+      }
+      // they are: convert them to float64s and return them
+      x, y = vx.Convert(f64type).Float(), vy.Convert(f64type).Float()
+      return x, y, true
+  }
+  ```
 
-    IN:
+  IN:
 
-    ```go
-    func main() { // https://go.dev/play/p/IiMldZgkEum
-        for _, v := range []any{
-            &image.Point{1, 2}, // X and Y are `int` in this package!
-            &struct{ X, Y float64 }{3, 4},
-            &struct{ image.Point }{image.Point{5, 6}}, // embedded fields
-        } {
-            v := reflect.ValueOf(v).Elem() // get the Value of the pointer
-            x, y, _ := getXY(v)            // get the value of the X and Y fields as float64s
-            fmt.Printf("%s: %v, %v\n", v.Type(), x, y)
-        }
-    }
-    ```
+  ```go
+  func main() { // https://go.dev/play/p/IiMldZgkEum
+      for _, v := range []any{
+          &image.Point{1, 2}, // X and Y are `int` in this package!
+          &struct{ X, Y float64 }{3, 4},
+          &struct{ image.Point }{image.Point{5, 6}}, // embedded fields
+      } {
+          v := reflect.ValueOf(v).Elem() // get the Value of the pointer
+          x, y, _ := getXY(v)            // get the value of the X and Y fields as float64s
+          fmt.Printf("%s: %v, %v\n", v.Type(), x, y)
+      }
+  }
+  ```
 
-    OUT:
+  OUT:
 
-    ```text
-    image.Point: 1, 2
-    struct { X float64; Y float64 }: 3, 4
-    struct { image.Point }: 5, 6
-    ```
+  ```text
+  image.Point: 1, 2
+  struct { X float64; Y float64 }: 3, 4
+  struct { image.Point }: 5, 6
+  ```
 
 - #### Set the value of struct fields by name, regardless of type
 
-    ```go
-    // https://go.dev/play/p/gh7TMf2-JlE
-    var f64type = reflect.TypeOf(0.0)
+  ```go
+  // https://go.dev/play/p/gh7TMf2-JlE
+  var f64type = reflect.TypeOf(0.0)
 
-    // set the value of the "`X`" and "`Y`" fields of a struct, so long as X and Y are both _any_ numeric type, even if X or Y are embedded in another struct.
-    // we could use this to, for example, set the position of an object in a game to the position of the mouse cursor.
-    func setXY(v reflect.Value, x, y float64) bool {
-        if v.Type().Kind() != reflect.Struct {
-            return false // not a struct
-        }
-        vx, vy := v.FieldByName("X"), v.FieldByName("Y")
-        if !vx.IsValid() || !vy.IsValid() {
-            return false // no X or Y field
-        }
-        if !vx.CanSet() || !vy.CanSet() {
-            return false // X or Y is unexported, part of an unexported struct, or isn't in an addressable struct
-        }
-        if !f64type.ConvertibleTo(vx.Type()) || !f64type.ConvertibleTo(vy.Type()) {
-        return false
-        }
-        vx.SetFloat(x)
-        vy.SetFloat(y)
-    }
-    ```
+  // set the value of the "`X`" and "`Y`" fields of a struct, so long as X and Y are both _any_ numeric type, even if X or Y are embedded in another struct.
+  // we could use this to, for example, set the position of an object in a game to the position of the mouse cursor.
+  func setXY(v reflect.Value, x, y float64) bool {
+      if v.Type().Kind() != reflect.Struct {
+          return false // not a struct
+      }
+      vx, vy := v.FieldByName("X"), v.FieldByName("Y")
+      if !vx.IsValid() || !vy.IsValid() {
+          return false // no X or Y field
+      }
+      if !vx.CanSet() || !vy.CanSet() {
+          return false // X or Y is unexported, part of an unexported struct, or isn't in an addressable struct
+      }
+      if !f64type.ConvertibleTo(vx.Type()) || !f64type.ConvertibleTo(vy.Type()) {
+      return false
+      }
+      vx.SetFloat(x)
+      vy.SetFloat(y)
+  }
+  ```
 
 #### IN
 
@@ -782,52 +810,52 @@ First, a few examples to get the idea across.
 
 - #### zero out any field of any struct
 
-    ```go
-    // zero out the given field of a struct, regardless of the type of struct or field, or whether the field is embedded in another struct.
-    func zeroField(v reflect.Value, fieldName string) bool {
-    if v.Type().Kind() != reflect.Struct {
-            return false // not a struct
-        }
-        f := v.FieldByName(fieldName)
-        if !f.IsValid() {
-            return false // no field
-        }
-        if !f.CanSet() {
-            return false // field is unexported, part of an unexported struct, or isn't in an addressable struct
-        }
-        f.Set(reflect.Zero(f.Type()))
-        return true
-    }
-    ```
+  ```go
+  // zero out the given field of a struct, regardless of the type of struct or field, or whether the field is embedded in another struct.
+  func zeroField(v reflect.Value, fieldName string) bool {
+  if v.Type().Kind() != reflect.Struct {
+          return false // not a struct
+      }
+      f := v.FieldByName(fieldName)
+      if !f.IsValid() {
+          return false // no field
+      }
+      if !f.CanSet() {
+          return false // field is unexported, part of an unexported struct, or isn't in an addressable struct
+      }
+      f.Set(reflect.Zero(f.Type()))
+      return true
+  }
+  ```
 
-    IN:
+  IN:
 
-    ```go
-    // https://go.dev/play/p/YO8LmQqqZuJ
-    func main() {
-    type A struct{ F string }
-    var a = A{"foo"}
-    fmt.Printf("a: before: %+v\n", a)
-    zeroField(reflect.ValueOf(&a).Elem(), "F")
-    fmt.Printf("a: after: %+v\n", a)
+  ```go
+  // https://go.dev/play/p/YO8LmQqqZuJ
+  func main() {
+  type A struct{ F string }
+  var a = A{"foo"}
+  fmt.Printf("a: before: %+v\n", a)
+  zeroField(reflect.ValueOf(&a).Elem(), "F")
+  fmt.Printf("a: after: %+v\n", a)
 
-    type B struct{ F int }
-    var b = B{2}
-    fmt.Printf("b: before: %+v\n", b)
-    zeroField(reflect.ValueOf(&b).Elem(), "F")
-    fmt.Printf("b: after: %+v\n", b)
+  type B struct{ F int }
+  var b = B{2}
+  fmt.Printf("b: before: %+v\n", b)
+  zeroField(reflect.ValueOf(&b).Elem(), "F")
+  fmt.Printf("b: after: %+v\n", b)
 
-    }
-    ```
+  }
+  ```
 
-    OUT:
+  OUT:
 
-    ```text
-    a: before: {F:foo}
-    a: after: {F:}
-    b: before: {F:2}
-    b: after: {F:0}
-    ```
+  ```text
+  a: before: {F:foo}
+  a: after: {F:}
+  b: before: {F:2}
+  b: after: {F:0}
+  ```
 
 ### reflect: types and values
 
@@ -864,40 +892,40 @@ Here's a quick cheatsheet of the types and functions we'll use in this article. 
 
 #### types
 
-| shorthand | type | obtained via  |
-|---|---|---|
-|v | [`reflect.Value`](https://pkg.go.dev/reflect#Value) | `reflect.ValueOf("some string")` |
-| t | [`reflect.Type`](https://pkg.go.dev/reflect#Type) | `v.Type()` or `reflect.TypeOf("another string")` |
-| k | [`reflect.Kind`](https://pkg.go.dev/reflect#Kind) | `t.Kind()` |
-| f | [`reflect.StructField`](https://pkg.go.dev/reflect#StructField) | `t.Field()` or `t.FieldByName()` or `t.FieldByNameFunc()`
-| n | `int8..=int64` or `int` | `n := 2` |
-| b | `bool` | `b := true` |
-| s | `string` or `struct` | `s := "some string"`, `s := struct{foo int}{"foo}` |
-| m | `map` | `m := map[string]int{"a": 1}` |
-| a | `slice` or `array` | `a := []int{1, 2, 3}` |
+| shorthand | type                                                            | obtained via                                              |
+| --------- | --------------------------------------------------------------- | --------------------------------------------------------- |
+| v         | [`reflect.Value`](https://pkg.go.dev/reflect#Value)             | `reflect.ValueOf("some string")`                          |
+| t         | [`reflect.Type`](https://pkg.go.dev/reflect#Type)               | `v.Type()` or `reflect.TypeOf("another string")`          |
+| k         | [`reflect.Kind`](https://pkg.go.dev/reflect#Kind)               | `t.Kind()`                                                |
+| f         | [`reflect.StructField`](https://pkg.go.dev/reflect#StructField) | `t.Field()` or `t.FieldByName()` or `t.FieldByNameFunc()` |
+| n         | `int8..=int64` or `int`                                         | `n := 2`                                                  |
+| b         | `bool`                                                          | `b := true`                                               |
+| s         | `string` or `struct`                                            | `s := "some string"`, `s := struct{foo int}{"foo}`        |
+| m         | `map`                                                           | `m := map[string]int{"a": 1}`                             |
+| a         | `slice` or `array`                                              | `a := []int{1, 2, 3}`                                     |
 
 #### functions
 
-| function | description | example | analogous to
-|---|---|---|---|
-|[`ValueOf`](https://pkg.go.dev/reflect#ValueOf)| get a [`Value`](https://pkg.go.dev/reflect#Value) from an ordinary value | `reflect.ValueOf(int(2))` | `t := 2` |
-|[`TypeOf`](https://pkg.go.dev/reflect#TypeOf)| get a [`Type`](https://pkg.go.dev/reflect#Type) from the value | `t := reflect.TypeOf(int(2))` | `int`|
-|[Type.Kind](https://pkg.go.dev/reflect#Type.Kind) | get the underlying primitive type | `t.Kind()` | `int` |
-|---|---|---|---|
-|[`Type.ConvertibleTo`](https://pkg.go.dev/reflect#Type.ConvertibleTo) | can the type be converted to a different type? | `t.ConvertibleTo(reflect.TypeOf(0))` |
-|[`Value.Addr`](https://pkg.go.dev/reflect#Value.Addr) | get the address of a value | `v.Addr()` | `&t` |
-|[`Value.CanAddr`](https://pkg.go.dev/reflect#Value.CanAddr) | can the value be addressed? | `v.CanAddr()` | |
-|[`Value.CanConvert`](https://pkg.go.dev/reflect#Value.CanConvert) | can the value be converted to a different type? | `v.CanConvert(reflect.TypeOf(0))` ||
-|[`Value.Convert`](https://pkg.go.dev/reflect#Value.Convert) | convert a value to a different type | `reflect.ValueOf(&t).Elem().Convert(reflect.TypeOf(b))` | `T(v)` | | use
-|[`Value.Elem`](https://pkg.go.dev/reflect#Value.Elem) | dereference a pointer or interface | `v.Elem()` | `*t` | |
-|[`Value.Field`](https://pkg.go.dev/reflect#Value.Field) | get the `nth` field of a struct | `v.Field(0)` |
-|[`Value.FieldByName`](https://pkg.go.dev/reflect#Value.FieldByName) | for `struct` kinds, get the field with the given name | `v.FieldByName("someField")` | `t.someField`
-|[`Value.FieldByNameFunc`](https://pkg.go.dev/reflect#Value.FieldByNameFunc) | for `struct` kinds, get the field with the given name, matching the given predicate | `v.FieldByNameFunc(func(s string) bool { return strings.EqualFold(s, "somefield") })` | `s.someField` or `s.somefield` or `s.Somefield`
-|[`Value.Index`](https://pkg.go.dev/reflect#Value.Index) | for `array` and `slice` kinds, get the `nth` element | `v.Index(0)` | `a[0]`
-|[`Value.Interface`](https://pkg.go.dev/reflect#Value.Interface)| get an ordinary value back from a `Value` (as `any`) | `reflect.ValueOf(2).Interface().(int)` | `any(int(2)).(int)` |
-|[`Value.Len`](https://pkg.go.dev/reflect#Value.Len) | for `array`, `map`, and `slice` kinds, get the length | `v.Len()` | `len(a)`, `len(m)`
-|[`Value.MapIndex`](https://pkg.go.dev/reflect#Value.MapIndex) | for `map` kinds, get the value associated with the given key | `v.MapIndex(reflect.ValueOf("someKey"))` | `m["someKey"]`
-|[`Value.Set`](https://pkg.go.dev/reflect#Value.Set) | set lhs to rhs, if they're the same `Type` | `v.Set(reflect.ValueOf(2))` | `t = 2` | |  
+| function                                                                    | description                                                                         | example                                                                               | analogous to                                    |
+| --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------- | --- | --- |
+| [`ValueOf`](https://pkg.go.dev/reflect#ValueOf)                             | get a [`Value`](https://pkg.go.dev/reflect#Value) from an ordinary value            | `reflect.ValueOf(int(2))`                                                             | `t := 2`                                        |
+| [`TypeOf`](https://pkg.go.dev/reflect#TypeOf)                               | get a [`Type`](https://pkg.go.dev/reflect#Type) from the value                      | `t := reflect.TypeOf(int(2))`                                                         | `int`                                           |
+| [Type.Kind](https://pkg.go.dev/reflect#Type.Kind)                           | get the underlying primitive type                                                   | `t.Kind()`                                                                            | `int`                                           |
+| ---                                                                         | ---                                                                                 | ---                                                                                   | ---                                             |
+| [`Type.ConvertibleTo`](https://pkg.go.dev/reflect#Type.ConvertibleTo)       | can the type be converted to a different type?                                      | `t.ConvertibleTo(reflect.TypeOf(0))`                                                  |
+| [`Value.Addr`](https://pkg.go.dev/reflect#Value.Addr)                       | get the address of a value                                                          | `v.Addr()`                                                                            | `&t`                                            |
+| [`Value.CanAddr`](https://pkg.go.dev/reflect#Value.CanAddr)                 | can the value be addressed?                                                         | `v.CanAddr()`                                                                         |                                                 |
+| [`Value.CanConvert`](https://pkg.go.dev/reflect#Value.CanConvert)           | can the value be converted to a different type?                                     | `v.CanConvert(reflect.TypeOf(0))`                                                     |                                                 |
+| [`Value.Convert`](https://pkg.go.dev/reflect#Value.Convert)                 | convert a value to a different type                                                 | `reflect.ValueOf(&t).Elem().Convert(reflect.TypeOf(b))`                               | `T(v)`                                          |     | use |
+| [`Value.Elem`](https://pkg.go.dev/reflect#Value.Elem)                       | dereference a pointer or interface                                                  | `v.Elem()`                                                                            | `*t`                                            |     |
+| [`Value.Field`](https://pkg.go.dev/reflect#Value.Field)                     | get the `nth` field of a struct                                                     | `v.Field(0)`                                                                          |
+| [`Value.FieldByName`](https://pkg.go.dev/reflect#Value.FieldByName)         | for `struct` kinds, get the field with the given name                               | `v.FieldByName("someField")`                                                          | `t.someField`                                   |
+| [`Value.FieldByNameFunc`](https://pkg.go.dev/reflect#Value.FieldByNameFunc) | for `struct` kinds, get the field with the given name, matching the given predicate | `v.FieldByNameFunc(func(s string) bool { return strings.EqualFold(s, "somefield") })` | `s.someField` or `s.somefield` or `s.Somefield` |
+| [`Value.Index`](https://pkg.go.dev/reflect#Value.Index)                     | for `array` and `slice` kinds, get the `nth` element                                | `v.Index(0)`                                                                          | `a[0]`                                          |
+| [`Value.Interface`](https://pkg.go.dev/reflect#Value.Interface)             | get an ordinary value back from a `Value` (as `any`)                                | `reflect.ValueOf(2).Interface().(int)`                                                | `any(int(2)).(int)`                             |
+| [`Value.Len`](https://pkg.go.dev/reflect#Value.Len)                         | for `array`, `map`, and `slice` kinds, get the length                               | `v.Len()`                                                                             | `len(a)`, `len(m)`                              |
+| [`Value.MapIndex`](https://pkg.go.dev/reflect#Value.MapIndex)               | for `map` kinds, get the value associated with the given key                        | `v.MapIndex(reflect.ValueOf("someKey"))`                                              | `m["someKey"]`                                  |
+| [`Value.Set`](https://pkg.go.dev/reflect#Value.Set)                         | set lhs to rhs, if they're the same `Type`                                          | `v.Set(reflect.ValueOf(2))`                                                           | `t = 2`                                         |     |
 
 OK, that covers what we'll need for now. Let's get back to the console.
 
@@ -964,7 +992,7 @@ func derefVal(v reflect.Value) reflect.Value {
 }
 
 // whitespaceUnifier replaces all whitespace with a single space.
-var whitespaceUnifier = strings.NewReplacer("\t", " ", "\n", " ", "\r", " ")    
+var whitespaceUnifier = strings.NewReplacer("\t", " ", "\n", " ", "\r", " ")
 
 // normalize normalizes a string by
 //  - lowercasing it
@@ -978,7 +1006,7 @@ func normalize(s string) string {
     old := s
     for {
         s = whitespaceUnifier.Replace(s)
-        if s == old { 
+        if s == old {
             return s
         }
         old = s
@@ -1020,7 +1048,7 @@ func followPath(root reflect.Value, keys ...string) (reflect.Value, error) {
             if !v.IsValid() { // field not found
                 return v, fmt.Errorf("%s: %v has no field %q", root.Type(), strings.Join(keys[:i+1], "."), field)
             }
-        
+
         case reflect.Slice, reflect.Array:
             // treat the key as an integer index. we use strconv.ParseInt to allow users to use hex, binary, or octal indices if they'd like.
             j64, err := strconv.ParseInt(field, 0, 0)
@@ -1109,7 +1137,7 @@ Let's see what this looks like in code:
 // Otherwise, if dst is a numeric type, set it to the result of strconv.ParseFloat(src, 64).
 func SetString(dst reflect.Value, src string) error {
     // special cases: do dst, &dst, *dst, **dst, etc implement encoding.TextUnmarshaler?
-    if dst.CanAddr() { 
+    if dst.CanAddr() {
         if x, ok := st.Addr().Interface().(encoding.TextUnmarshaler); ok != nil {
             return x.UnmarshalText([]byte(src))
         }
@@ -1123,7 +1151,7 @@ func SetString(dst reflect.Value, src string) error {
         if i > 32 {
             panic("dereferenced 32 pointers, but still got a pointer or interface: self-referential loop?")
         }
-    } 
+    }
 
 
 
@@ -1283,13 +1311,13 @@ func Exec[T any](pt *T, cmd Command) (description string, err error) {
             return fmt.Sprintf("set %s = %s", cmd.Args[1], cmd.Args[2]), err
         }
         dst := reflect.ValueOf(pt).Elem()
-        /* 
+        /*
         --- design note: ----
          the choice to use only float64s here loses some precision.
-        for integer types. I've gone back and forth on this, but in the end I think this is OK: for integer types <=32 bits it will be 
+        for integer types. I've gone back and forth on this, but in the end I think this is OK: for integer types <=32 bits it will be
         exact, and human beings are unlikely to do arithmetic on integers >32 bits in the console.
         still, maybe I'll change my mind later.
-        --- 
+        ---
         */
 
         // augmented assignment operators only make sense for numeric types. we treat as float64s to simplify implementation.
@@ -1298,13 +1326,13 @@ func Exec[T any](pt *T, cmd Command) (description string, err error) {
         rhs := rhsVal.Float()
         var lhs float64
         switch k := dst.Type().Kind(); k {
-            default: 
+            default:
                 return "", fmt.Errorf("cannot use augmented assignment operator on %s: kind %s", dst.Type(), k)
             case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
                 lhs = float64(dst.Int())
             case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
                 lhs = float64(dst.Uint())
-            case reflect.Float32, reflect.Float64:  
+            case reflect.Float32, reflect.Float64:
                 lhs = dst.Float()
         }
         res := f(lhs, rhs)
@@ -1514,7 +1542,7 @@ What if we already have a slice of bytes? That's simpler: just omit the mainpula
 ```go
 // https://go.dev/play/p/eZLxNfFBfeV
 
-// SetUnsafeBytes sets the value of dst to the value of src, without obeying the usual rules about type conversions, field & type visibility, etc. 
+// SetUnsafeBytes sets the value of dst to the value of src, without obeying the usual rules about type conversions, field & type visibility, etc.
 // dst must be an addressable Value with a type that is the same size as the length of src (but it DOESN'T have to be conventionally settable).
 //len(src) must be equal to the size of dst, or it will panic.
 func SetUnsafeBytes(dst reflect.Value, src []byte) {
@@ -1562,7 +1590,7 @@ func SetUnsafe[T any](dst reflect.Value, src *T) {
     )
 }
 
-// SetUnsafeBytes sets the value of dst to the value of src, without obeying the usual rules about type conversions, field & type visibility, etc. 
+// SetUnsafeBytes sets the value of dst to the value of src, without obeying the usual rules about type conversions, field & type visibility, etc.
 // dst must be an addressable Value with a type that is the same size as the length of src (but it DOESN'T have to be conventionally settable).
 //len(src) must be equal to the size of dst, or it will panic.
 func SetUnsafeBytes(dst reflect.Value, src []byte) {

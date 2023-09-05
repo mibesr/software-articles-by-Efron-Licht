@@ -10,11 +10,19 @@ By their nature, these articles are somewhat of a grab-bag without unifying them
 
 As before, I'll link to the Go spec where appropriate. Most code examples link to a demonstration on the go playground.
 
+# advanced go: reflection-based debug console pt. 1
 
-#### **more articles**
+#### A programming article by Efron Licht
+
+#### September 2023
+
+##### more articles
 
 - advanced go & gamedev
+
   1. [advanced go: reflection-based debug console](https://eblog.fly.dev/console.html)
+  2. [reflection-based debug console: autocomplete](https://eblog.fly.dev/console-autocomplete.html)
+
 - go quirks & tricks
 
   1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
@@ -23,14 +31,14 @@ As before, I'll link to the Go spec where appropriate. Most code examples link t
 
 - starting software
 
-    1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
-    1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
-    1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
-    1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
+  1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
+  1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
+  1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+  1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
 
-- [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
-- [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
-
+- miscellaneous
+  1. [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
+  1. [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
 
 ### generics
 
@@ -40,7 +48,7 @@ You can write a generic that neither takes or returns a value of it's type param
 type contextKey[T any] struct{}
 ```
 
-But it can be nice for making convenience wrappers around some of the functions in  `reflect` and `unsafe`, too. I'll show an example, but first, a bit of background:
+But it can be nice for making convenience wrappers around some of the functions in `reflect` and `unsafe`, too. I'll show an example, but first, a bit of background:
 
 ## type inference, & interfaces
 
@@ -129,7 +137,7 @@ func As2[TO, FROM any](f FROM) TO { // https://go.dev/play/p/50PexocApZy
  return *(*TO)(unsafe.Pointer(&f))
 }
 func main() {
-    b := As2[[8]byte](4)  
+    b := As2[[8]byte](4)
      fmt.Println(b)
 }
 ```
@@ -139,7 +147,7 @@ This is usually good, but can sometimes cause difficulties when go's other type 
 It's worth noting that Go doesn't take the left-hand side of an expression into consideration for generic type interference. While we might expect this to compile, it doesn't:
 
 ```go
-var b [8]byte = As1(uint64(4)) 
+var b [8]byte = As1(uint64(4))
 ```
 
 > compiler error: `./prog.go:10:20: cannot infer TO (prog.go:12:9)`
@@ -157,8 +165,8 @@ A nil channel cannot send or recieve but blocks forever. This is usually a bug, 
 For example, we could combine three channels into one without favoring any channel for input: [^1]
 
 [^1:] for the purpose of the following N examples, we're going to have exactly three channels, and we'll have their elements be ints.
- a proper implementation should probably be generic, since this is easy to mess up and you'd rather do it once.
- additionally, because go doesn't let you easily select from a variadic amount of channels at runtime, you generally have to write these functions for each arity (that is, number of different channels) you need. This is not too hard to do with code generation, since branches are identical. I hope to make that a subject of a later article.
+a proper implementation should probably be generic, since this is easy to mess up and you'd rather do it once.
+additionally, because go doesn't let you easily select from a variadic amount of channels at runtime, you generally have to write these functions for each arity (that is, number of different channels) you need. This is not too hard to do with code generation, since branches are identical. I hope to make that a subject of a later article.
 
 ```go
 
@@ -254,7 +262,7 @@ func main() {
 
 This can be handy for dividing work equally among a number of potential workers.
 
-> output: `100 010 001 020 200 002 003 030 300`  (but other outputs may be possible.)
+> output: `100 010 001 020 200 002 003 030 300` (but other outputs may be possible.)
 
 **FOOTGUN WARNING**:
 Select contains a number of footguns.
@@ -283,6 +291,7 @@ func gatherRoundBad(dst chan int, a, b, c chan int) bool { // https://go.dev/pla
 > `fatal error: all goroutines are asleep - deadlock!`
 
 Digging into [Go's spec](https://go.dev/ref/spec#RecvExpr), we find that
+
 > For all the cases in the statement, the channel operands of receive operations and the channel and **right-hand-side expressions of send statements are evaluated exactly once, in source order, upon entering the "select" statement**. The result is a set of channels to receive from or send to, and the corresponding values to send. **Any side effects in that evaluation will occur irrespective of which (if any) communication operation is selected to proceed**. Expressions on the left-hand side of a RecvStmt with a short variable declaration or assignment are not yet evaluated.
 
 Go makes it easy to spawn concurrent tasks, but managing them is difficult to get right. I've only scratched the surface here, and these examples are trivial and don't properly handle cancellation, etc. Since the advent of generics, a variety of structured concurrency libraries have been popping up. With luck, soon they'll be robust enough we don'th have to do this kind of thing by hand.
@@ -299,7 +308,7 @@ func main() {
 }
 ```
 
-The same is not true of data structures _containing_ bidirectional channels, though such a transformation should always be safe, since a channel regardless of direction is just a pointer to a *runtime.hchan structure.
+The same is not true of data structures _containing_ bidirectional channels, though such a transformation should always be safe, since a channel regardless of direction is just a pointer to a \*runtime.hchan structure.
 
 ```go
 func main() { // https://go.dev/play/p/WSd4XO6AaSg
@@ -315,7 +324,7 @@ func main() { // https://go.dev/play/p/WSd4XO6AaSg
 
 > ./prog.go:7:23: cannot use sliceOfChannels (variable of type `[]chan int`) as `[]<-chan int` value in variable declaration`
 >
-> ./prog.go:8:23:  cannot use sliceOfChannels (variable of type `[]chan int`) as `[]chan<- int` value in variable declaration`
+> ./prog.go:8:23: cannot use sliceOfChannels (variable of type `[]chan int`) as `[]chan<- int` value in variable declaration`
 
 This is one of the few cases where we know better than the compiler. We can get around these restrictions via the `unsafe` package.
 
@@ -346,9 +355,9 @@ The following transformations ARE safe, and occasionally useful:
 | FROM | TO | BIDIRECTIONAL |
 | --- | ---- | --- |
 | `uintN` | `[N/8]byte` | ✅ |
-| `[M]uintN` |`[M*(N/8)]byte`| ✅  |
+| `[M]uintN` |`[M*(N/8)]byte`| ✅ |
 | `[]chan  T`| `[]<- chan   T`| ❌ |
-| `[]chan  T` | `[]chan <-  T`|❌  |
+| `[]chan  T` | `[]chan <-  T`|❌ |
 | `map[K]  chan T`| `map[K]<- chan   T`| ❌|
 | `map[K] chan  T` | `map[K] chan <-  T`|❌ |
 
@@ -392,12 +401,12 @@ func size[T any]() int {
 ```
 
 > output:
->  
->   ```
->   []uint16 (before): [0x0123 0x3456]
->   []uint8 (before): 0x23015634
->   []uint16 (after): [0x0a23 0x3456]
->   ```
+>
+> ```
+> []uint16 (before): [0x0123 0x3456]
+> []uint8 (before): 0x23015634
+> []uint16 (after): [0x0a23 0x3456]
+> ```
 
 In general, the unsafe package is best avoided in production code, but sometimes you actually _do_ know better than the compiler. I encourage my readers to play around with the `unsafe` package on their own time to gain an intuition about how Go actually lays things out in memory. Make sure to read the [package](https://pkg.go.dev/unsafe) and [spec](https://go.dev/ref/spec#Package_unsafe) documentation carefully.
 

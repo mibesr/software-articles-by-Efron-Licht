@@ -4,12 +4,13 @@
 
 #### july 2023
 
-Go is generally considered a 'simple' language, but it has more edge cases and tricks than most might expect. This is the third in a series of articles about intermediate-to-advanced go programming techniques. [In part 1](https://eblog.fly.dev/quirks.html), we covered unusual parts of declaration, control flow, and the type system]. In [part 2]((https://eblog.fly.dev/quirks2.html)), we touched concurrency, `unsafe`, and `reflect`. Here in part 3, we'll mostly talk about arrays, validation, and build constraints.
-
-#### **more articles**
+Go is generally considered a 'simple' language, but it has more edge cases and tricks than most might expect. This is the third in a series of articles about intermediate-to-advanced go programming techniques. [In part 1](https://eblog.fly.dev/quirks.html), we covered unusual parts of declaration, control flow, and the type system]. In [part 2](<(https://eblog.fly.dev/quirks2.html)>), we touched concurrency, `unsafe`, and `reflect`. Here in part 3, we'll mostly talk about arrays, validation, and build constraints.
 
 - advanced go & gamedev
+
   1. [advanced go: reflection-based debug console](https://eblog.fly.dev/console.html)
+  2. [reflection-based debug console: autocomplete](https://eblog.fly.dev/console-autocomplete.html)
+
 - go quirks & tricks
 
   1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
@@ -18,14 +19,14 @@ Go is generally considered a 'simple' language, but it has more edge cases and t
 
 - starting software
 
-    1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
-    1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
-    1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
-    1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
+  1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
+  1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
+  1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+  1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
 
-- [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
-- [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
-
+- miscellaneous
+  1. [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
+  1. [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
 
 ### arrays can be initialized using a map-like syntax
 
@@ -53,7 +54,7 @@ var smallPrimes = [40]bool {
     7: true,
     11: true,
     13: true,
-    17: true, 
+    17: true,
     false, // 18
     true // 19
 }
@@ -121,7 +122,7 @@ Or even:
 ```go
 func (gk GunKind) Name() string {
     switch gk {
-        case UNARMED: 
+        case UNARMED:
             return "unarmed"
         case PISTOL:
             return "pistol"
@@ -143,19 +144,19 @@ var names = map[GunKind]string{
 
 All four approaches have their place. Here's a quick summary:
 
-approach | pros | cons | suggested use case |
-|---|---|---| ---|
-| arrays | fast, compact, cache-friendly | can 'forget' to update individual arrays| game dev, systems programming |
-| func/switch | properly read-only, doc comments lead to discoverable API | verbose, can be slow | library code |
-| map | simple, useful for sparse tables | larger, can forget to update, map lookups take at least 1 indirection | sparse tables |
-| structs | simple, self-documenting | cache-unfriendly, 'action at a distance'| rarely |
+| approach    | pros                                                      | cons                                                                  | suggested use case            |
+| ----------- | --------------------------------------------------------- | --------------------------------------------------------------------- | ----------------------------- |
+| arrays      | fast, compact, cache-friendly                             | can 'forget' to update individual arrays                              | game dev, systems programming |
+| func/switch | properly read-only, doc comments lead to discoverable API | verbose, can be slow                                                  | library code                  |
+| map         | simple, useful for sparse tables                          | larger, can forget to update, map lookups take at least 1 indirection | sparse tables                 |
+| structs     | simple, self-documenting                                  | cache-unfriendly, 'action at a distance'                              | rarely                        |
 
 To go into more detail on performance:
 
 - Compilers can more effectively vectorize operations on arrays of primitives than arrays of structs.
 - Only loading 'what we need' from memory is much friendlier on the cache: no need fill a cache line w/ `name` & `startingAmmo` if we only need `maxAmmo` right now, for instance.
 - The compiler (and the microarchitecture) can reason about conflicts between memory accesses more easily, since we aren't
-going to 'touch' other parts of the struct.
+  going to 'touch' other parts of the struct.
 
 I find the array approach to be extremely useful for _application code_, especially bits like game development where backwards compatibility is less of a concern and performance is critical.
 
@@ -178,12 +179,12 @@ func Logged[T any](t T) T {
 }
 ```
 
-Or to assert properties of a value as it's initialized.   In particular, **combined with the enum/array lookup table approach mentioned earlier**, we can validate that all enum variants have a value a lookup table:
+Or to assert properties of a value as it's initialized. In particular, **combined with the enum/array lookup table approach mentioned earlier**, we can validate that all enum variants have a value a lookup table:
 
 ```go
 func MustNonZero[T any](a T) T {
     assertNonZero(a)
-    return a   
+    return a
 }
 func assertNonZero(v any) {
 switch v := reflect.ValueOf(v); v.Kind() {
@@ -194,10 +195,10 @@ switch v := reflect.ValueOf(v); v.Kind() {
             if v.Index(i).IsZero() {
                 // runtime.Caller(skip) gets information about the caller(s) of the current function by ascending the callstack.
                 // we want the file:line to be where MustNonZero was called, that is, the caller of the caller of assertNonZero.
-                // skip=0 -> assertNonZero 
+                // skip=0 -> assertNonZero
                 // skip=1 -> MustNonZero
                 // skip=2 -> caller of MustNonZero: what we want
-                _, f, line, _ := runtime.Caller(2) 
+                _, f, line, _ := runtime.Caller(2)
                 panic(fmt.Sprintf("%s:%d: %s[%d] unexpectedly zero", f, line, v.Type(), i))
             }
         }
@@ -358,7 +359,7 @@ OUT:
 fmt.Println("!a")
 ```
 
-As we can see, the branch that would call `fmt.Println("a")` is completely absent from the `dis_not_a` output, and vice versa.  Let's run a diff to take a closer look:
+As we can see, the branch that would call `fmt.Println("a")` is completely absent from the `dis_not_a` output, and vice versa. Let's run a diff to take a closer look:
 
 Running a diff:
 

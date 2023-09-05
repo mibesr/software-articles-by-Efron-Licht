@@ -67,8 +67,8 @@ func slowAdd(a, b int) int {
 		return b
 	}
 }
-func BenchmarkTestAdd(b *testing.B) {
 
+func BenchmarkTestAdd(b *testing.B) {
 	for _, tt := range []struct {
 		a, b, want int
 	}{

@@ -3,14 +3,13 @@
 A software article by Efron Licht\
 June 2023
 
-
 **The only thing a program does every time is boot, so it should boot as fast as possible**. This used to be a given, but modern programs are often extraordinarily slow to start. It's not unusual for simple programs to take 10s of seconds to start: it's expensive, frustrating, and totally preventable. In this article, I'll show you how to make your programs start in milliseconds, not seconds.
 
-
-#### **more articles**
-
 - advanced go & gamedev
+
   1. [advanced go: reflection-based debug console](https://eblog.fly.dev/console.html)
+  2. [reflection-based debug console: autocomplete](https://eblog.fly.dev/console-autocomplete.html)
+
 - go quirks & tricks
 
   1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
@@ -19,15 +18,14 @@ June 2023
 
 - starting software
 
-    1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
-    1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
-    1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
-    1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
+  1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
+  1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
+  1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
+  1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
 
-- [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
-- [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
-
-
+- miscellaneous
+  1. [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
+  1. [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
 
 ## Table-setting
 
@@ -37,11 +35,11 @@ A few notes before we begin: we're going to optimize for ordinary, **wall-clock 
 
 There's only four ways to reduce the time it takes to do something:
 
-| description | formal name | example|
-| --- | --- | --- |
-| do less work | algorithmic optimization | `btree` vs `map` |
-| do the same work faster | micro-optimization | loading from cache vs loading from disk |
-| do work at the same time | parallelization | decoding mp3s in parallel  |
+| description                                  | formal name                      | example                                  |
+| -------------------------------------------- | -------------------------------- | ---------------------------------------- |
+| do less work                                 | algorithmic optimization         | `btree` vs `map`                         |
+| do the same work faster                      | micro-optimization               | loading from cache vs loading from disk  |
+| do work at the same time                     | parallelization                  | decoding mp3s in parallel                |
 | do it in an order that involves less waiting | scheduling/pipeline optimization | dial postgres DB in a separate goroutine |
 
 The first two are covered in many, many other articles on software performance, including [here](https://eblog.fly.dev/faststack.html) and [here](https://eblog.fly.dev/bytehacking.html) on this very blog. We'll mostly focus on the last two.
@@ -68,7 +66,7 @@ See the [go spec on package initialization](https://go.dev/ref/spec#Package_init
 
 ## Measuring init time
 
-The go runtime provides a way to trace initialization with the environment variable `GODEBUG=inittrace=1`.  [spec](https://pkg.go.dev/runtime#hdr-Environment_Variables)
+The go runtime provides a way to trace initialization with the environment variable `GODEBUG=inittrace=1`. [spec](https://pkg.go.dev/runtime#hdr-Environment_Variables)
 Let's try tracing the initialization of `eblog`, the server you're reading this on.
 
 IN
@@ -108,6 +106,7 @@ func main() {
 ```
 
 Using the blog again, we find:
+
 > main() ready in 611.478µs
 >
 > app listening on :6483`
@@ -207,15 +206,15 @@ canvasfont "github.com/tdewolff/canvas/font"
 var fs embed.FS
 var Fonts = loadFont()
 func loadFont() map[string]font.Face {
-    wg := new(sync.WaitGroup)   
-    dir := must(fs.ReadDir("font")) 
+    wg := new(sync.WaitGroup)
+    dir := must(fs.ReadDir("font"))
     tmp := make([]font.Face, len(dir)) // temporary slice to hold the fonts as they're loaded
     wg.Add(len(dir))
     for i, entry := range dir {
-        i, entry := i, entry 
+        i, entry := i, entry
         // needed until https://github.com/golang/go/wiki/LoopvarExperiment is implemented
-        wg.Add(1) 
-        go func() {  
+        wg.Add(1)
+        go func() {
             defer wg.Done()
             b := must(assets.ReadFile("font/" + d.Name()))
             if strings.Contains(d.Name(), "woff2") {
@@ -225,7 +224,7 @@ func loadFont() map[string]font.Face {
             tmp[i] = truetype.NewFace(ttf, &truetype.Options{Size: 16})
         }()
 
-         
+
     }
     wg.Wait() // sychronization point: wait for all fonts to load
 
@@ -307,7 +306,7 @@ static: 14:48:52 static.go:78: initmap: static.loadShader shader   loaded 2 file
 static: 14:48:52 static.go:78: initmap: static.loadImg img      loaded 1 files in 13.1632ms
 static: 14:48:52 static.go:78: initmap: static.loadFonts font     loaded 61 files in 171.8455ms
 static: 14:48:52 static.go:78: initmap: static.loadAudio audio    loaded 33 files in 249.365ms
-static: 14:48:52 static.go:165: all      loaded 97 files in 250.4947ms 
+static: 14:48:52 static.go:165: all      loaded 97 files in 250.4947ms
 ```
 
 **1572ms / 250.49ms ≈ 6.275** . _**That's over 6x faster!**_ While the difference between 1.5s and 250ms may not seem like much, as we scale the program, the difference will become more and more pronounced. 30s vs 5s is night and day.
@@ -368,7 +367,7 @@ Lazy evaluation means waiting to initialize a dependency until you need it. You 
 ```go
 package postgres
 import (
-    "database/sql" 
+    "database/sql"
     _ "github.com/lib/pq" // import enables postgres driver
     "sync"
 )
@@ -403,7 +402,7 @@ Lazy initialization is helpful if we don't need a dependency right away, but wha
 In programming terms, we **eagerly initialize dependencies**, but we refrain from blocking on them until we need them. Implementation is trivial: just call `sync.Once.Do` in it's own goroutine during `init()`.
 
 ```go
-func init() { go once.Do(initDB) } 
+func init() { go once.Do(initDB) }
 ```
 
 This isn't a lot of work, but you'll start needing a lot of scaffolding: each dependency will need it's own line in `init()`, two functions, and a handful of variables.
@@ -415,12 +414,12 @@ We can cleanly abstract both 'classic' lazy initialization and the nonblocking e
 ```go
 // nonblocking[T] is a lazy-initialized value of type T.
 // build a nonblocking[T] with NewLazy[T]() or NewEager[T]()
-type nonblocking[T any] struct { 
+type nonblocking[T any] struct {
     once sync.Once // guards initialization
     val T // result of initialization, once initialized
     err  error  // error from initialization, once initialized
     fn   func() (T, error) // initializing function, called with Once().
-}  
+}
 
 // initialize the nonblocking[T] by evaluating fn() and storing the result.
 func (nb *nonblocking[T]) initialize() {nb.once.Do(func() {nb.val, nb.err = nb.fn})}
@@ -444,7 +443,7 @@ This new API is much simpler to use:
 // see https://go.dev/play/p/VvSh3C4RVvK
 var DB = NewEager(newDB)
 
-// i've added some sleeps to demonstrate the 
+// i've added some sleeps to demonstrate the
 // interleaving of initialization and use.
 func main() {
     time.Sleep(160 * time.Millisecond)
@@ -479,7 +478,7 @@ newDB: 2
 main: 2
 ```
 
-Don't make everything Eager - 'regular' lazy evaulation is often the best choice, and most things initialize so fast there's no need to do anything at all.  But I highly recommend using this pattern for any dependency that takes more than a few milliseconds to initialize.
+Don't make everything Eager - 'regular' lazy evaulation is often the best choice, and most things initialize so fast there's no need to do anything at all. But I highly recommend using this pattern for any dependency that takes more than a few milliseconds to initialize.
 
 ## putting it all together
 
