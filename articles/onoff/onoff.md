@@ -6,7 +6,6 @@ July 2023.
 
 #### **more articles**
 
-# advanced go: reflection-based debug console pt. 1
 
 #### A programming article by Efron Licht
 

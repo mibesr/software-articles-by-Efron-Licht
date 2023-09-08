@@ -10,11 +10,6 @@ By their nature, these articles are somewhat of a grab-bag without unifying them
 
 As before, I'll link to the Go spec where appropriate. Most code examples link to a demonstration on the go playground.
 
-# advanced go: reflection-based debug console pt. 1
-
-#### A programming article by Efron Licht
-
-#### September 2023
 
 ##### more articles
 

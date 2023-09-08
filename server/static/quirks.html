@@ -15,11 +15,20 @@
 
 <h4><strong>more articles</strong></h4>
 
+<h1>advanced go: reflection-based debug console pt. 1</h1>
+
+<h4>A programming article by Efron Licht</h4>
+
+<h4>September 2023</h4>
+
+<h5>more articles</h5>
+
 <ul>
 <li><p>advanced go &amp; gamedev</p>
 
 <ol>
 <li><a href="https://eblog.fly.dev/console.html">advanced go: reflection-based debug console</a></li>
+<li><a href="https://eblog.fly.dev/console-autocomplete.html">reflection-based debug console: autocomplete</a></li>
 </ol></li>
 
 <li><p>go quirks &amp; tricks</p>
@@ -39,9 +48,12 @@
 <li><a href="https://eblog.fly.dev/testfast.html">test fast: a practical guide to a livable test suite</a></li>
 </ol></li>
 
-<li><p><a href="https://eblog.fly.dev/faststack.html">faststack: analyzing &amp; optimizing gin’s panic stack traces</a></p></li>
+<li><p>miscellaneous</p>
 
-<li><p><a href="https://eblog.fly.dev/bytehacking.html">simple byte hacking: a uuid adventure</a></p></li>
+<ol>
+<li><a href="https://eblog.fly.dev/faststack.html">faststack: analyzing &amp; optimizing gin’s panic stack traces</a></li>
+<li><a href="https://eblog.fly.dev/bytehacking.html">simple byte hacking: a uuid adventure</a></li>
+</ol></li>
 </ul>
 
 <p>Go is generally considered a ‘simple’ language, but it has more edge cases and tricks than most might expect.</p>
@@ -66,7 +78,7 @@
 <p>Go methods are just functions. Given a type and method:</p>
 
 <pre><code class="language-go"><span class="kwd">type</span> <span class="typ">Point</span> <span class="kwd">struct</span><span class="pun">{</span><span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span> <span class="kwd">float64</span><span class="pun">}</span>
-<span class="kwd">func</span> <span class="pun">(</span><span class="pln">p</span> <span class="typ">Point</span><span class="pun">)</span> <span class="typ">Add</span><span class="pun">(</span><span class="pln">q</span> <span class="typ">Point</span><span class="pun">)</span> <span class="typ">Point</span><span class="pun">{</span> 
+<span class="kwd">func</span> <span class="pun">(</span><span class="pln">p</span> <span class="typ">Point</span><span class="pun">)</span> <span class="typ">Add</span><span class="pun">(</span><span class="pln">q</span> <span class="typ">Point</span><span class="pun">)</span> <span class="typ">Point</span><span class="pun">{</span>
     <span class="kwd">return</span> <span class="typ">Point</span><span class="pun">{</span><span class="typ">X</span><span class="pun">:</span> <span class="pln">p</span><span class="pun">.</span><span class="typ">X</span><span class="pun">+</span><span class="pln">q</span><span class="pun">.</span><span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span><span class="pun">:</span> <span class="pln">p</span><span class="pun">.</span><span class="typ">Y</span><span class="pun">+</span><span class="pln">q</span><span class="pun">.</span><span class="typ">Y</span><span class="pun">}</span>
 <span class="pun">}</span>
 </code></pre>
@@ -83,7 +95,7 @@
 
 <p>Or you can use the method as an ordinary, “bare” function via <code>typeName.funcName(arg0, arg1, arg2</code>)</p>
 
-<pre><code class="language-go"><span class="pln">p</span><span class="pun">,</span> <span class="pln">q</span> <span class="pun">:</span><span class="pun">=</span> <span class="typ">Point</span><span class="pun">{</span><span class="dec">1</span><span class="pun">,</span> <span class="dec">1</span><span class="pun">}</span><span class="pun">,</span> <span class="typ">Point</span><span class="pun">(</span><span class="dec">2</span><span class="pun">,</span><span class="dec">2</span><span class="pun">)</span><span class="pun">;</span> 
+<pre><code class="language-go"><span class="pln">p</span><span class="pun">,</span> <span class="pln">q</span> <span class="pun">:</span><span class="pun">=</span> <span class="typ">Point</span><span class="pun">{</span><span class="dec">1</span><span class="pun">,</span> <span class="dec">1</span><span class="pun">}</span><span class="pun">,</span> <span class="typ">Point</span><span class="pun">(</span><span class="dec">2</span><span class="pun">,</span><span class="dec">2</span><span class="pun">)</span><span class="pun">;</span>
 <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="typ">Point</span><span class="pun">.</span><span class="typ">Add</span><span class="pun">(</span><span class="pln">p</span><span class="pun">,</span> <span class="pln">q</span><span class="pun">)</span><span class="pun">)</span>
 </code></pre>
 
@@ -220,21 +232,21 @@
 <span class="kwd">var</span> <span class="pln">packets</span> <span class="pun">[</span><span class="pun">]</span><span class="typ">Packet</span>
 <span class="typ">READ</span><span class="pun">:</span>
 <span class="kwd">for</span> <span class="pun">{</span>
-    <span class="kwd">switch</span> <span class="pln">packet</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">readPacket</span><span class="pun">(</span><span class="pln">ctx</span><span class="pun">,</span> <span class="pln">conn</span><span class="pun">,</span> <span class="pln">buf</span><span class="pun">)</span><span class="pun">;</span>  <span class="pun">{</span> <span class="com">// note semicolon</span>
-        <span class="kwd">case</span> <span class="pln">errors</span><span class="pun">.</span><span class="typ">Is</span><span class="pun">(</span><span class="pln">err</span><span class="pun">,</span> <span class="pln">io</span><span class="pun">.</span><span class="typ">EOF</span><span class="pun">)</span><span class="pun">:</span> 
-            <span class="pln">packets</span> <span class="pun">=</span> <span class="kwd">append</span><span class="pun">(</span><span class="pln">packets</span><span class="pun">,</span> <span class="pln">packet</span><span class="pun">)</span>
-            <span class="kwd">break</span> <span class="typ">READ</span>
-        <span class="kwd">case</span> <span class="pln">err</span> <span class="pun">=</span><span class="pun">=</span> <span class="kwd">nil</span><span class="pun">:</span>
-            <span class="pln">packets</span> <span class="pun">=</span> <span class="kwd">append</span><span class="pun">(</span><span class="pln">packets</span><span class="pun">,</span> <span class="pln">packet</span><span class="pun">)</span>
-            <span class="kwd">try</span> <span class="pun">=</span> <span class="dec">0</span>
-        <span class="kwd">case</span> <span class="pln">errors</span><span class="pun">.</span><span class="typ">As</span><span class="pun">(</span><span class="pln">err</span><span class="pun">,</span> <span class="pln">fatalErr</span><span class="pun">)</span> <span class="pun">|</span><span class="pun">|</span> <span class="kwd">try</span> <span class="pun">=</span><span class="pun">=</span> <span class="pln">maxTries</span><span class="pun">:</span>
-            <span class="kwd">return</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;fatal error after %d retries: %v&#34;</span><span class="pun">,</span> <span class="pln">i</span><span class="pun">,</span> <span class="pln">err</span><span class="pun">)</span>
-        <span class="kwd">default</span><span class="pun">:</span>
-            <span class="kwd">const</span> <span class="pln">wait</span> <span class="pun">=</span> <span class="dec">100</span><span class="pun">*</span><span class="pln">time</span><span class="pun">.</span><span class="typ">Millisecond</span>
-            <span class="pln">log</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;error: retrying in %d&#34;</span><span class="pun">,</span> <span class="pln">wait</span><span class="pun">)</span>
-            <span class="kwd">try</span><span class="pun">+</span><span class="pun">+</span>
-            <span class="pln">time</span><span class="pun">.</span><span class="typ">Sleep</span><span class="pun">(</span><span class="pln">wait</span><span class="pun">)</span>
-    <span class="pun">}</span>
+   <span class="kwd">switch</span> <span class="pln">packet</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">readPacket</span><span class="pun">(</span><span class="pln">ctx</span><span class="pun">,</span> <span class="pln">conn</span><span class="pun">,</span> <span class="pln">buf</span><span class="pun">)</span><span class="pun">;</span>  <span class="pun">{</span> <span class="com">// note semicolon</span>
+       <span class="kwd">case</span> <span class="pln">errors</span><span class="pun">.</span><span class="typ">Is</span><span class="pun">(</span><span class="pln">err</span><span class="pun">,</span> <span class="pln">io</span><span class="pun">.</span><span class="typ">EOF</span><span class="pun">)</span><span class="pun">:</span>
+           <span class="pln">packets</span> <span class="pun">=</span> <span class="kwd">append</span><span class="pun">(</span><span class="pln">packets</span><span class="pun">,</span> <span class="pln">packet</span><span class="pun">)</span>
+           <span class="kwd">break</span> <span class="typ">READ</span>
+       <span class="kwd">case</span> <span class="pln">err</span> <span class="pun">=</span><span class="pun">=</span> <span class="kwd">nil</span><span class="pun">:</span>
+           <span class="pln">packets</span> <span class="pun">=</span> <span class="kwd">append</span><span class="pun">(</span><span class="pln">packets</span><span class="pun">,</span> <span class="pln">packet</span><span class="pun">)</span>
+           <span class="kwd">try</span> <span class="pun">=</span> <span class="dec">0</span>
+       <span class="kwd">case</span> <span class="pln">errors</span><span class="pun">.</span><span class="typ">As</span><span class="pun">(</span><span class="pln">err</span><span class="pun">,</span> <span class="pln">fatalErr</span><span class="pun">)</span> <span class="pun">|</span><span class="pun">|</span> <span class="kwd">try</span> <span class="pun">=</span><span class="pun">=</span> <span class="pln">maxTries</span><span class="pun">:</span>
+           <span class="kwd">return</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;fatal error after %d retries: %v&#34;</span><span class="pun">,</span> <span class="pln">i</span><span class="pun">,</span> <span class="pln">err</span><span class="pun">)</span>
+       <span class="kwd">default</span><span class="pun">:</span>
+           <span class="kwd">const</span> <span class="pln">wait</span> <span class="pun">=</span> <span class="dec">100</span><span class="pun">*</span><span class="pln">time</span><span class="pun">.</span><span class="typ">Millisecond</span>
+           <span class="pln">log</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;error: retrying in %d&#34;</span><span class="pun">,</span> <span class="pln">wait</span><span class="pun">)</span>
+           <span class="kwd">try</span><span class="pun">+</span><span class="pun">+</span>
+           <span class="pln">time</span><span class="pun">.</span><span class="typ">Sleep</span><span class="pun">(</span><span class="pln">wait</span><span class="pun">)</span>
+   <span class="pun">}</span>
 <span class="pun">}</span>
 
 </code></pre>
@@ -377,7 +389,7 @@ You <em>can</em> define a function that takes that type using a function express
 </code></pre>
 
 <blockquote>
-<p>output:  <code>{1 4}</code></p>
+<p>output: <code>{1 4}</code></p>
 </blockquote>
 
 <p>This obeys the ordinary block-scope rules, so this would be a compiler error:</p>
@@ -386,7 +398,7 @@ You <em>can</em> define a function that takes that type using a function express
     <span class="pun">{</span>
         <span class="kwd">type</span> <span class="typ">Point</span> <span class="kwd">struct</span><span class="pun">{</span><span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span> <span class="kwd">float64</span><span class="pun">}</span>
     <span class="pun">}</span>
-    <span class="kwd">var</span> <span class="pln">p</span> <span class="typ">Point</span> 
+    <span class="kwd">var</span> <span class="pln">p</span> <span class="typ">Point</span>
 <span class="pun">}</span>
 </code></pre>
 
@@ -469,12 +481,12 @@ You <em>can</em> define a function that takes that type using a function express
 <span class="pun">}</span>
 </code></pre>
 
-<p>Suppose at some point we need to mock this for a test. *sql.DB is a struct, and it’s not immediately apparent what we’d call the interface we’d replace it with. <code>DBer?</code> <code>QueryRowContexter</code>? In this case,  we can be clearest by omitting the name entirely: all the reader needs to know is that the DB has a function that looks like QueryRowContext().</p>
+<p>Suppose at some point we need to mock this for a test. *sql.DB is a struct, and it’s not immediately apparent what we’d call the interface we’d replace it with. <code>DBer?</code> <code>QueryRowContexter</code>? In this case, we can be clearest by omitting the name entirely: all the reader needs to know is that the DB has a function that looks like QueryRowContext().</p>
 
 <p>We can make this mockable by just changing the function signature to use an <em>anonymous interface</em>.</p>
 
 <pre><code class="language-go"><span class="kwd">func</span> <span class="typ">SelectUser</span><span class="pun">(</span>
-    <span class="pln">ctx</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">Context</span><span class="pun">,</span> 
+    <span class="pln">ctx</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">Context</span><span class="pun">,</span>
     <span class="pln">db</span> <span class="kwd">interface</span><span class="pun">{</span><span class="typ">QueryRowContext</span><span class="pun">(</span><span class="pln">context</span><span class="pun">.</span><span class="typ">Context</span><span class="pun">,</span> <span class="pln">string</span><span class="pun">,</span> <span class="pun">.</span><span class="pun">.</span><span class="pun">.</span><span class="pln">args</span><span class="pun">)</span> <span class="pun">*</span><span class="pln">sql</span><span class="pun">.</span><span class="typ">Row</span><span class="pun">}</span><span class="pun">,</span>
     <span class="pln">userID</span> <span class="pln">uuid</span><span class="pun">.</span><span class="typ">UUID</span>
 <span class="pun">)</span> <span class="pun">(</span><span class="pln">username</span> <span class="pln">string</span><span class="pun">,</span> <span class="pln">createdAt</span> <span class="pln">time</span><span class="pun">.</span><span class="typ">Time</span><span class="pun">,</span> <span class="pln">err</span> <span class="pln">error</span><span class="pun">)</span> <span class="pun">{</span>
@@ -522,36 +534,39 @@ You <em>can</em> define a function that takes that type using a function express
 <p>Struct types can have unreachable fields using the <a href="https://go.dev/ref/spec#Blank_identifier">blank identifier</a>, <code>_</code> as the field name. You can use blank fields:</p>
 
 <ul>
-<li><p>To pad a struct to a specific size or alignment.</p>
+<li>To pad a struct to a specific size or alignment.</li>
+</ul>
 
 <p>This is occasionally handy for cool <code>unsafe</code> stuff like serializing or deserializing stuff straight from a bytestream.</p>
 
-<pre><code class="language-go"> <span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span> <span class="com">// https://go.dev/play/p/4H7V_kKDw5m</span>
- <span class="kwd">type</span> <span class="typ">Point</span> <span class="kwd">struct</span><span class="pun">{</span> <span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span><span class="pun">,</span> <span class="typ">Z</span> <span class="pln">uint16</span> <span class="pun">}</span>
- <span class="kwd">type</span> <span class="typ">PaddedPoint</span> <span class="kwd">struct</span> <span class="pun">{</span>
-  <span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span><span class="pun">,</span> <span class="typ">Z</span> <span class="pln">uint16</span>
-  <span class="pln">_</span>       <span class="pln">uint16</span>
- <span class="pun">}</span>
- <span class="kwd">const</span> <span class="pln">format</span> <span class="pun">=</span> <span class="str">&#34;%12v\t%v\t%v\n&#34;</span>
- <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="pln">format</span><span class="pun">,</span> <span class="str">&#34;type&#34;</span><span class="pun">,</span> <span class="str">&#34;size&#34;</span><span class="pun">,</span> <span class="str">&#34;align&#34;</span><span class="pun">)</span>
- <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="pln">format</span><span class="pun">,</span> <span class="str">&#34;Point&#34;</span><span class="pun">,</span> <span class="pln">unsafe</span><span class="pun">.</span><span class="typ">Sizeof</span><span class="pun">(</span><span class="typ">Point</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">unsafe</span><span class="pun">.</span><span class="typ">Alignof</span><span class="pun">(</span><span class="typ">Point</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">)</span>
- <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="pln">format</span><span class="pun">,</span> <span class="str">&#34;PaddedPoint&#34;</span><span class="pun">,</span> <span class="pln">unsafe</span><span class="pun">.</span><span class="typ">Sizeof</span><span class="pun">(</span><span class="typ">PaddedPoint</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">unsafe</span><span class="pun">.</span><span class="typ">Alignof</span><span class="pun">(</span><span class="typ">PaddedPoint</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">)</span>
-<span class="pun">}</span>
+<pre><code class="language-go">   <span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span> <span class="com">// https://go.dev/play/p/4H7V_kKDw5m</span>
+   <span class="kwd">type</span> <span class="typ">Point</span> <span class="kwd">struct</span><span class="pun">{</span> <span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span><span class="pun">,</span> <span class="typ">Z</span> <span class="pln">uint16</span> <span class="pun">}</span>
+   <span class="kwd">type</span> <span class="typ">PaddedPoint</span> <span class="kwd">struct</span> <span class="pun">{</span>
+    <span class="typ">X</span><span class="pun">,</span> <span class="typ">Y</span><span class="pun">,</span> <span class="typ">Z</span> <span class="pln">uint16</span>
+    <span class="pln">_</span>       <span class="pln">uint16</span>
+   <span class="pun">}</span>
+   <span class="kwd">const</span> <span class="pln">format</span> <span class="pun">=</span> <span class="str">&#34;%12v\t%v\t%v\n&#34;</span>
+   <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="pln">format</span><span class="pun">,</span> <span class="str">&#34;type&#34;</span><span class="pun">,</span> <span class="str">&#34;size&#34;</span><span class="pun">,</span> <span class="str">&#34;align&#34;</span><span class="pun">)</span>
+   <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="pln">format</span><span class="pun">,</span> <span class="str">&#34;Point&#34;</span><span class="pun">,</span> <span class="pln">unsafe</span><span class="pun">.</span><span class="typ">Sizeof</span><span class="pun">(</span><span class="typ">Point</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">unsafe</span><span class="pun">.</span><span class="typ">Alignof</span><span class="pun">(</span><span class="typ">Point</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">)</span>
+   <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="pln">format</span><span class="pun">,</span> <span class="str">&#34;PaddedPoint&#34;</span><span class="pun">,</span> <span class="pln">unsafe</span><span class="pun">.</span><span class="typ">Sizeof</span><span class="pun">(</span><span class="typ">PaddedPoint</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">unsafe</span><span class="pun">.</span><span class="typ">Alignof</span><span class="pun">(</span><span class="typ">PaddedPoint</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">)</span>
+  <span class="pun">}</span>
 </code></pre>
-<pre><code class="language-text">        <span class="kwd">type</span> <span class="pln">size</span> <span class="pln">align</span>
-        <span class="typ">Point</span>    <span class="dec">6</span>     <span class="dec">2</span>
-    <span class="typ">PaddedPoint</span>  <span class="dec">8</span>    <span class="dec">2</span>
-</code></pre></li>
 
+<pre><code class="language-text">          <span class="kwd">type</span> <span class="pln">size</span> <span class="pln">align</span>
+          <span class="typ">Point</span>    <span class="dec">6</span>     <span class="dec">2</span>
+      <span class="typ">PaddedPoint</span>  <span class="dec">8</span>    <span class="dec">2</span>
+</code></pre>
+
+<ul>
 <li><p>A blank field makes it difficult to initialize a struct without specifying key names. So as not to waste space, use a <a href="#zero-sized-type"><code>zero-sized type</code></a> for this.</p>
 
 <p>This means that if you add a field to the struct later, it’s not a breaking change for users.</p>
 
-<pre><code class="language-go"><span class="kwd">type</span> <span class="typ">LogOptions</span> <span class="kwd">struct</span> <span class="pun">{</span>
-    <span class="pln">_</span> <span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="kwd">int</span> 
-    <span class="typ">Level</span> <span class="kwd">int8</span>
-    <span class="typ">LogTime</span><span class="pun">,</span> <span class="typ">LogFile</span><span class="pun">,</span> <span class="typ">LogLine</span> <span class="kwd">bool</span>
-<span class="pun">}</span>
+<pre><code class="language-go">  <span class="kwd">type</span> <span class="typ">LogOptions</span> <span class="kwd">struct</span> <span class="pun">{</span>
+      <span class="pln">_</span> <span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="kwd">int</span>
+      <span class="typ">Level</span> <span class="kwd">int8</span>
+      <span class="typ">LogTime</span><span class="pun">,</span> <span class="typ">LogFile</span><span class="pun">,</span> <span class="typ">LogLine</span> <span class="kwd">bool</span>
+  <span class="pun">}</span>
 </code></pre>
 <p>Be careful with this: sometimes you <em>want</em> changes to the API to be breaking changes, and changing the size of commonly-used types can have unforseen performance ramifications.</p>
 
@@ -559,63 +574,65 @@ You <em>can</em> define a function that takes that type using a function express
 <p><strong>WEIRD EDGE CASE WARNING:</strong> <strong>A ZERO-SIZED TYPE IS ONLY ZERO-SIZED IF IT’S NOT THE FINAL MEMBER OF THE STRUCT</strong>.</p>
 
 <p>That is, do this:</p>
-
-<pre><code class="language-go"><span class="kwd">type</span> <span class="pln">s</span> <span class="kwd">struct</span> <span class="pun">{</span>
-       <span class="pln">_</span> <span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="kwd">func</span><span class="pun">(</span><span class="pun">)</span>
-       <span class="pln">a</span> <span class="kwd">int</span>
-<span class="pun">}</span>
-</code></pre>
-
-<p>And not this:</p>
-
-<pre><code class="language-go"><span class="kwd">type</span> <span class="pln">s</span> <span class="kwd">struct</span> <span class="pun">{</span>
-   <span class="pln">a</span> <span class="kwd">int</span>
-   <span class="pln">_</span> <span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="kwd">func</span><span class="pun">(</span><span class="pun">)</span>
-<span class="pun">}</span>
-</code></pre>
-
-<p>See <a href="https://github.com/golang/go/issues/58483">issue 58483</a>. I found this out in a response to this article!</p>
 </blockquote>
-
-<p>Blank fields should be used sparingly, but can be nice for configuration.</p></li>
-
-<li><p>Adding a field of uncomparable type makes the entire struct uncomparable.</p>
-
-<p>Structs comprised only of <a href="https://go.dev/ref/spec#Comparison_operators">comparable</a> types (that is, ones where you can use the <code>==</code> operator) are themselves comparable, and can be used as keys in hashmaps or compared using <code>==</code>. The compiler implements these by generating comparison and hash functions for each comparable type in your code. This (very slightly) bloats the binary &amp; compilation time. You may not want this to happen. Prevent this having a blank field of uncomparable type (the usual candidate is the ZST <code>[0]func()</code>). If you have the kind of performance requirements that need this, you’ll know. Don’t do it “just because”; it’s confusing.</p></li>
-
-<li><p>Blank fields can provide hints to tooling like <code>go vet</code> about how a type should be used. The most famous example of this is <code>copylock</code>. See <a href="https://github.com/golang/go/issues/8005#issuecomment-190753527">go issue #8005</a> for more details.</p></li>
+</li>
 </ul>
 
-<h3>Putting it together: A generic zero-sized type</h3>
-
-<p>As weird as it sounds, I have a use for a <strong>zero-sized</strong>, <strong>generic</strong> struct with unreachable members:<br/>
-<code>context.WithValue</code>.</p>
-
-<p>Let’s review the documentation:</p>
-
 <blockquote>
-<h4><code>func WithValue(parent Context, key, val any) Context</code></h4>
+<pre><code class="language-go">  <span class="pun">&gt;</span> <span class="kwd">type</span> <span class="pln">s</span> <span class="kwd">struct</span> <span class="pun">{</span>
+  <span class="pun">&gt;</span>        <span class="pln">_</span> <span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="kwd">func</span><span class="pun">(</span><span class="pun">)</span>
+  <span class="pun">&gt;</span>        <span class="pln">a</span> <span class="kwd">int</span>
+  <span class="pun">&gt;</span> <span class="pun">}</span>
+  <span class="pun">&gt;</span> <span class="str">``</span><span class="str">`
+  &gt;
+  &gt; And not this:
+  &gt;
+  &gt; `</span><span class="str">``</span><span class="pln">go</span>
+  <span class="pun">&gt;</span> <span class="kwd">type</span> <span class="pln">s</span> <span class="kwd">struct</span> <span class="pun">{</span>
+  <span class="pun">&gt;</span>    <span class="pln">a</span> <span class="kwd">int</span>
+  <span class="pun">&gt;</span>    <span class="pln">_</span> <span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="kwd">func</span><span class="pun">(</span><span class="pun">)</span>
+  <span class="pun">&gt;</span> <span class="pun">}</span>
+  <span class="pun">&gt;</span> <span class="str">``</span><span class="str">`
+  &gt;
+  &gt; See [issue 58483](https://github.com/golang/go/issues/58483). I found this out in a response to this article!
 
-<p>WithValue returns a copy of parent in which the value associated with key is
-val.
-Use context Values only for <strong>request-scoped data that transits processes and
-APIs</strong>, not for passing optional parameters to functions.
-The provided key must be comparable and should not be of type
-string or any other built-in type to avoid collisions between
-packages using context. <strong>Users of WithValue should define their own
-types for keys. To avoid allocating when assigning to an
-<code>interface{}</code>, context keys often have concrete type
-<code>struct{}</code>.</strong> Alternatively, exported context key variables’ static
-type should be a pointer or interface.</p>
-</blockquote>
+      Blank fields should be used sparingly, but can be nice for configuration.
 
-<p>Most <strong>request-scoped data</strong> is a singleton per request. That is, it doesn’t make sense for a request to carry around multiple loggers, users, traces; you want to carry the <em>same one</em> with you from function call to function call</p>
+- Adding a field of uncomparable type makes the entire struct uncomparable.
 
-<p>The usual way Go programs have handled this is by making a separate context key per type you want to carry in the struct. But with the advent of generics in <code>go1.18</code>, instead of having to make a new zero-sized type for every struct, we can just make a single generic zero-sized type and use it for everything:</p>
+  Structs comprised only of [comparable](https://go.dev/ref/spec#Comparison_operators) types (that is, ones where you can use the `</span><span class="pun">=</span><span class="pun">=</span><span class="str">` operator) are themselves comparable, and can be used as keys in hashmaps or compared using `</span><span class="pun">=</span><span class="pun">=</span><span class="str">`. The compiler implements these by generating comparison and hash functions for each comparable type in your code. This (very slightly) bloats the binary &amp; compilation time. You may not want this to happen. Prevent this having a blank field of uncomparable type (the usual candidate is the ZST `</span><span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="kwd">func</span><span class="pun">(</span><span class="pun">)</span><span class="str">`). If you have the kind of performance requirements that need this, you&#39;ll know. Don&#39;t do it &#34;just because&#34;; it&#39;s confusing.
 
-<pre><code class="language-go"><span class="kwd">type</span> <span class="pln">key</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span> <span class="kwd">struct</span><span class="pun">{</span><span class="pun">}</span>
+- Blank fields can provide hints to tooling like `</span><span class="pln">go</span> <span class="pln">vet</span><span class="str">` about how a type should be used. The most famous example of this is `</span><span class="pln">copylock</span><span class="str">`. See [go issue #8005](https://github.com/golang/go/issues/8005#issuecomment-190753527) for more details.
+
+### Putting it together: A generic zero-sized type
+
+As weird as it sounds, I have a use for a **zero-sized**, **generic** struct with unreachable members:\
+`</span><span class="pln">context</span><span class="pun">.</span><span class="typ">WithValue</span><span class="str">`.
+
+Let&#39;s review the documentation:
+
+&gt; #### `</span><span class="kwd">func</span> <span class="typ">WithValue</span><span class="pun">(</span><span class="pln">parent</span> <span class="typ">Context</span><span class="pun">,</span> <span class="pln">key</span><span class="pun">,</span> <span class="pln">val</span> <span class="pln">any</span><span class="pun">)</span> <span class="typ">Context</span><span class="str">`
+&gt;
+&gt; WithValue returns a copy of parent in which the value associated with key is
+&gt; val.
+&gt; Use context Values only for **request-scoped data that transits processes and
+&gt; APIs**, not for passing optional parameters to functions.
+&gt; The provided key must be comparable and should not be of type
+&gt; string or any other built-in type to avoid collisions between
+&gt; packages using context. **Users of WithValue should define their own
+&gt; types for keys. To avoid allocating when assigning to an
+&gt; `</span><span class="kwd">interface</span><span class="pun">{</span><span class="pun">}</span><span class="str">`, context keys often have concrete type
+&gt; `</span><span class="kwd">struct</span><span class="pun">{</span><span class="pun">}</span><span class="str">`.** Alternatively, exported context key variables&#39; static
+&gt; type should be a pointer or interface.
+
+Most **request-scoped data** is a singleton per request. That is, it doesn&#39;t make sense for a request to carry around multiple loggers, users, traces; you want to carry the _same one_ with you from function call to function call
+
+The usual way Go programs have handled this is by making a separate context key per type you want to carry in the struct. But with the advent of generics in `</span><span class="pln">go1</span><span class="dec">.18</span><span class="str">`, instead of having to make a new zero-sized type for every struct, we can just make a single generic zero-sized type and use it for everything:
+
+`</span><span class="str">``</span><span class="pln">go</span>
+<span class="kwd">type</span> <span class="pln">key</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span> <span class="kwd">struct</span><span class="pun">{</span><span class="pun">}</span>
 <span class="com">// FromCtx returns the value of type T stored in the context, if any:</span>
-<span class="kwd">func</span> <span class="typ">FromCtx</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span><span class="pun">(</span><span class="pln">ctx</span> <span class="pln">context</span><span class="pun">)</span> <span class="pun">(</span><span class="typ">T</span><span class="pun">,</span> <span class="kwd">bool</span><span class="pun">)</span> <span class="pun">{</span> 
+<span class="kwd">func</span> <span class="typ">FromCtx</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span><span class="pun">(</span><span class="pln">ctx</span> <span class="pln">context</span><span class="pun">)</span> <span class="pun">(</span><span class="typ">T</span><span class="pun">,</span> <span class="kwd">bool</span><span class="pun">)</span> <span class="pun">{</span>
     <span class="pln">t</span><span class="pun">,</span> <span class="pln">ok</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">Value</span><span class="pun">(</span><span class="pln">key</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span><span class="pun">{</span><span class="pun">}</span><span class="pun">)</span><span class="pun">.</span><span class="pun">(</span><span class="typ">T</span><span class="pun">)</span>
     <span class="kwd">return</span> <span class="pln">t</span><span class="pun">,</span> <span class="pln">ok</span>
 <span class="pun">}</span>
@@ -625,6 +642,7 @@ type should be a pointer or interface.</p>
     <span class="kwd">return</span> <span class="pln">context</span><span class="pun">.</span><span class="typ">WithValue</span><span class="pun">(</span><span class="pln">ctx</span><span class="pun">,</span> <span class="pln">key</span><span class="pun">[</span><span class="typ">T</span><span class="pun">]</span><span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> <span class="pln">t</span><span class="pun">)</span>
 <span class="pun">}</span>
 </code></pre>
+</blockquote>
 
 <p>For fun, let’s rewrite <code>FromCtx</code> as a truly hellish one-liner using (nearly) every trick we’ve learned so far:</p>
 

@@ -1,5 +1,5 @@
 <!DOCTYPE html><html><head>
-  <title>faststack</title>
+  <title>a tale of two stacks: optimizing gin’s panic recovery handler</title>
   <meta name="GENERATOR" content="github.com/gomarkdown/markdown markdown processor for Go"/>
   <meta charset="utf-8"/>
   <link rel="stylesheet" type="text/css" href="/s.css"/>
@@ -9,15 +9,16 @@
 
 <h1>a tale of two stacks: optimizing gin’s panic recovery handler</h1>
 
-<h4>A programming article by Efron Licht</h4>
+<p>A programming article by Efron Licht</p>
 
-<h4>*#### <strong>more articles</strong></h4>
+<h4>more articles</h4>
 
 <ul>
 <li><p>advanced go &amp; gamedev</p>
 
 <ol>
 <li><a href="https://eblog.fly.dev/console.html">advanced go: reflection-based debug console</a></li>
+<li><a href="https://eblog.fly.dev/console-autocomplete.html">reflection-based debug console: autocomplete</a></li>
 </ol></li>
 
 <li><p>go quirks &amp; tricks</p>
@@ -37,9 +38,12 @@
 <li><a href="https://eblog.fly.dev/testfast.html">test fast: a practical guide to a livable test suite</a></li>
 </ol></li>
 
-<li><p><a href="https://eblog.fly.dev/faststack.html">faststack: analyzing &amp; optimizing gin’s panic stack traces</a></p></li>
+<li><p>miscellaneous</p>
 
-<li><p><a href="https://eblog.fly.dev/bytehacking.html">simple byte hacking: a uuid adventure</a></p></li>
+<ol>
+<li><a href="https://eblog.fly.dev/faststack.html">faststack: analyzing &amp; optimizing gin’s panic stack traces</a></li>
+<li><a href="https://eblog.fly.dev/bytehacking.html">simple byte hacking: a uuid adventure</a></li>
+</ol></li>
 </ul>
 
 <h2>gin’s panic handler</h2>
@@ -128,9 +132,11 @@ this function panics!
 <p>Luckily, the stack trace itself gives us nearly all the clues we need:</p>
 
 <blockquote>
-<p><code>/home/efron/go/pkg/mod/github.com/gin-gonic/gin@v1.8.2/recovery.go:101 (0x71a5ec)
-        CustomRecoveryWithWriter.func1: c.Next()</code></p>
+<p>`/home/efron/go/pkg/mod/github.com/gin-gonic/gin@v1.8.2/recovery.go:101 (0x71a5ec)</p>
 </blockquote>
+
+<pre><code>    CustomRecoveryWithWriter.func1: c.Next()`
+</code></pre>
 
 <p>which contains a function <code>stack()</code>, which is simple and clearly documented. From now on, I’m going to call it <code>slowstack()</code>, and we’ll call our eventual optimized version <code>faststack()</code>.
 Starting at <code>skip</code>, we walk frame-by-frame up the stack.</p>
@@ -290,7 +296,7 @@ Starting at <code>skip</code>, we walk frame-by-frame up the stack.</p>
 <li>asm_amd64.s (59KiB)</li>
 </ul>
 
-<p>The longest lines of a <code>.go</code> or <code>.s</code> file are roughly 200 bytes, so this is using  roughly 1300x the bytes it needs to.</p>
+<p>The longest lines of a <code>.go</code> or <code>.s</code> file are roughly 200 bytes, so this is using roughly 1300x the bytes it needs to.</p>
 
 <h3>reading a line at a time</h3>
 
@@ -394,7 +400,7 @@ If we sort the frames by file-and-line, we can populate each frame with the sour
 
 <p>This requires a few structural changes: rather than formatting the frames as we ascend the callstack, we put them all in a slice, populate them all, resort-them with their original order, and <em>then</em> format them into our output buffer.</p>
 
-<p>If there are few or no repeated files, this will use more peak memory than the previous approach,  but it’s a solid solution that saves us from the pathological cases we outlined above. And since our minimal test case proves <em>any</em> Gin handler will have some repeated cases, we always save <em>some</em> work.</p>
+<p>If there are few or no repeated files, this will use more peak memory than the previous approach, but it’s a solid solution that saves us from the pathological cases we outlined above. And since our minimal test case proves <em>any</em> Gin handler will have some repeated cases, we always save <em>some</em> work.</p>
 
 <pre><code class="language-go"><span class="kwd">func</span> <span class="pln">stack_03</span><span class="pun">(</span><span class="pln">skip</span> <span class="kwd">int</span><span class="pun">)</span> <span class="pun">(</span><span class="pln">formatted</span> <span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span><span class="pun">)</span> <span class="pun">{</span>
     <span class="com">// grab the stack frame</span>
@@ -505,7 +511,7 @@ If we sort the frames by file-and-line, we can populate each frame with the sour
 
 <pre><code class="language-go"><span class="com">// local source is not always available. for example, the executable may be running on a system without the source</span>
  <span class="com">// or the -trimpath buildflag could have been provided to go tool.</span>
- <span class="com">// if we can&#39;t find the source for THIS file, we are unlikely to be able to find it for any file.  </span>
+ <span class="com">// if we can&#39;t find the source for THIS file, we are unlikely to be able to find it for any file.</span>
 <span class="kwd">var</span> <span class="pln">localSourceOnce</span> <span class="pln">sync</span><span class="pun">.</span><span class="typ">Once</span>
 <span class="kwd">var</span> <span class="pln">localSourceNotFound</span> <span class="kwd">bool</span>
 <span class="kwd">func</span> <span class="pln">localSourceUnavailable</span><span class="pun">(</span><span class="pun">)</span> <span class="kwd">bool</span> <span class="pun">{</span>
@@ -871,8 +877,8 @@ linux (wsl), source code on SSD, compiled with <code>-trimpath</code></p>
 
 <ul>
 <li><code>faststack</code> is always faster than <code>slowstack</code>; it starts out roughly 40% faster and gets better from there.</li>
-<li><code>faststack</code> always uses  <em>significantly</em> less memory.</li>
-<li>faststack’s resource usage stops  increasing after depth 64, as we’d expect (since we hard-limited the callstack).</li>
+<li><code>faststack</code> always uses <em>significantly</em> less memory.</li>
+<li>faststack’s resource usage stops increasing after depth 64, as we’d expect (since we hard-limited the callstack).</li>
 <li>slowstack’s memory usage and runtime increase linearly with the depth of the callstack, using nearly a MiB per call for even a 32-deep callstack.</li>
 </ul>
 
@@ -1100,7 +1106,7 @@ linux (wsl), source code on SSD, compiled with <code>-trimpath</code></p>
 
 <p>Everything comes at a cost. In this case, <code>faststack</code> cuts down on the memory usage and clock time significantly by using a more efficient algorithm and limiting the total stack depth, at the cost of doubling the length of the code and increasing it’s complexity. <code>slowstack</code> was trivial to understand, and <code>faststack</code> is definitely not; it requires a new data structure, global variables, lazy initialization, it’s <em>own</em> panic recovery handler, and two separate sorts.</p>
 
-<p>Why do we have a panic recovery handler in the first place?  To provide continuous service, even in the presence of software bugs. That is, a panic recovery handler is supposed to be a last-ditch protection against a bug that never should have made it into production.
+<p>Why do we have a panic recovery handler in the first place? To provide continuous service, even in the presence of software bugs. That is, a panic recovery handler is supposed to be a last-ditch protection against a bug that never should have made it into production.
 These panics are <em>supposed</em> to be rare; prevented by a suite of tests, CI, etc. In practice, well, all software is buggy, and Go programs can panic a lot. When I worked at an ISP, I had production bugs that triggered 20K recovery handlers, per minute, per server (on ~5 servers). If those stacks have 20 frames each, on average, and the files those frames came from average 20K, <em>8GiB</em> of allocations a minute per server, or 40GiB of allocations per minute: - that’s enough to bring most containers to a crawl, and even a relatively beefy modern PC might struggle to clean up all that garbage. <strong>This</strong> server only has 256MiB of RAM (as of my last edit.) Admittedly, that’s a pretty niche scenario.</p>
 
 <p>More worryingly, there’s two performance problems that <em>faststack</em> can’t help with: first, most storage mediums can’t do concurrent IO. If <em>something else</em> on the server needs to touch the disks the panic handler is reading, then they’ll block each other for as long as those reads take.</p>

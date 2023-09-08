@@ -2,6 +2,8 @@
 
 package meta
 
+import "regexp"
+
 func OpenFileHandles() (int, error) {
 	return 0, nil
 }

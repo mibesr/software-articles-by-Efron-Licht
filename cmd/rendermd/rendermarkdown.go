@@ -45,11 +45,13 @@ func main() {
 	log.Println("dstDir: ", dstDir)
 	const format = "rendermd\t%s\t->\t%s\n"
 	log.Println("scanning...")
-	var wg sync.WaitGroup
-	type res struct {
-		md, html string
-	}
+	var wg sync.WaitGroup              // guards against premature exit before all goroutines are done processing markdown files
+	type res struct{ md, html string } // communicates results from goroutines to main thread
 	ch := make(chan res, 24)
+	// walkFunc is called for each file in the directory tree.
+	// it renders markdown files as HTML, and copies other files as-is.
+	// because the markdown rendering is CPU-bound, it uses a goroutine for each markdown file,
+
 	walkFunc := func(srcPath string, d fs.DirEntry, err error) error {
 		tw := tabwriter.NewWriter(os.Stderr, 2, 2, 2, ' ', 0)
 

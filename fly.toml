@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for eblog on 2023-09-01T15:27:01-07:00
+# fly.toml app configuration file generated for eblog-test on 2023-09-07T13:00:51-07:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = "eblog"
+app = "eblog-test"
 primary_region = "lax"
 kill_signal = "SIGINT"
 kill_timeout = "5s"
@@ -14,6 +14,9 @@ kill_timeout = "5s"
   protocol = "tcp"
   internal_port = 8080
   processes = ["app"]
+
+  [[services.ports]]
+    port = 6666
 
   [[services.ports]]
     port = 80
