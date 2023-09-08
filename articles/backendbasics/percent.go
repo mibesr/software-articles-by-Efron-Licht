@@ -32,6 +32,7 @@ func Unescape(s string) string {
 	}
 	return s // s is already url-unescaped
 }
+
 func newUnescaped(s string) string {
 	buf := new(strings.Builder)
 	buf.Grow(len(s))
@@ -48,6 +49,7 @@ func newUnescaped(s string) string {
 	}
 	return buf.String()
 }
+
 func newEscaped(s string) string {
 	buf := new(strings.Builder)
 	buf.Grow(len(s))

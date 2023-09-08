@@ -58,7 +58,6 @@ func TestHTTPResponse(t *testing.T) {
 			} else if !reflect.DeepEqual(got2, got) {
 				t.Errorf("ParseResponse(%q) = %#+v, want %#+v", got.String(), got2, got)
 			}
-
 		})
 	}
 }
@@ -107,7 +106,6 @@ func TestHTTPRequest(t *testing.T) {
 			if !reflect.DeepEqual(got, got2) {
 				t.Errorf("ParseRequest(%q) = %+v, want %+v", got.String(), got2, got)
 			}
-
 		})
 	}
 }

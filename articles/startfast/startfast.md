@@ -5,27 +5,7 @@ June 2023
 
 **The only thing a program does every time is boot, so it should boot as fast as possible**. This used to be a given, but modern programs are often extraordinarily slow to start. It's not unusual for simple programs to take 10s of seconds to start: it's expensive, frustrating, and totally preventable. In this article, I'll show you how to make your programs start in milliseconds, not seconds.
 
-- advanced go & gamedev
-
-  1. [advanced go: reflection-based debug console](https://eblog.fly.dev/console.html)
-  2. [reflection-based debug console: autocomplete](https://eblog.fly.dev/console-autocomplete.html)
-
-- go quirks & tricks
-
-  1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
-  2. [concurrency, unsafe, reflect](https://eblog.fly.dev/quirks2.html)
-  3. [arrays, validation, build constraints](https://eblog.fly.dev/quirks3.html)
-
-- starting software
-
-  1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
-  1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
-  1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
-  1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
-
-- miscellaneous
-  1. [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
-  1. [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
+<<article list placeholder>>
 
 ## Table-setting
 

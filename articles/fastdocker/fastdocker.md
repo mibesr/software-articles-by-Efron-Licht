@@ -6,27 +6,7 @@ July 2023
 
 Part 2 of a series on starting software.
 
-- advanced go & gamedev
-
-  1. [advanced go: reflection-based debug console](https://eblog.fly.dev/console.html)
-  2. [reflection-based debug console: autocomplete](https://eblog.fly.dev/console-autocomplete.html)
-
-- go quirks & tricks
-
-  1. [declaration, control flow, typesystem](https://eblog.fly.dev/quirks.html)
-  2. [concurrency, unsafe, reflect](https://eblog.fly.dev/quirks2.html)
-  3. [arrays, validation, build constraints](https://eblog.fly.dev/quirks3.html)
-
-- starting software
-
-  1. [start fast: booting go programs quickly with `inittrace` and `nonblocking[T]`](https://eblog.fly.dev/startfast.html)
-  1. [docker should be fast, not slow](https://eblog.fly.dev/fastdocker.html)
-  1. [have you tried turning it on and off again?](https://eblog.fly.dev/onoff.html)
-  1. [test fast: a practical guide to a livable test suite](https://eblog.fly.dev/testfast.html)
-
-- miscellaneous
-  1. [faststack: analyzing & optimizing gin's panic stack traces](https://eblog.fly.dev/faststack.html)
-  1. [simple byte hacking: a uuid adventure](https://eblog.fly.dev/bytehacking.html)
+<<article list placeholder>>
 
 Your average build process is glacially slow. I firmly believe most projects build between 50-200x slower than they should, and produce images 10-100x larger than they should. This costs your average software house hundreds of thousands of dollars a year in wasted developer time and hardware/cloud costs. Docker was a tool designed to help solve this problem, but it's widely misused in a way that makes the problem worse, not better. In this article, we'll talk about the costs of slow builds, quickly review the basics of Docker, and then annotate & optimize a real-world dockerfile: the one that generates the very website you're reading! We'll get a `50x` speedup in build time, and a nearly `100x` reduction in image size.
 

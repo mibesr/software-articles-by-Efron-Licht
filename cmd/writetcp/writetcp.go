@@ -72,7 +72,6 @@ func main() {
 			log.Fatalf("error reading from %s: %v", conn.RemoteAddr(), err)
 		}
 	}
-
 }
 
 func findIP(host string) (ip net.IP, err error) {

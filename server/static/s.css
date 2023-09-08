@@ -25,15 +25,15 @@
 
 /* formatting: non syntax-highlighting */
 body {
+  margin: auto;
+  position: center;
   padding-top: 2ch;
   padding-bottom: 2ch;
   padding-left: 8ch;
   text-align: left;
-  background-color: rgb(23, 11, 11);
-
-
+  background-color: rgb(23, 19, 19);
   font-family: "Open Sans", "Source Code Pro", "Monaco", "Helvetica";
-  color: rgb(175, 232, 229);
+  color: rgb(139, 210, 207);
   font-size: 14px;
   text-shadow: 0 0 1px #c8c8c8;
   max-width: 100ch;

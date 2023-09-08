@@ -43,7 +43,7 @@ func main() {
 
 	defer conn.Close()
 
-	var reqfields = []string{
+	reqfields := []string{
 		fmt.Sprintf("%s %s HTTP/1.1", method, path),
 		"Host: " + host,
 		"User-Agent: httpget",
@@ -72,5 +72,4 @@ func main() {
 			return
 		}
 	}
-
 }

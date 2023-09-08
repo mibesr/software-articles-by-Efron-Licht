@@ -59,11 +59,7 @@ func setupLogger() *zap.Logger {
 // Run the server.
 func Run(ctx context.Context) (err error) {
 	logger := setupLogger()
-	go func() {
-		if err := echo(logger, enve.IntOr("ECHO_PORT", 6666)); err != nil {
-			logger.Error("echo: error", zap.Error(err))
-		}
-	}()
+
 	defer logger.Sync()
 	var router http.Handler // build router.
 	{

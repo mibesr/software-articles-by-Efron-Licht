@@ -1,8 +1,10 @@
-# Backend from the Beginning, Pt 1: TCP, DNS, & HTTP
+# Backend from the Beginning, Pt 1: Introduction, TCP, DNS, HTTP
 
 A software article by Efron Licht
 
 September 2023
+
+<<article list placeholder>>
 
 This article is part of a series on backend web development in Go. It will cover the basics of backend web development, from the ground up, without using a framework. It will cover the basics of TCP, DNS, HTTP, the `net/http` and `encoding/json` packages, middleware and routing. It should give you everything you need to get started writing professional backend web services in Go.
 
@@ -46,7 +48,7 @@ It will have four parts:
 - What is the internet? What problems does it solve? What's TCP/IP? How do computers talk to each other?
 - What's DNS? How do we turn [www.google.com](https://www.google.com) into an IP address?
 - What's HTTP and how does it work? How would we read or write a HTTP request or response by hand, without a library?
-- Putting it all together: a basic HTTP client & server
+- Building a Request/Response library from scratch
   
 ### 2. Practical backend: `net/http` and `encoding/json`
 

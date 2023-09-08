@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 	"io/fs"
 	"log"
@@ -104,6 +105,9 @@ func main() {
 
 var findtitleRE = regexp.MustCompile(`^# (.+)`) // like # Golang Quirks & Intermediate Tricks, Pt 1: Declarations, Control Flow, & Typesystem
 
+//go:embed article_list.md
+var articlelist []byte
+
 func renderMarkdown(path string) []byte {
 	b := markdown.NormalizeNewlines(must(os.ReadFile(path)))
 	var title string
@@ -112,6 +116,9 @@ func renderMarkdown(path string) []byte {
 	} else {
 		title = strings.TrimSuffix(filepath.Base(path), ".md") // default to filename
 	}
+
+	const placeholder = `<<article list placeholder>>`
+	b = bytes.ReplaceAll(b, []byte(placeholder), articlelist)
 
 	renderer := html.NewRenderer(html.RendererOptions{
 		Icon:           "/favicon.ico",
@@ -130,5 +137,6 @@ func renderMarkdown(path string) []byte {
 	html = []byte((must(doc.Html())))
 	html = bytes.ReplaceAll(html, []byte("<html><head></head><body>"), nil)
 	html = bytes.ReplaceAll(html, []byte("</body></html>"), nil)
+
 	return html
 }

@@ -57,7 +57,6 @@ func (r *Request) WriteTo(w io.Writer) (n int64, err error) {
 		if err := printf("%s: %s\r\n", h.Key, h.Value); err != nil {
 			return n, err
 		}
-
 	}
 	err = printf("\r\n%s\r\n", r.Body) // empty line between headers and body; empty line at end of body.
 	return n, err
@@ -112,6 +111,7 @@ func splitLines(s string) []string {
 		i = k + 2
 	}
 }
+
 func ParseRequest(raw string) (r Request, err error) {
 	// request has three parts:
 	// 1. Request linedd
@@ -216,6 +216,7 @@ func (resp *Response) WithHeader(key, value string) *Response {
 	resp.Headers = append(resp.Headers, Header{AsTitle(key), value})
 	return resp
 }
+
 func (r *Request) WithHeader(key, value string) *Request {
 	r.Headers = append(r.Headers, Header{AsTitle(key), value})
 	return r
@@ -319,11 +320,9 @@ func (resp *Response) WriteTo(w io.Writer) (n int64, err error) {
 		if err := printf("%s: %s\r\n", h.Key, h.Value); err != nil {
 			return n, err
 		}
-
 	}
 	if err := printf("\r\n%s\r\n", resp.Body); err != nil {
 		return n, err
 	}
 	return n, nil
-
 }
