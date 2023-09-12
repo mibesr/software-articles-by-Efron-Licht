@@ -1,5 +1,7 @@
 # Backend from the Beginning, Pt 1: Introduction, TCP, DNS, HTTP
 
+# THIS NEEDS ANOTHER EDITING PASS. CONSIDER IT A PREVIEW
+
 A software article by Efron Licht
 
 September 2023
@@ -14,9 +16,9 @@ Source code for this article (& the entire blog) is publically available on my [
 
 One of the most common questions I get from new developers starting with Go is **"what web framework should I use?"** The answer I always give is "you don't need a framework", but the problem is, backend devs are _used_ to frameworks.
 
-Thinking about it, the motivation is understandable: engineers are under a lot of pressure, and the internet _seems_ really complicated, the idea of learning all these layers of abstraction (tcp, http, etc) is daunting, and _everyone else seems to use a framework_ - in most languages (javascript, python, etc), it's practically required. There's only one problem with this: **it means you never learn how things actually work**. Constantly relying on suites of specialized tools rather than learning the basics is the equivalent of being a senior chef who can't use a knife. Sure, you can argue that your fancy food processor chops faster, but the second you need to do something for which your pre-packaged tools aren't designed, you're screwed; you have no idea how to do it yourself.
+Thinking about it, the motivation is understandable: engineers are under a lot of pressure, and the internet _seems_ really complicated, the idea of learning all these layers of abstraction (tcp, http, etc) is daunting, and _everyone else seems to use a framework_ - in most languages (javascript, python, etc), it's practically required. There's only one problem with this: **it means you never learn how things actually work**. Constantly relying on suites of specialized tools rather than learning the basics is the equivalent of being a senior chef who can't use a knife. Sure, you can argue that your fancy food processor chops faster, but the second you need to do something for which your pre-packaged tools aren't designed, you're screwed; you have no idea how to do it yourself and no time to learn. 
 
-**I have now met four different senior software engineers who couldn't tell me how to make a HTTP request to google without a framework**.
+This may sound like an exaggeration, but **I have now met four different senior software engineers who couldn't tell me how to make a HTTP request to google without a framework**.
 
 For the record, you send this message to `142.250.189.14:80`:
 
@@ -32,16 +34,15 @@ If you don't know what stuff means or how I got that IP address, don't worry; we
 > "An idiot admires complexity, a genius admires simplicity"
 >
 > - Terry A. Davis
->
+
+
 Of course, knowing that things are done badly doesn't help you learn how do do it _well_, so I'm writing this series of articles to try and fill the gap by teaching the basics of backend web development in Go. Each article will be filled with _real_ programs you can run on your computer, not cherry-picked code samples that don't even compile.
 
 This series will not be enough to teach you everything. At best it will expose you to enough of how things _really_ work that you can start seeing the edges of your knowledge and begin filling in the gaps yourself. It will also necessarially have to simplify or omit some details or tell "white lies" to make things easier to understand; there's no substitute for experience (or for reading the source code & documentation of the standard library).  It will also largely omit databases; I hope to make those the subject of a future series.
 
 That said, I hope it will help.
 
-## Series overview
-
-It will have four parts:
+## Series overview:
 
 ### 1. backend basics, part 1: TCP, DNS, & HTTP
 
@@ -60,11 +61,11 @@ In the third article, we'll cover middleware and routing, the two 'missing piece
 
 ### 4. When I hear the word 'framework' I reach for my gun
 
-I'll talk a lot of shit on web frameworks, and we can bask in a smug feeling of self-satisfaction together. I might not write this part; I'll only do it if I think I can make a point coherent rather than preach to the previously converted.
+~~I'll talk a lot of shit on web frameworks, and we can bask in a smug feeling of self-satisfaction together.~~ I might not write this part; I'll only do it if I think I can make a point coherent rather than preach to the previously converted.
 
 ## What is backend?
 
-Backend is connecting together computers via the internet.
+'Backend' is connecting together computers via the internet. You know what a computer is, so... 
 
 ### What's the internet anyways?
 
@@ -84,7 +85,6 @@ The details of TCP are out of scope for this article, but at a high level it loo
 - If you don't get an acknowledgement for a packet, you resend it; if you get a corrupted packet, you resend it.
 - This back-and-forth ensures that all of the data gets through, in order, and that you know when it doesn't.
 
->
 
 ### IP: how do I make sure that when I send a message through a network it gets to the right place?
 

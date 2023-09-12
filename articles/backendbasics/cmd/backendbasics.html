@@ -1,0 +1,1636 @@
+<!DOCTYPE html><html><head>
+  <title>Backend from the Beginning, Pt 1: Introduction, TCP, DNS, HTTP</title>
+  <meta name="GENERATOR" content="github.com/gomarkdown/markdown markdown processor for Go"/>
+  <meta charset="utf-8"/>
+  <link rel="stylesheet" type="text/css" href="/s.css"/>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
+</head>
+<body>
+
+<h1>Backend from the Beginning, Pt 1: Introduction, TCP, DNS, HTTP</h1>
+
+<p>A software article by Efron Licht</p>
+
+<p>September 2023</p>
+
+<h4>more articles</h4>
+
+<ul>
+<li><p>backend from the beginning: a complete guide to backend development in go</p>
+
+<ol>
+<li><a href="https://eblog.fly.dev/backendbasics.html">bftb 1: Introduction, TCP, DNS, HTTP</a></li>
+<li><del>[bftb 2: Practical Backend with the Go stdlib]</del> <strong>(COMING SOON)</strong></li>
+<li><del>[bftb 3: Finishing touches: middleware &amp; routing]</del> <strong>(COMING SOON)</strong></li>
+<li><del>[bftb 4: When I hear the word ‘framework’ I reach for my revolver]</del> <strong>(COMING SOON)</strong></li>
+</ol></li>
+
+<li><p>advanced go &amp; gamedev</p>
+
+<ol>
+<li><a href="https://eblog.fly.dev/console.html">advanced go: reflection-based debug console</a></li>
+<li><a href="https://eblog.fly.dev/console-autocomplete.html">reflection-based debug console: autocomplete</a></li>
+</ol></li>
+
+<li><p>go quirks &amp; tricks</p>
+
+<ol>
+<li><a href="https://eblog.fly.dev/quirks.html">declaration, control flow, typesystem</a></li>
+<li><a href="https://eblog.fly.dev/quirks2.html">concurrency, unsafe, reflect</a></li>
+<li><a href="https://eblog.fly.dev/quirks3.html">arrays, validation, build constraints</a></li>
+</ol></li>
+
+<li><p>starting software</p>
+
+<ol>
+<li><a href="https://eblog.fly.dev/startfast.html">start fast: booting go programs quickly with <code>inittrace</code> and <code>nonblocking[T]</code></a></li>
+<li><a href="https://eblog.fly.dev/fastdocker.html">docker should be fast, not slow</a></li>
+<li><a href="https://eblog.fly.dev/onoff.html">have you tried turning it on and off again?</a></li>
+<li><a href="https://eblog.fly.dev/testfast.html">test fast: a practical guide to a livable test suite</a></li>
+</ol></li>
+
+<li><p>miscellaneous</p>
+
+<ol>
+<li><a href="https://eblog.fly.dev/faststack.html">faststack: analyzing &amp; optimizing gin’s panic stack traces</a></li>
+<li><a href="https://eblog.fly.dev/bytehacking.html">simple byte hacking: a uuid adventure</a></li>
+</ol></li>
+</ul>
+
+<p>This article is part of a series on backend web development in Go. It will cover the basics of backend web development, from the ground up, without using a framework. It will cover the basics of TCP, DNS, HTTP, the <code>net/http</code> and <code>encoding/json</code> packages, middleware and routing. It should give you everything you need to get started writing professional backend web services in Go.</p>
+
+<p>Source code for this article (&amp; the entire blog) is publically available on my <a href="https://gitlab.com/efronlicht/blog">gitlab</a>.</p>
+
+<h2>Introduction: when I hear the word ‘framework’ I reach for my gun</h2>
+
+<p>One of the most common questions I get from new developers starting with Go is <strong>“what web framework should I use?”</strong> The answer I always give is “you don’t need a framework”, but the problem is, backend devs are <em>used</em> to frameworks.</p>
+
+<p>Thinking about it, the motivation is understandable: engineers are under a lot of pressure, and the internet <em>seems</em> really complicated, the idea of learning all these layers of abstraction (tcp, http, etc) is daunting, and <em>everyone else seems to use a framework</em> - in most languages (javascript, python, etc), it’s practically required. There’s only one problem with this: <strong>it means you never learn how things actually work</strong>. Constantly relying on suites of specialized tools rather than learning the basics is the equivalent of being a senior chef who can’t use a knife. Sure, you can argue that your fancy food processor chops faster, but the second you need to do something for which your pre-packaged tools aren’t designed, you’re screwed; you have no idea how to do it yourself.</p>
+
+<p><strong>I have now met four different senior software engineers who couldn’t tell me how to make a HTTP request to google without a framework</strong>.</p>
+
+<p>For the record, you send this message to <code>142.250.189.14:80</code>:</p>
+
+<pre><code class="language-http"><span class="typ">GET</span> <span class="pun">/</span> <span class="typ">HTTP</span><span class="pun">/</span><span class="dec">1.1</span>
+<span class="typ">Host</span><span class="pun">:</span> <span class="pln">google</span><span class="pun">.</span><span class="pln">com</span>
+</code></pre>
+
+<p>It’s five words.</p>
+
+<p>If you don’t know what stuff means or how I got that IP address, don’t worry; we’ll get to that. The point is, it’s not actually that hard; hard is ten thousand layers of callbacks and libraries and frameworks and tools and languages and abstractions and indirections and wrappers around wrappers. The problem is, most software engineers are so used to having so many layers of abstraction between them and the network that ‘getting to the bottom’ seems impossible. Now, some may argue that this is OK, because the increased power &amp; flexibility of frameworks leads to faster, better, software development. The only problem is, software isn’t getting better; it’s getting <em>measurably worse</em>. Both <a href="https://www.youtube.com/watch?v=GC-0tCy4P1U&amp;t=2190s">desktop software</a> and <a href="https://httparchive.org/reports/state-of-the-web#bytesTotal">web pages</a> are measurably slower year over year. Software is getting slower faster than computers are speeding up. With this in mind, it’s no surprise that software is <strong>drowning in complexity</strong>. Every year, we add more layers of abstraction, more libraries, more frameworks, more tools, more languages, more everything, but even our ‘experts’ don’t understand the basics of the stuff they’re building. It’s no wonder that software is so slow and buggy and impossible to maintain.</p>
+
+<blockquote>
+<p>“An idiot admires complexity, a genius admires simplicity”</p>
+
+<ul>
+<li>Terry A. Davis</li>
+</ul>
+
+<p>Of course, knowing that things are done badly doesn’t help you learn how do do it <em>well</em>, so I’m writing this series of articles to try and fill the gap by teaching the basics of backend web development in Go. Each article will be filled with <em>real</em> programs you can run on your computer, not cherry-picked code samples that don’t even compile.</p>
+</blockquote>
+
+<p>This series will not be enough to teach you everything. At best it will expose you to enough of how things <em>really</em> work that you can start seeing the edges of your knowledge and begin filling in the gaps yourself. It will also necessarially have to simplify or omit some details or tell “white lies” to make things easier to understand; there’s no substitute for experience (or for reading the source code &amp; documentation of the standard library).  It will also largely omit databases; I hope to make those the subject of a future series.</p>
+
+<p>That said, I hope it will help.</p>
+
+<h2>Series overview</h2>
+
+<p>It will have four parts:</p>
+
+<h3>1. backend basics, part 1: TCP, DNS, &amp; HTTP</h3>
+
+<ul>
+<li>What is the internet? What problems does it solve? What’s TCP/IP? How do computers talk to each other?</li>
+<li>What’s DNS? How do we turn <a href="https://www.google.com">www.google.com</a> into an IP address?</li>
+<li>What’s HTTP and how does it work? How would we read or write a HTTP request or response by hand, without a library?</li>
+<li>Building a Request/Response library from scratch</li>
+</ul>
+
+<h3>2. Practical backend: <code>net/http</code> and <code>encoding/json</code></h3>
+
+<p>In the second article, we’ll graduate to using the <code>net/http</code> and <code>encoding/json</code> packages to build basic web clients and servers that can handle most day-to-day backend workloads. We’ll make a basic  client &amp; server to play games over the internet.</p>
+
+<h3>3. Finishing touches: middleware and routing</h3>
+
+<p>In the third article, we’ll cover middleware and routing, the two ‘missing pieces’ of the <code>net/http</code> package. These are the bits that usually make people reach for a framework, but they’re actually pretty simple to implement yourself. We’ll talk a little bit about logging and authentication, and restrict access to our chess server to logged-in users.</p>
+
+<h3>4. When I hear the word ‘framework’ I reach for my gun</h3>
+
+<p>I’ll talk a lot of shit on web frameworks, and we can bask in a smug feeling of self-satisfaction together. I might not write this part; I’ll only do it if I think I can make a point coherent rather than preach to the previously converted.</p>
+
+<h2>What is backend?</h2>
+
+<p>Backend is connecting together computers via the internet.</p>
+
+<h3>What’s the internet anyways?</h3>
+
+<p>What is the internet? No, I’m serious. What is the problem the internet solves? The internet is a <em>network</em> of computers that can reliably communicate with each other even if some of the computers ‘in the middle’ are down. It allows you to reliably send messages (that is, text or binary data) to other computers, even if you don’t know where those computers are or how they’re connected to you. You can send a message to another computer, so long as there is a path of computers from you (the <code>LOCALADDR</code>) to the destination computer (the <code>REMOTEADDR</code>)**.</p>
+
+<p>To do this, the internet must solve two problems:</p>
+
+<ul>
+<li>How do I send a message to another computer, even if I don’t have a direct connection to it? <code>ROUTING</code></li>
+<li>How do I make sure that when I send a message through a network it gets to the right place, in order, and all of it gets through? <code>COHERENCE</code>
+Both problems are solved by a protocol: the <strong>I</strong>nternet <strong>P</strong>rotocol (<code>IP</code>) solves <code>ROUTING</code>, and the <strong>T</strong>ransmission <strong>C</strong>ontrol <strong>P</strong>rotocol (<code>TCP</code>) solves <code>COHERENCE</code>. Together, they’re called <code>TCP/IP</code>. That’s how the internet works.</li>
+</ul>
+
+<h3>TCP: how do I make sure that when I send a message through a network all of it gets through, in order?</h3>
+
+<p>The details of TCP are out of scope for this article, but at a high level it looks like this:</p>
+
+<ul>
+<li>You send packets of data to the remote computer. Each packet has a sequence number, (“which packet is this?”) and a checksum (“did this packet get corrupted in transit?”). The remote computer sends back an acknowledgement (“I got packet 5”) for each packet you send.</li>
+<li>If you don’t get an acknowledgement for a packet, you resend it; if you get a corrupted packet, you resend it.</li>
+<li>This back-and-forth ensures that all of the data gets through, in order, and that you know when it doesn’t.</li>
+</ul>
+
+<blockquote></blockquote>
+
+<h3>IP: how do I make sure that when I send a message through a network it gets to the right place?</h3>
+
+<p>IP is more complicated. The following explanation is wrong at pretty much every level if you zoom in enough, but it’s a good enough approximation for our purposes:</p>
+
+<ul>
+<li>Each computer on the internet has an <code>address</code>, an identifier that tells other computers how to get to it. This address is called an <code>IP address</code>, or sometimes just an <code>IP</code>.</li>
+<li>They also have a list of other computers it knows about, and how to get to them. This list is called a <strong>routing table</strong>.</li>
+<li>When you send a message to another computer, your computer looks at its routing table to see if it knows how to get to that computer. If it does, it sends the message to the next computer in the chain. If it doesn’t, it sends the message to the next computer in the chain that it <em>does</em> know how to get to; they keep doing this until the message gets to the right computer.</li>
+<li>If there is no path from your computer to the destination computer, the message fails.</li>
+</ul>
+
+<h2>Addresses &amp; Ports</h2>
+
+<p>OK, so how do we actually send a message to another computer? We need to know two things: the <code>address</code> of the computer we want to send a message to, and the <code>port</code> of the service we want to send a message to.</p>
+
+<h2>IP Addresses</h2>
+
+<p>IP Addresses come in two forms: <code>ipv4</code>, a 32-bit number; or <code>ipv6</code>, a 128-bit number. They look like this:</p>
+
+<p>IPV4 looks like this: DDD.DDD.DDD.DDD, where DDD is a number between 0 and 255.</p>
+
+<p>IPV6 looks like this: XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX, where XXXX is a 16-bit hexadecimal number; that is, each X is one of <code>0..=9</code> or <code>a..=f</code></p>
+
+<table>
+<thead>
+<tr>
+<th>IP Address</th>
+<th>Type</th>
+<th>Note</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>192.168.000.001</td>
+<td>ipv4</td>
+<td>localhost; refers to hosting computer</td>
+</tr>
+
+<tr>
+<td>192.168.0.1</td>
+<td>ipv4</td>
+<td>same as above; you can omit leading zeroes</td>
+</tr>
+
+<tr>
+<td>0000:0000:0000:0000:0000:ffff:c0a8:0001</td>
+<td>ipv6</td>
+<td>refers to same computer as above; ipv4 addresses can be embedded in ipv6 addresses by prefixing them with <code>::ffff:</code></td>
+</tr>
+
+<tr>
+<td>::ffff:c0a8:0001</td>
+<td>ipv6</td>
+<td>same as above; you can omit leading zeroes</td>
+</tr>
+
+<tr>
+<td>2a09:8280:1::a:791</td>
+<td>ipv6</td>
+<td>fly.io</td>
+</tr>
+</tbody>
+</table>
+
+<h2>Ports</h2>
+
+<p>It’s common for a computer to want to host multiple internet services that behave in different ways. For example, we could want to host a game server (like <code>starcraft</code>), a web server (like this website), and a database (like <code>postgresql</code>) all on the same computer. Since they’re all on the same physical computer, they’ll share an IP address, so we’ll need some way to tell apart requests to the file server from requests to the game server. We do this by assigning a <code>PORT</code> to each service. A port is just a number between 0 and 65535. Even if we’re only hosting one service, each service needs (at least one) port.</p>
+
+<p><code>eblog</code> is hosted at port 6483. Some common ports include:
+but there’s</p>
+
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Port</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>HTTP</td>
+<td>80</td>
+</tr>
+
+<tr>
+<td>HTTPS</td>
+<td>443</td>
+</tr>
+
+<tr>
+<td>SSH</td>
+<td>22</td>
+</tr>
+
+<tr>
+<td>SMTP</td>
+<td>25</td>
+</tr>
+
+<tr>
+<td>DNS</td>
+<td>53</td>
+</tr>
+
+<tr>
+<td>FTP</td>
+<td>21</td>
+</tr>
+
+<tr>
+<td>Postgres</td>
+<td>5432</td>
+</tr>
+</tbody>
+</table>
+
+<h2>example 1: basic TCP/IP server</h2>
+
+<p>Let’s build a basic TCP/IP server and client to demonstrate how this works. We’ll build a server that listens on port 6483, and a client that connects to it. Anything sent on stdin on the client (that is, typed into the terminal) will be sent to the server, a line at a time. Anything line received on the server will be uppercased and sent back to the client.</p>
+
+<p>That is, an example session might look like this:</p>
+
+<pre><code class="language-text"><span class="typ">SERVER</span><span class="pun">:</span> <span class="pun">(</span><span class="pln">starts</span> <span class="pln">listening</span> <span class="pln">on</span> <span class="pln">port</span> <span class="dec">6483</span><span class="pun">)</span>
+<span class="typ">CLIENT</span><span class="pun">:</span> <span class="pun">(</span><span class="pln">connects</span> <span class="pln">to</span> <span class="pln">server</span><span class="pun">)</span>
+<span class="typ">CLIENT</span><span class="pun">:</span> <span class="str">&#34;hello, world!&#34;</span>
+<span class="typ">SERVER</span><span class="pun">:</span> <span class="str">&#34;HELLO, WORLD!&#34;</span>
+<span class="typ">CLIENT</span><span class="pun">:</span> <span class="str">&#34;goodbye, world!&#34;</span>
+<span class="typ">SERVER</span><span class="pun">:</span> <span class="str">&#34;GOODBYE, WORLD!&#34;</span>
+<span class="typ">CLIENT</span><span class="pun">:</span> <span class="pun">(</span><span class="pln">disconnects</span><span class="pun">)</span>
+</code></pre>
+
+<p>To briefly review, the following functions and types are relevant to our examples:</p>
+
+<table>
+<thead>
+<tr>
+<th>function/struct</th>
+<th>description</th>
+<th>implements</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td><code>net.Listen</code></td>
+<td>listens for connections on a port</td>
+<td></td>
+</tr>
+
+<tr>
+<td><code>net.Dial</code></td>
+<td>connects to a server at an IP address and port</td>
+<td></td>
+</tr>
+
+<tr>
+<td><code>net.TCPConn</code></td>
+<td>bidirectional TCP connection</td>
+<td><code>io.Reader</code>, <code>io.Writer</code>, <code>net.Conn</code></td>
+</tr>
+
+<tr>
+<td><code>net.Conn</code></td>
+<td>bidirectional network connection</td>
+<td><code>io.Reader</code>, <code>io.Writer</code></td>
+</tr>
+
+<tr>
+<td><code>bufio.Scanner</code></td>
+<td>reads lines from a <code>io.Reader</code></td>
+<td></td>
+</tr>
+
+<tr>
+<td><code>fmt.Fprintf</code></td>
+<td>as <code>fmt.Printf</code>, but writes to a <code>io.Writer</code></td>
+<td></td>
+</tr>
+
+<tr>
+<td><code>flag.Int</code></td>
+<td>register an integer command line flag</td>
+<td></td>
+</tr>
+
+<tr>
+<td><code>flag.Parse</code></td>
+<td>parse previously registered command line flags</td>
+<td></td>
+</tr>
+
+<tr>
+<td><code>log.Printf</code></td>
+<td>as <code>fmt.Fprintf(os.Stderr, ...)</code>, but with a timestamp and newline</td>
+<td></td>
+</tr>
+
+<tr>
+<td><code>log.Fatalf</code></td>
+<td>as <code>log.Printf</code>, but calls <code>os.Exit(1)</code> after printing</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+
+<ul>
+<li>
+<h3>client</h3>
+
+<p>Let’s write the client first: we’ll call it <code>writetcp</code>.</p>
+
+<pre><code class="language-go"><span class="com">// writetcp connects to a TCP server at at localhost with the specified port (8080 by default) and forwards stdin to the server,</span>
+<span class="com">// line-by-line, until EOF is reached.</span>
+<span class="com">// received lines from the server are printed to stdout.</span>
+<span class="kwd">package</span> <span class="pln">main</span>
+
+
+<span class="kwd">import</span> <span class="pun">(</span>
+    <span class="str">&#34;bufio&#34;</span>
+    <span class="str">&#34;flag&#34;</span>
+    <span class="str">&#34;fmt&#34;</span>
+    <span class="str">&#34;log&#34;</span>
+    <span class="str">&#34;net&#34;</span>
+    <span class="str">&#34;os&#34;</span>
+<span class="pun">)</span>
+
+
+<span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
+    <span class="kwd">const</span> <span class="pln">name</span> <span class="pun">=</span> <span class="str">&#34;writetcp&#34;</span>
+    <span class="pln">log</span><span class="pun">.</span><span class="typ">SetPrefix</span><span class="pun">(</span><span class="pln">name</span> <span class="pun">+</span> <span class="str">&#34;\t&#34;</span><span class="pun">)</span>
+
+
+    <span class="com">// register the command-line flags: -p specifies the port to connect to</span>
+    <span class="pln">port</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">flag</span><span class="pun">.</span><span class="typ">Int</span><span class="pun">(</span><span class="str">&#34;p&#34;</span><span class="pun">,</span> <span class="dec">8080</span><span class="pun">,</span> <span class="str">&#34;port to connect to&#34;</span><span class="pun">)</span>
+    <span class="pln">flag</span><span class="pun">.</span><span class="typ">Parse</span><span class="pun">(</span><span class="pun">)</span> <span class="com">// parse registered flags</span>
+
+
+    <span class="pln">conn</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">net</span><span class="pun">.</span><span class="typ">DialTCP</span><span class="pun">(</span><span class="str">&#34;tcp&#34;</span><span class="pun">,</span> <span class="kwd">nil</span><span class="pun">,</span> <span class="pun">&amp;</span><span class="pln">net</span><span class="pun">.</span><span class="typ">TCPAddr</span><span class="pun">{</span><span class="typ">Port</span><span class="pun">:</span> <span class="pun">*</span><span class="pln">port</span><span class="pun">}</span><span class="pun">)</span>
+    <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+        <span class="pln">log</span><span class="pun">.</span><span class="typ">Fatalf</span><span class="pun">(</span><span class="str">&#34;error connecting to localhost:%d: %v&#34;</span><span class="pun">,</span> <span class="pun">*</span><span class="pln">port</span><span class="pun">,</span> <span class="pln">err</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="pln">log</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;connected to %s: will forward stdin&#34;</span><span class="pun">,</span> <span class="pln">conn</span><span class="pun">.</span><span class="typ">RemoteAddr</span><span class="pun">(</span><span class="pun">)</span><span class="pun">)</span>
+
+
+    <span class="pln">defer</span> <span class="pln">conn</span><span class="pun">.</span><span class="typ">Close</span><span class="pun">(</span><span class="pun">)</span>
+    <span class="pln">go</span> <span class="kwd">func</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span> <span class="com">// spawn a goroutine to read incoming lines from the server and print them to stdout.</span>
+        <span class="com">// TCP is full-duplex, so we can read and write at the same time; we just need to spawn a goroutine to do the reading.</span>
+
+
+        <span class="kwd">for</span> <span class="pln">connScanner</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">bufio</span><span class="pun">.</span><span class="typ">NewScanner</span><span class="pun">(</span><span class="pln">conn</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">connScanner</span><span class="pun">.</span><span class="typ">Scan</span><span class="pun">(</span><span class="pun">)</span><span class="pun">;</span> <span class="pun">{</span>
+
+
+            <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;%s\n&#34;</span><span class="pun">,</span> <span class="pln">connScanner</span><span class="pun">.</span><span class="typ">Text</span><span class="pun">(</span><span class="pun">)</span><span class="pun">)</span> <span class="com">// note: printf doesn&#39;t add a newline, so we need to add it ourselves</span>
+
+
+            <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">connScanner</span><span class="pun">.</span><span class="typ">Err</span><span class="pun">(</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+                <span class="pln">log</span><span class="pun">.</span><span class="typ">Fatalf</span><span class="pun">(</span><span class="str">&#34;error reading from %s: %v&#34;</span><span class="pun">,</span> <span class="pln">conn</span><span class="pun">.</span><span class="typ">RemoteAddr</span><span class="pun">(</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">err</span><span class="pun">)</span>
+            <span class="pun">}</span>
+            <span class="kwd">if</span> <span class="pln">connScanner</span><span class="pun">.</span><span class="typ">Err</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+                <span class="pln">log</span><span class="pun">.</span><span class="typ">Fatalf</span><span class="pun">(</span><span class="str">&#34;error reading from %s: %v&#34;</span><span class="pun">,</span> <span class="pln">conn</span><span class="pun">.</span><span class="typ">RemoteAddr</span><span class="pun">(</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">err</span><span class="pun">)</span>
+            <span class="pun">}</span>
+        <span class="pun">}</span>
+    <span class="pun">}</span><span class="pun">(</span><span class="pun">)</span>
+
+
+    <span class="com">// read incoming lines from stdin and forward them to the server.</span>
+    <span class="kwd">for</span> <span class="pln">stdinScanner</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">bufio</span><span class="pun">.</span><span class="typ">NewScanner</span><span class="pun">(</span><span class="pln">os</span><span class="pun">.</span><span class="typ">Stdin</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">stdinScanner</span><span class="pun">.</span><span class="typ">Scan</span><span class="pun">(</span><span class="pun">)</span><span class="pun">;</span> <span class="pun">{</span> <span class="com">// find the next newline in stdin</span>
+        <span class="pln">log</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;sent: %s\n&#34;</span><span class="pun">,</span> <span class="pln">stdinScanner</span><span class="pun">.</span><span class="typ">Text</span><span class="pun">(</span><span class="pun">)</span><span class="pun">)</span>
+        <span class="kwd">if</span> <span class="pln">_</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">conn</span><span class="pun">.</span><span class="typ">Write</span><span class="pun">(</span><span class="pln">stdinScanner</span><span class="pun">.</span><span class="typ">Bytes</span><span class="pun">(</span><span class="pun">)</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span> <span class="com">// scanner.Bytes() returns a slice of bytes up to but not including the next newline</span>
+            <span class="pln">log</span><span class="pun">.</span><span class="typ">Fatalf</span><span class="pun">(</span><span class="str">&#34;error writing to %s: %v&#34;</span><span class="pun">,</span> <span class="pln">conn</span><span class="pun">.</span><span class="typ">RemoteAddr</span><span class="pun">(</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">err</span><span class="pun">)</span>
+        <span class="pun">}</span>
+        <span class="kwd">if</span> <span class="pln">_</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">conn</span><span class="pun">.</span><span class="typ">Write</span><span class="pun">(</span><span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span><span class="pun">(</span><span class="str">&#34;\n&#34;</span><span class="pun">)</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span> <span class="com">// we need to add the newline back in</span>
+            <span class="pln">log</span><span class="pun">.</span><span class="typ">Fatalf</span><span class="pun">(</span><span class="str">&#34;error writing to %s: %v&#34;</span><span class="pun">,</span> <span class="pln">conn</span><span class="pun">.</span><span class="typ">RemoteAddr</span><span class="pun">(</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">err</span><span class="pun">)</span>
+        <span class="pun">}</span>
+        <span class="kwd">if</span> <span class="pln">stdinScanner</span><span class="pun">.</span><span class="typ">Err</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+            <span class="pln">log</span><span class="pun">.</span><span class="typ">Fatalf</span><span class="pun">(</span><span class="str">&#34;error reading from %s: %v&#34;</span><span class="pun">,</span> <span class="pln">conn</span><span class="pun">.</span><span class="typ">RemoteAddr</span><span class="pun">(</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">err</span><span class="pun">)</span>
+        <span class="pun">}</span>
+    <span class="pun">}</span>
+
+
+<span class="pun">}</span>
+</code></pre></li>
+
+<li>
+<h3>server</h3>
+
+<p>Now let’s put together the server; since it echoes back whatever it receives, in uppercase, we’ll call it <code>tcpupperecho</code>.</p>
+
+<p>Usually when working in backend, we want to s.parate your ‘business logic’ from the networking code. Since all of go’s networking APIs use the <a href="https://golang.org/pkg/net/#Conn">net.Conn</a> interface, which implements both <a href="https://golang.org/pkg/io/#Reader">io.Reader</a> and <a href="https://golang.org/pkg/io/#Writer">io.Writer</a>, we can write our business logic using standard text-handling functions and structs like <a href="https://golang.org/pkg/fmt/#Fprintf">fmt.Fprintf</a> and <a href="https://golang.org/pkg/bufio/#Scanner">bufio.Scanner</a> and</p>
+
+<p>That is, our server’s ‘business logic’ will look like this:</p>
+
+<pre><code class="language-go"><span class="com">// echoUpper reads lines from r, uppercases them, and writes them to w.</span>
+<span class="kwd">func</span> <span class="pln">echoUpper</span><span class="pun">(</span><span class="pln">w</span> <span class="pln">io</span><span class="pun">.</span><span class="typ">Writer</span><span class="pun">,</span> <span class="pln">r</span> <span class="pln">io</span><span class="pun">.</span><span class="typ">Reader</span><span class="pun">)</span> <span class="pun">{</span>
+    <span class="pln">scanner</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">bufio</span><span class="pun">.</span><span class="typ">NewScanner</span><span class="pun">(</span><span class="pln">r</span><span class="pun">)</span>
+    <span class="kwd">for</span> <span class="pln">scanner</span><span class="pun">.</span><span class="typ">Scan</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
+        <span class="pln">line</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">scanner</span><span class="pun">.</span><span class="typ">Text</span><span class="pun">(</span><span class="pun">)</span>
+        <span class="com">// note that scanner.Text() strips the newline character from the end of the line,</span>
+        <span class="com">// so we need to add it back in when we write to w.</span>
+        <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Fprintf</span><span class="pun">(</span><span class="pln">w</span><span class="pun">,</span> <span class="str">&#34;%s\n&#34;</span><span class="pun">,</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">ToUpper</span><span class="pun">(</span><span class="pln">line</span><span class="pun">)</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">scanner</span><span class="pun">.</span><span class="typ">Err</span><span class="pun">(</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+        <span class="pln">log</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;error: %s&#34;</span><span class="pun">,</span> <span class="pln">err</span><span class="pun">)</span>
+    <span class="pun">}</span>
+<span class="pun">}</span>
+</code></pre>
+<p>Using this function, we can write our server like this:</p>
+
+<pre><code class="language-go">
+
+<span class="com">// tcpupperecho serves tcp connections on port 8080, reading from each connection line-by-line and writing the upper-case version of each line back to the client.</span>
+
+
+<span class="kwd">package</span> <span class="pln">main</span>
+
+
+<span class="kwd">import</span> <span class="pun">(</span>
+    <span class="str">&#34;bufio&#34;</span>
+    <span class="str">&#34;flag&#34;</span>
+    <span class="str">&#34;fmt&#34;</span>
+    <span class="str">&#34;io&#34;</span>
+    <span class="str">&#34;log&#34;</span>
+    <span class="str">&#34;net&#34;</span>
+    <span class="str">&#34;strings&#34;</span>
+<span class="pun">)</span>
+
+
+<span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
+    <span class="kwd">const</span> <span class="pln">name</span> <span class="pun">=</span> <span class="str">&#34;tcpupperecho&#34;</span>
+    <span class="pln">log</span><span class="pun">.</span><span class="typ">SetPrefix</span><span class="pun">(</span><span class="pln">name</span> <span class="pun">+</span> <span class="str">&#34;\t&#34;</span><span class="pun">)</span>
+
+
+    <span class="com">// build the command-line interface; see https://golang.org/pkg/flag/ for details.</span>
+    <span class="pln">port</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">flag</span><span class="pun">.</span><span class="typ">Int</span><span class="pun">(</span><span class="str">&#34;p&#34;</span><span class="pun">,</span> <span class="dec">8080</span><span class="pun">,</span> <span class="str">&#34;port to listen on&#34;</span><span class="pun">)</span>
+    <span class="pln">flag</span><span class="pun">.</span><span class="typ">Parse</span><span class="pun">(</span><span class="pun">)</span>
+
+
+    <span class="com">// ListenTCP creates a TCP listener accepting connections on the given address.</span>
+    <span class="com">// TCPAddr represents the address of a TCP end point; it has an IP, Port, and Zone, all of which are optional.</span>
+    <span class="com">// Zone only matters for IPv6; we&#39;ll ignore it for now.</span>
+    <span class="com">// If we omit the IP, it means we are listening on all available IP addresses; if we omit the Port, it means we are listening on a random port.</span>
+    <span class="com">// We want to listen on a port specified by the user on the command-line.</span>
+    <span class="com">// see https://golang.org/pkg/net/#ListenTCP and https://golang.org/pkg/net/#Dial for details.</span>
+    <span class="pln">listener</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">net</span><span class="pun">.</span><span class="typ">ListenTCP</span><span class="pun">(</span><span class="str">&#34;tcp&#34;</span><span class="pun">,</span> <span class="pun">&amp;</span><span class="pln">net</span><span class="pun">.</span><span class="typ">TCPAddr</span><span class="pun">{</span><span class="typ">Port</span><span class="pun">:</span> <span class="pun">*</span><span class="pln">port</span><span class="pun">}</span><span class="pun">)</span>
+    <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+        <span class="pln">panic</span><span class="pun">(</span><span class="pln">err</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="pln">defer</span> <span class="pln">listener</span><span class="pun">.</span><span class="typ">Close</span><span class="pun">(</span><span class="pun">)</span> <span class="com">// close the listener when we exit main()</span>
+    <span class="pln">log</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;listening at localhost: %s&#34;</span><span class="pun">,</span> <span class="pln">listener</span><span class="pun">.</span><span class="typ">Addr</span><span class="pun">(</span><span class="pun">)</span><span class="pun">)</span>
+    <span class="kwd">for</span> <span class="pun">{</span> <span class="com">// loop forever, accepting connections one at a time</span>
+
+
+        <span class="com">// Accept() blocks until a connection is made, then returns a Conn representing the connection.</span>
+        <span class="pln">conn</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">listener</span><span class="pun">.</span><span class="typ">Accept</span><span class="pun">(</span><span class="pun">)</span>
+        <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+            <span class="pln">panic</span><span class="pun">(</span><span class="pln">err</span><span class="pun">)</span>
+        <span class="pun">}</span>
+        <span class="pln">go</span> <span class="pln">echoUpper</span><span class="pun">(</span><span class="pln">conn</span><span class="pun">,</span> <span class="pln">conn</span><span class="pun">)</span> <span class="com">// spawn a goroutine to handle the connection</span>
+    <span class="pun">}</span>
+<span class="pun">}</span>
+</code></pre></li>
+
+<li>
+<h3>demonstration</h3>
+
+<p>Let’s try it out.  In one terminal, we’ll run the server:</p>
+
+<p>IN</p>
+
+<pre><code class="language-sh">    <span class="pln">go</span> <span class="pln">build</span> <span class="pun">-</span><span class="pln">o</span> <span class="pln">tcpupperecho</span> <span class="pun">.</span><span class="pun">/</span><span class="pln">tcpupperecho</span><span class="pun">.</span><span class="pln">go</span>
+    <span class="pun">.</span><span class="pun">/</span><span class="pln">tcpupperecho</span> <span class="pun">-</span><span class="pln">p</span> <span class="dec">8080</span> <span class="pun">#</span> <span class="pln">run</span> <span class="pln">the</span> <span class="pln">server</span><span class="pun">,</span> <span class="pln">listening</span> <span class="pln">on</span> <span class="pln">port</span> <span class="dec">8080</span>
+    <span class="str">``</span><span class="str">`
+</span></code></pre>
+<p>OUT:</p>
+
+<pre><code class="language-text">    <span class="pln">tcpupperecho</span>    <span class="dec">2023</span><span class="pun">/</span><span class="dec">09</span><span class="pun">/</span><span class="dec">07</span> <span class="dec">10</span><span class="pun">:</span><span class="dec">13</span><span class="pun">:</span><span class="dec">13</span> <span class="pln">listening</span> <span class="pln">at</span> <span class="pln">localhost</span><span class="pun">:</span> <span class="pun">[</span><span class="pun">:</span><span class="pun">:</span><span class="pun">]</span><span class="pun">:</span><span class="dec">8080</span>
+</code></pre>
+<p>Let’s run the client in another terminal and send it a message:</p>
+
+<pre><code class="language-sh">    <span class="pun">$</span> <span class="pln">go</span> <span class="pln">build</span> <span class="pun">-</span><span class="pln">o</span> <span class="pln">writetcp</span> <span class="pun">.</span><span class="pun">/</span><span class="pln">writetcp</span><span class="pun">.</span><span class="pln">go</span>
+    <span class="pun">$</span> <span class="pun">.</span><span class="pun">/</span><span class="pln">writetcp</span> <span class="pun">-</span><span class="pln">p</span> <span class="dec">8080</span> <span class="pun">#</span> <span class="pln">run</span> <span class="pln">the</span> <span class="pln">client</span><span class="pun">,</span> <span class="pln">connecting</span> <span class="pln">to</span> <span class="pln">localhost</span><span class="pun">:</span><span class="dec">8080</span>
+    <span class="pun">&gt;</span> <span class="pln">writetcp</span> <span class="dec">2023</span><span class="pun">/</span><span class="dec">09</span><span class="pun">/</span><span class="dec">07</span> <span class="dec">10</span><span class="pun">:</span><span class="dec">20</span><span class="pun">:</span><span class="dec">32</span> <span class="pln">connected</span> <span class="pln">to</span> <span class="dec">127.0</span><span class="dec">.0</span><span class="dec">.1</span><span class="pun">:</span><span class="dec">8080</span><span class="pun">:</span> <span class="pln">will</span> <span class="pln">forward</span> <span class="pln">stdin</span>
+    <span class="pln">hello</span>
+    <span class="pln">writetcp</span>        <span class="dec">2023</span><span class="pun">/</span><span class="dec">09</span><span class="pun">/</span><span class="dec">07</span> <span class="dec">10</span><span class="pun">:</span><span class="dec">20</span><span class="pun">:</span><span class="dec">49</span> <span class="pln">sent</span><span class="pun">:</span> <span class="pln">hello</span>
+    <span class="typ">HELLO</span>
+</code></pre>
+<p>And checking in back in the server terminal, we see:</p>
+
+<pre><code class="language-sh"><span class="pln">tcpupperecho</span>    <span class="dec">2023</span><span class="pun">/</span><span class="dec">09</span><span class="pun">/</span><span class="dec">07</span> <span class="dec">10</span><span class="pun">:</span><span class="dec">20</span><span class="pun">:</span><span class="dec">49</span> <span class="pln">received</span><span class="pun">:</span> <span class="pln">hello</span>
+</code></pre></li>
+</ul>
+
+<h3>Connecting to a server on the internet</h3>
+
+<p>This works fine for local addresses, but what if we want to connect to a server on the internet? Most of the time, we don’t know the <code>IP</code> address of the server we want to connect to; we only know its <code>domain name</code>, like <code>google.com</code> or <code>eblog.fly.dev</code>. How do we connect to a server at a domain name?</p>
+
+<h4>DNS</h4>
+
+<p><strong>D</strong>omain <strong>N</strong>ame <strong>S</strong>ervice, or <code>DNS</code>, is a service that maps domain names to IP addresses. It’s essentially a big table that looks like this:</p>
+
+<table>
+<thead>
+<tr>
+<th>domain</th>
+<th>last known ipv4</th>
+<th>last known ipv6</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>google.com</td>
+<td>142.250.217.142</td>
+<td>2607:f8b0:4007:801::200e</td>
+</tr>
+
+<tr>
+<td>eblog.fly.dev</td>
+<td>66.241.125.53</td>
+<td>2a09:8280:1::37:6bbc</td>
+</tr>
+</tbody>
+</table>
+<p>There are multiple <code>DNS</code> providers. Your ISP usually provides one, and there are public ones like Google’s, available at both <code>8.8.8.8</code> and <code>4.4.4.4</code>. (Since you can’t resolve a domain name without knowing the IP address of a DNS server, you need to know at least one IP ‘by heart’ to get started.)</p>
+
+<p>Browsers and other clients use <code>DNS</code> service to look up the IP address of a domain name.</p>
+
+<h3>Finding the IP address of a server</h3>
+
+<p>2021/08/18 16:00:00 tcpupperecho listening at localhost:
+OK, so we want to connect to a server at a <strong>web address</strong>: say, <code>https://eblog.fly.dev</code>. How do we do that? Well, first we need to get the IP address of the server. The <strong>domain name service</strong>, or <code>DNS</code>, is a service that maps domain names to IP addresses. You can use the built-in <code>nslookup</code> command to look up the IP address of a domain name from your command-line on windows, mac, or linux (and probably bsd):</p>
+
+<p>IN:</p>
+
+<pre><code class="language-bash"><span class="pln">nslookup</span> <span class="pln">eblog</span><span class="pun">.</span><span class="pln">fly</span><span class="pun">.</span><span class="pln">dev</span>
+</code></pre>
+
+<p>OUT:</p>
+
+<pre><code class="language-text"><span class="typ">Server</span><span class="pun">:</span>  <span class="typ">UnKnown</span>
+<span class="typ">Address</span><span class="pun">:</span>  <span class="dec">192.168</span><span class="dec">.1</span><span class="dec">.1</span>
+
+<span class="typ">Non</span><span class="pun">-</span><span class="pln">authoritative</span> <span class="pln">answer</span><span class="pun">:</span>
+<span class="typ">Name</span><span class="pun">:</span>    <span class="pln">eblog</span><span class="pun">.</span><span class="pln">fly</span><span class="pun">.</span><span class="pln">dev</span>
+<span class="typ">Addresses</span><span class="pun">:</span>  <span class="dec">2</span><span class="pln">a09</span><span class="pun">:</span><span class="dec">8280</span><span class="pun">:</span><span class="dec">1</span><span class="pun">:</span><span class="pun">:</span><span class="dec">37</span><span class="pun">:</span><span class="dec">6</span><span class="pln">bbc</span>
+          <span class="dec">66.241</span><span class="dec">.125</span><span class="dec">.53</span>
+</code></pre>
+
+<p>Within a Go program, use <a href="https://golang.org/pkg/net/#LookupIP"><code>net.LookupIP</code></a> to look up the IP address or addresses of a domain name. The following full program duplicates the functionality of <code>nslookup</code>:</p>
+
+<pre><code class="language-go"><span class="com">// dns is a simple command line tool to lookup the ip address of a host;</span>
+<span class="com">// it prints the first ipv4 and ipv6 addresses it finds, or &#34;none&#34; if none are found.</span>
+<span class="kwd">package</span> <span class="pln">main</span>
+
+<span class="kwd">import</span> <span class="pun">(</span>
+    <span class="str">&#34;fmt&#34;</span>
+    <span class="str">&#34;log&#34;</span>
+    <span class="str">&#34;net&#34;</span>
+    <span class="str">&#34;os&#34;</span>
+<span class="pun">)</span>
+
+<span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
+    <span class="kwd">if</span> <span class="pln">len</span><span class="pun">(</span><span class="pln">os</span><span class="pun">.</span><span class="typ">Args</span><span class="pun">)</span> <span class="pun">!</span><span class="pun">=</span> <span class="dec">2</span> <span class="pun">{</span>
+        <span class="pln">log</span><span class="pun">.</span><span class="typ">Infof</span><span class="pun">(</span><span class="str">&#34;%s: usage: &lt;host&gt;&#34;</span><span class="pun">,</span> <span class="pln">os</span><span class="pun">.</span><span class="typ">Args</span><span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="pun">)</span>
+        <span class="pln">log</span><span class="pun">.</span><span class="typ">Fatalf</span><span class="pun">(</span><span class="str">&#34;expected exactly one argument; got %d&#34;</span><span class="pun">,</span> <span class="pln">len</span><span class="pun">(</span><span class="pln">os</span><span class="pun">.</span><span class="typ">Args</span><span class="pun">)</span><span class="pun">-</span><span class="dec">1</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="pln">host</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">os</span><span class="pun">.</span><span class="typ">Args</span><span class="pun">[</span><span class="dec">1</span><span class="pun">]</span>
+    <span class="pln">ips</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">net</span><span class="pun">.</span><span class="typ">LookupIP</span><span class="pun">(</span><span class="pln">host</span><span class="pun">)</span>
+    <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+        <span class="pln">log</span><span class="pun">.</span><span class="typ">Fatalf</span><span class="pun">(</span><span class="str">&#34;lookup ip: %s: %v&#34;</span><span class="pun">,</span> <span class="pln">host</span><span class="pun">,</span> <span class="pln">err</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="kwd">if</span> <span class="pln">len</span><span class="pun">(</span><span class="pln">ips</span><span class="pun">)</span> <span class="pun">=</span><span class="pun">=</span> <span class="dec">0</span> <span class="pun">{</span>
+        <span class="pln">log</span><span class="pun">.</span><span class="typ">Fatalf</span><span class="pun">(</span><span class="str">&#34;no ips found for %s&#34;</span><span class="pun">,</span> <span class="pln">host</span><span class="pun">)</span> <span class="com">// this should never happen, but just in case</span>
+    <span class="pun">}</span>
+    <span class="com">// print the first ipv4 we find</span>
+    <span class="kwd">for</span> <span class="pln">_</span><span class="pun">,</span> <span class="pln">ip</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">range</span> <span class="pln">ips</span> <span class="pun">{</span>
+        <span class="kwd">if</span> <span class="pln">ip</span><span class="pun">.</span><span class="typ">To4</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+            <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">ip</span><span class="pun">)</span>
+            <span class="kwd">goto</span> <span class="typ">IPV6</span> <span class="com">// goto considered awesome</span>
+        <span class="pun">}</span>
+    <span class="pun">}</span>
+    <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;none\n&#34;</span><span class="pun">)</span> <span class="com">// only print &#34;none&#34; if we don&#39;t find any ipv4 addresses</span>
+
+<span class="typ">IPV6</span><span class="pun">:</span> <span class="com">// print the first ipv6 we find</span>
+    <span class="kwd">for</span> <span class="pln">_</span><span class="pun">,</span> <span class="pln">ip</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">range</span> <span class="pln">ips</span> <span class="pun">{</span>
+        <span class="kwd">if</span> <span class="pln">ip</span><span class="pun">.</span><span class="typ">To4</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">=</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+            <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">ip</span><span class="pun">)</span> <span class="com">// we don&#39;t need to check for nil here, since we know we have at least one ip address</span>
+            <span class="kwd">return</span>
+        <span class="pun">}</span>
+    <span class="pun">}</span>
+    <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;none\n&#34;</span><span class="pun">)</span>
+<span class="pun">}</span>
+
+</code></pre>
+
+<p>IN:</p>
+
+<pre><code class="language-bash"><span class="pln">go</span> <span class="pln">build</span> <span class="pun">-</span><span class="pln">o</span> <span class="pln">dns</span> <span class="pun">.</span><span class="pun">/</span><span class="pln">dns</span><span class="pun">.</span><span class="pln">go</span> <span class="pun">#</span> <span class="pln">build</span> <span class="pln">the</span> <span class="pln">dns</span> <span class="pln">command</span>
+<span class="pun">.</span><span class="pun">/</span><span class="pln">dns</span> <span class="pln">eblog</span><span class="pun">.</span><span class="pln">fly</span><span class="pun">.</span><span class="pln">dev</span> <span class="pun">#</span> <span class="pln">run</span> <span class="pln">the</span> <span class="pln">dns</span> <span class="pln">command</span>
+</code></pre>
+
+<p>OUT:</p>
+
+<pre><code class="language-text"><span class="dec">66.241</span><span class="dec">.125</span><span class="dec">.53</span>
+<span class="dec">2</span><span class="pln">a09</span><span class="pun">:</span><span class="dec">8280</span><span class="pun">:</span><span class="dec">1</span><span class="pun">:</span><span class="pun">:</span><span class="dec">37</span><span class="pun">:</span><span class="dec">6</span><span class="pln">bbc</span>
+</code></pre>
+
+<h3>putting it together: <code>DNS</code> &amp; <code>HTTP</code></h3>
+
+<p>We now have everything we need to for the basics of internet browsing: we can look up the IP address of a domain name, and we can connect to a server at an IP address and port.</p>
+
+<p>When you type a URL into your browser, it does the following:</p>
+
+<ul>
+<li>looks up the IP address of the domain name</li>
+<li>connects to the server at that IP address and port</li>
+<li>sends a <code>HTTP</code> request to the server</li>
+</ul>
+
+<p>But wait, what’s HTTP? The <strong>H</strong>yper<strong>T</strong>ext <strong>T</strong>ransfer <strong>P</strong>rotocol is a <strong>text-based</strong> protocol for sending messages over the internet. It’s honestly incredibly simple:</p>
+
+<h3>HTTP Requests</h3>
+
+<p>A HTTP Request is plain text, and looks like this:</p>
+
+<pre><code class="language-http"><span class="pun">&lt;</span><span class="typ">METHOD</span><span class="pun">&gt;</span>  <span class="pun">&lt;</span><span class="typ">PATH</span><span class="pun">&gt;</span>  <span class="pun">&lt;</span><span class="typ">PROTOCOL</span><span class="pun">/</span><span class="typ">VERSION</span><span class="pun">&gt;</span>
+<span class="typ">Host</span><span class="pun">:</span> <span class="pun">&lt;</span><span class="typ">HOST</span><span class="pun">&gt;</span>
+<span class="pun">[</span><span class="pun">&lt;</span><span class="typ">HEADER</span><span class="pun">&gt;</span><span class="pun">:</span> <span class="pun">&lt;</span><span class="typ">VALUE</span><span class="pun">&gt;</span><span class="pun">]</span>
+<span class="pun">[</span><span class="pun">&lt;</span><span class="typ">HEADER</span><span class="pun">&gt;</span><span class="pun">:</span> <span class="pun">&lt;</span><span class="typ">VALUE</span><span class="pun">&gt;</span><span class="pun">]</span>
+<span class="pun">[</span><span class="pun">&lt;</span><span class="typ">HEADER</span><span class="pun">&gt;</span><span class="pun">:</span> <span class="pun">&lt;</span><span class="typ">VALUE</span><span class="pun">&gt;</span><span class="pun">]</span> <span class="pun">(</span><span class="pln">these</span> <span class="pln">guys</span> <span class="pln">are</span> <span class="pln">optional</span><span class="pun">)</span>
+
+<span class="pun">[</span><span class="pun">&lt;</span><span class="typ">REQUEST</span> <span class="typ">BODY</span><span class="pun">&gt;</span><span class="pun">]</span> <span class="pun">(</span><span class="kwd">this</span> <span class="kwd">is</span> <span class="pln">also</span> <span class="pln">optional</span><span class="pun">)</span><span class="pun">.</span>
+</code></pre>
+
+<p>To give a more concrete example, the most basic HTTP request you could send to get this webpage would look like this:</p>
+
+<pre><code class="language-http"><span class="typ">GET</span> <span class="pun">/</span><span class="pln">backendbasics</span><span class="pun">.</span><span class="pln">html</span> <span class="typ">HTTP</span><span class="pun">/</span><span class="dec">1.1</span>
+<span class="typ">Host</span><span class="pun">:</span> <span class="pln">eblog</span><span class="pun">.</span><span class="pln">fly</span><span class="pun">.</span><span class="pln">dev</span>
+</code></pre>
+
+<p>(A couple of gotchas here: the line breaks are windows-style <code>\r\n</code>, not unix-style <code>\n</code>; and the request must end with a blank line.)</p>
+
+<p>Let’s break this down. We can read this as</p>
+
+<ul>
+<li><strong>GET</strong> the resource on the host <code>eblog.fly.dev</code></li>
+<li>at the path <code>/backendbasics.html</code></li>
+<li>using the <strong>HTTP/1.1</strong> protocol.</li>
+</ul>
+
+<p>The first line is the <strong>REQUEST LINE</strong>. It has three parts:</p>
+
+<ul>
+<li>the <strong>METHOD</strong> (like <code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>DELETE</code>, etc) tells the server what kind of request this is. For now, we only care about two: <code>GET</code> means “READ”, <code>POST</code> means “WRITE”.</li>
+<li>the <strong>PATH</strong> is the path to the resource you want to access; this is the part after <code>.com</code> or <code>.dev</code> in a web address. Here, the <strong>PATH</strong> is <code>/backendbasics.html</code></li>
+<li>the <strong>PROTOCOL/VERSION</strong> is the protocol and version of the request; almost always <code>HTTP/1.1</code> or <code>HTTP/2.0</code></li>
+</ul>
+
+<p>The <strong>REQUEST LINE</strong> is followed by one or more <strong>HEADERS</strong>. A <strong>HEADER</strong> is a key-value pair, separated by a colon (<code>:</code>). The <strong>key</strong> should be formatted in <code>Title-Case</code>, and the <strong>value</strong> should be formatted in <code>lower-case</code>; for example, <code>Content-Type: application/json</code>. A few headers have official meanings in the HTTP spec, but most are just suggestions to the server about how to handle the request. Technically, headers are <a href="https://en.wikipedia.org/wiki/MIME">MIME</a> headers, but we have enough acronyms to deal with already; we’ll just call them headers for now.</p>
+
+<p>The <strong>HOST</strong> header is required; it tells the server which domain name you’re trying to access. For this article, the <strong>HOST</strong> header is <code>Host: eblog.fly.dev</code>  Other headers are optional, and can be used to send additional information to the server. Some common headers include:</p>
+
+<table>
+<thead>
+<tr>
+<th>header</th>
+<th>description</th>
+<th>example(s)</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td><code>Accept-Encoding</code></td>
+<td>I can accept responses encoded with these encodings</td>
+<td><code>gzip</code>, <code>deflate</code></td>
+</tr>
+
+<tr>
+<td><code>Accept</code></td>
+<td>the types of responses the client can accept</td>
+<td><code>text/html</code></td>
+</tr>
+
+<tr>
+<td><code>Cache-Control</code></td>
+<td>how the client wants the server to cache the response</td>
+<td><code>no-cache</code></td>
+</tr>
+
+<tr>
+<td><code>Content-Encoding</code></td>
+<td>my response body is encoded using:</td>
+<td><code>gzip</code>, <code>deflate</code></td>
+</tr>
+
+<tr>
+<td><code>Content-Length</code></td>
+<td>my body is N bytes long</td>
+<td>47</td>
+</tr>
+
+<tr>
+<td><code>Content-Type</code></td>
+<td>the type of the request body</td>
+<td><code>application/json</code></td>
+</tr>
+
+<tr>
+<td><code>Date</code></td>
+<td>the date and time of the request</td>
+<td><code>Tue, 17 Aug 2021 23:00:00 GMT</code></td>
+</tr>
+
+<tr>
+<td><code>Host</code></td>
+<td>the domain name of the server you’re trying to access</td>
+<td><code>eblog.fly.dev</code></td>
+</tr>
+
+<tr>
+<td><code>User-Agent</code></td>
+<td>the name and version of the client making the request</td>
+<td><code>curl/7.64.1</code>, <code>Mozilla/5.0 (Linux; Android 8.0.0; SM-G955U Build/R16NW)</code></td>
+</tr>
+</tbody>
+</table>
+<p>Your browser sends a lot more headers than this: you can see them by opening the developer tools and looking at the network tab.</p>
+
+<p>Here’s what chrome sent when I opened this page on the devtools network tab (that is, when I sent a <code>GET</code> request to <code>https://eblog.fly.dev/backendbasics.html</code>):</p>
+
+<pre><code class="language-http"><span class="typ">GET</span> <span class="pun">/</span> <span class="typ">HTTP</span><span class="pun">/</span><span class="dec">1.1</span>
+<span class="typ">Host</span><span class="pun">:</span> <span class="pln">eblog</span><span class="pun">.</span><span class="pln">fly</span><span class="pun">.</span><span class="pln">dev</span>
+<span class="typ">Accept</span><span class="pun">-</span><span class="typ">Encoding</span><span class="pun">:</span> <span class="pln">gzip</span><span class="pun">,</span> <span class="pln">deflate</span><span class="pun">,</span> <span class="pln">br</span>
+<span class="typ">Accept</span><span class="pun">-</span><span class="typ">Language</span><span class="pun">:</span> <span class="pln">en</span><span class="pun">-</span><span class="typ">US</span><span class="pun">,</span><span class="pln">en</span><span class="pun">;</span><span class="pln">q</span><span class="pun">=</span><span class="dec">0.9</span>
+<span class="typ">Accept</span><span class="pun">:</span> <span class="pln">text</span><span class="pun">/</span><span class="pln">html</span><span class="pun">,</span><span class="pln">application</span><span class="pun">/</span><span class="pln">xhtml</span><span class="pun">+</span><span class="pln">xml</span><span class="pun">,</span><span class="pln">application</span><span class="pun">/</span><span class="pln">xml</span><span class="pun">;</span><span class="pln">q</span><span class="pun">=</span><span class="dec">0.9</span><span class="pun">,</span><span class="pln">image</span><span class="pun">/</span><span class="pln">avif</span><span class="pun">,</span><span class="pln">image</span><span class="pun">/</span><span class="pln">webp</span><span class="pun">,</span><span class="pln">image</span><span class="pun">/</span><span class="pln">apng</span><span class="pun">,</span><span class="pun">*</span><span class="com">/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Cache-Control: no-cache
+Pragma: no-cache
+Sec-Ch-Ua-Mobile: ?1
+Sec-Ch-Ua-Platform: &#34;Android&#34;
+Sec-Ch-Ua: &#34;Chromium&#34;;v=&#34;116&#34;, &#34;Not)A;Brand&#34;;v=&#34;24&#34;, &#34;Google Chrome&#34;;v=&#34;116&#34;
+Sec-Fetch-Dest: document
+Sec-Fetch-Mode: navigate
+Sec-Fetch-Site: none
+Sec-Fetch-User: ?1
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (Linux; Android 8.0.0; SM-G955U Build/R16NW) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Mobile Safari/537.36
+</span></code></pre>
+
+<p>It’s OK to have multiple headers with the same key; for example, you might have multiple <code>Accept-Encoding</code> headers, each with a different encoding. Alternatively, you can separate multiple values with a comma.
+That is, these two SHOULD be equivalent:</p>
+
+<pre><code class="language-http"><span class="typ">Accept</span><span class="pun">-</span><span class="typ">Encoding</span><span class="pun">:</span> <span class="pln">gzip</span>
+<span class="typ">Accept</span><span class="pun">-</span><span class="typ">Encoding</span><span class="pun">:</span> <span class="pln">deflate</span>
+</code></pre>
+
+<p>and</p>
+
+<pre><code class="language-http"><span class="typ">Accept</span><span class="pun">-</span><span class="typ">Encoding</span><span class="pun">:</span> <span class="pln">gzip</span><span class="pun">,</span> <span class="pln">deflate</span>
+</code></pre>
+
+<p>The server will usually pick the first one it understands. Servers are <em>supposed</em> to treat the keys as case-insensitive, but in practice this is not always the case; similarly, some web servers don’t properly handle multiple headers with the same key.</p>
+
+<h4>URL-encoding</h4>
+
+<p>Note that the HTTP request separates it’s sections using the following characters: <code>&#39; &#39;</code>, <code>&#39;\r&#39;</code>, <code>&#39;\n&#39;</code>, <code>:</code>. That means we couldn’t use these characters in the request line or in headers without confusing the server; it wouldn’t know if we were trying to separate a section or give it literal text.</p>
+
+<p>As such, URL paths and headers can’t contain these characters; we must ‘escape’ them using <a href="https://en.wikipedia.org/wiki/Percent-encoding">URL %-encoding</a> before sending them to the server. URL-encoding is actually pretty simple: take any ASCII character, and turn it into it’s value in hexadecimal, prefixed with a <code>%</code>. For example, the space character is <code>0x20</code> in hexadecimal, so we encode it as <code>%20</code>. The percent character itself is <code>0x25</code>, so we encode it as <code>%25</code>.</p>
+
+<p>The following characters can ALWAYS be used in a URL path or header without escaping:</p>
+
+<table>
+<thead>
+<tr>
+<th>category</th>
+<th>characters</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>lowercase ascii letters</td>
+<td><code>abcdefghijklmnopqrstuvwxyz</code></td>
+</tr>
+
+<tr>
+<td>uppercase ascii letters</td>
+<td><code>ABCDEFGHIJKLMNOPQRSTUVWXYZ</code></td>
+</tr>
+
+<tr>
+<td>digits</td>
+<td><code>0123456789</code></td>
+</tr>
+
+<tr>
+<td>unreserved characters</td>
+<td><code>-._~</code></td>
+</tr>
+
+<tr>
+<td>escaped</td>
+<td><code>%</code> followed by two hexadecimal digits</td>
+</tr>
+</tbody>
+</table>
+<p>But some characters can only be used unescaped in certain contexts:</p>
+
+<table>
+<thead>
+<tr>
+<th>character set</th>
+<th>context</th>
+<th>note</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td><code>:/?#[]@</code></td>
+<td>path</td>
+<td>i’ve never seen <code>[]</code>; <code>@</code> is for authentication</td>
+</tr>
+
+<tr>
+<td><code>&amp;</code></td>
+<td>query parameter</td>
+<td>separates query parameters</td>
+</tr>
+
+<tr>
+<td><code>+</code></td>
+<td>query parameter</td>
+<td>used to encode spaces in query parameters</td>
+</tr>
+
+<tr>
+<td><code>=</code></td>
+<td>query parameter</td>
+<td>separates keys from values in query parameters</td>
+</tr>
+
+<tr>
+<td><code>;</code></td>
+<td>path</td>
+<td>separates path segments; rarely used</td>
+</tr>
+
+<tr>
+<td><code>$</code></td>
+<td>path</td>
+<td>rarely used</td>
+</tr>
+</tbody>
+</table>
+<p>Note that <code>%</code> itself must be escaped as <code>%25</code>.</p>
+
+<p>Everything else must be escaped. For example, the following request path is valid:</p>
+
+<pre><code class="language-http"><span class="typ">GET</span> <span class="pun">/</span><span class="pln">backendbasics</span><span class="pun">.</span><span class="pln">html</span> <span class="typ">HTTP</span><span class="pun">/</span><span class="dec">1.1</span>
+<span class="typ">Host</span><span class="pun">:</span> <span class="pln">eblog</span><span class="pun">.</span><span class="pln">fly</span><span class="pun">.</span><span class="pln">dev</span>
+</code></pre>
+
+<p>but this one isn’t:</p>
+
+<pre><code class="language-http"><span class="typ">GET</span> <span class="pun">/</span><span class="pln">backend</span> <span class="pln">basics</span><span class="pun">.</span><span class="pln">html</span> <span class="typ">HTTP</span><span class="pun">/</span><span class="dec">1.1</span>
+<span class="typ">Host</span><span class="pun">:</span> <span class="pln">eblog</span><span class="pun">.</span><span class="pln">fly</span><span class="pun">.</span><span class="pln">dev</span>
+</code></pre>
+
+<p>And should be encoded as:</p>
+
+<pre><code class="language-http"><span class="typ">GET</span> <span class="pun">/</span><span class="pln">backend</span><span class="pun">%</span><span class="dec">20</span><span class="pln">basics</span><span class="pun">.</span><span class="pln">html</span> <span class="typ">HTTP</span><span class="pun">/</span><span class="dec">1.1</span>
+<span class="typ">Host</span><span class="pun">:</span> <span class="pln">eblog</span><span class="pun">.</span><span class="pln">fly</span><span class="pun">.</span><span class="pln">dev</span>
+</code></pre>
+
+<p>The <a href="https://golang.org/pkg/net/url/#PathEscape"><code>url.PathEscape</code></a> and <a href="https://golang.org/pkg/net/url/#PathUnescape"><code>url.PathUnescape</code></a> functions in the standard library can be used to escape and unescape a string for use in a URL path or header; we’ll cover that package in more detail in a later article.</p>
+
+<h4>Query Parameters</h4>
+
+<p>The PATH can also contain <strong>query parameters</strong>; these are key-value pairs in the form <code>key=value</code> that come after that path. You end the ‘normal’ part of the path with a <code>?</code>, and then add the query parameters, separating each with a <code>&amp;</code>.</p>
+
+<p>If I want to make a google search for “backend_basics”, I would send the following request:</p>
+
+<pre><code class="language-http"><span class="typ">GET</span> <span class="pun">/</span><span class="pln">search</span><span class="pun">?</span><span class="pln">q</span><span class="pun">=</span><span class="pln">backendbasics</span> <span class="typ">HTTP</span><span class="pun">/</span><span class="dec">1.1</span>
+<span class="typ">Host</span><span class="pun">:</span> <span class="pln">google</span><span class="pun">.</span><span class="pln">com</span>
+</code></pre>
+
+<p>This has a single query parameter, with <strong>KEY</strong> <code>q</code> and VALUE <code>backendbasics</code>. I could add additional query parameters by separating them with <code>&amp;</code>:</p>
+
+<p>The <strong><a href="https://scryfall.com/">scryfall</a></strong> API allows you to search for magic cards using a variety of query parameters: if I wanted to search for cards with the word “ice” in their name, ordered by their release date, I would send the following request:</p>
+
+<pre><code class="language-http"><span class="typ">GET</span> <span class="pun">/</span><span class="pln">search</span><span class="pun">?</span><span class="pln">q</span><span class="pun">=</span><span class="pln">ice</span><span class="pun">&amp;</span><span class="pln">order</span><span class="pun">=</span><span class="pln">released</span><span class="pun">&amp;</span><span class="pln">dir</span><span class="pun">=</span><span class="pln">asc</span> <span class="typ">HTTP</span><span class="pun">/</span><span class="dec">1.1</span>
+</code></pre>
+
+<p>This would have three query parameters: “q=ice”, “order=released”, and “dir=asc”. Note that the <code>=</code> and <code>&amp;</code> characters are not escaped in the query parameters.</p>
+
+<p>That’s pretty much all there is to HTTP requests. Lert’s try sending a <code>HTTP</code> request to <code>eblog.fly.dev</code> using TCP. The following complete program, <code>sendreq</code>, sends a HTTP request to a server at a given host, port, and path, and prints the response to stdout.</p>
+
+<pre><code class="language-go"><span class="com">// sendreq sends a request to the specified host, port, and path, and prints the response to stdout.</span>
+<span class="com">// flags: -host, -port, -path, -method</span>
+<span class="kwd">package</span> <span class="pln">main</span>
+
+<span class="kwd">import</span> <span class="pun">(</span>
+    <span class="str">&#34;bufio&#34;</span>
+    <span class="str">&#34;flag&#34;</span>
+    <span class="str">&#34;fmt&#34;</span>
+    <span class="str">&#34;log&#34;</span>
+    <span class="str">&#34;net&#34;</span>
+    <span class="str">&#34;os&#34;</span>
+    <span class="str">&#34;strings&#34;</span>
+<span class="pun">)</span>
+
+<span class="com">// define flags</span>
+<span class="kwd">var</span> <span class="pun">(</span>
+    <span class="pln">host</span><span class="pun">,</span> <span class="pln">path</span><span class="pun">,</span> <span class="pln">method</span> <span class="pln">string</span>
+    <span class="pln">port</span>               <span class="kwd">int</span>
+<span class="pun">)</span>
+
+<span class="kwd">func</span> <span class="pln">main</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">{</span>
+    <span class="com">// initialize &amp; parse flags</span>
+    <span class="pln">flag</span><span class="pun">.</span><span class="typ">StringVar</span><span class="pun">(</span><span class="pun">&amp;</span><span class="pln">method</span><span class="pun">,</span> <span class="str">&#34;method&#34;</span><span class="pun">,</span> <span class="str">&#34;GET&#34;</span><span class="pun">,</span> <span class="str">&#34;HTTP method to use&#34;</span><span class="pun">)</span>
+    <span class="pln">flag</span><span class="pun">.</span><span class="typ">StringVar</span><span class="pun">(</span><span class="pun">&amp;</span><span class="pln">host</span><span class="pun">,</span> <span class="str">&#34;host&#34;</span><span class="pun">,</span> <span class="str">&#34;localhost&#34;</span><span class="pun">,</span> <span class="str">&#34;host to connect to&#34;</span><span class="pun">)</span>
+    <span class="pln">flag</span><span class="pun">.</span><span class="typ">IntVar</span><span class="pun">(</span><span class="pun">&amp;</span><span class="pln">port</span><span class="pun">,</span> <span class="str">&#34;port&#34;</span><span class="pun">,</span> <span class="dec">8080</span><span class="pun">,</span> <span class="str">&#34;port to connect to&#34;</span><span class="pun">)</span>
+    <span class="pln">flag</span><span class="pun">.</span><span class="typ">StringVar</span><span class="pun">(</span><span class="pun">&amp;</span><span class="pln">path</span><span class="pun">,</span> <span class="str">&#34;path&#34;</span><span class="pun">,</span> <span class="str">&#34;/&#34;</span><span class="pun">,</span> <span class="str">&#34;path to request&#34;</span><span class="pun">)</span>
+    <span class="pln">flag</span><span class="pun">.</span><span class="typ">Parse</span><span class="pun">(</span><span class="pun">)</span>
+
+    <span class="com">// ResolveTCPAddr is a slightly more convenient way of creating a TCPAddr.</span>
+    <span class="com">// now that we know how to do it by hand using net.LookupIP, we can use this instead.</span>
+    <span class="pln">ip</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">net</span><span class="pun">.</span><span class="typ">ResolveTCPAddr</span><span class="pun">(</span><span class="str">&#34;tcp&#34;</span><span class="pun">,</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Sprintf</span><span class="pun">(</span><span class="str">&#34;%s:%d&#34;</span><span class="pun">,</span> <span class="pln">host</span><span class="pun">,</span> <span class="pln">port</span><span class="pun">)</span><span class="pun">)</span>
+    <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+        <span class="pln">panic</span><span class="pun">(</span><span class="pln">err</span><span class="pun">)</span>
+    <span class="pun">}</span>
+
+    <span class="com">// dial the remote host using the TCPAddr we just created...</span>
+    <span class="pln">conn</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">net</span><span class="pun">.</span><span class="typ">DialTCP</span><span class="pun">(</span><span class="str">&#34;tcp&#34;</span><span class="pun">,</span> <span class="kwd">nil</span><span class="pun">,</span> <span class="pln">ip</span><span class="pun">)</span>
+    <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+        <span class="pln">panic</span><span class="pun">(</span><span class="pln">err</span><span class="pun">)</span>
+    <span class="pun">}</span>
+
+    <span class="pln">log</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;connected to %s (@ %s)&#34;</span><span class="pun">,</span> <span class="pln">host</span><span class="pun">,</span> <span class="pln">conn</span><span class="pun">.</span><span class="typ">RemoteAddr</span><span class="pun">(</span><span class="pun">)</span><span class="pun">)</span>
+
+    <span class="pln">defer</span> <span class="pln">conn</span><span class="pun">.</span><span class="typ">Close</span><span class="pun">(</span><span class="pun">)</span>
+
+    <span class="kwd">var</span> <span class="pln">reqfields</span> <span class="pun">=</span> <span class="pun">[</span><span class="pun">]</span><span class="pln">string</span><span class="pun">{</span>
+        <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Sprintf</span><span class="pun">(</span><span class="str">&#34;%s %s HTTP/1.1&#34;</span><span class="pun">,</span> <span class="pln">method</span><span class="pun">,</span> <span class="pln">path</span><span class="pun">)</span><span class="pun">,</span>
+        <span class="str">&#34;Host: &#34;</span> <span class="pun">+</span> <span class="pln">host</span><span class="pun">,</span>
+        <span class="str">&#34;User-Agent: httpget&#34;</span><span class="pun">,</span>
+        <span class="str">&#34;&#34;</span><span class="pun">,</span> <span class="com">// empty line to terminate the headers</span>
+
+        <span class="com">// body would go here, if we had one</span>
+    <span class="pun">}</span>
+    <span class="com">// e.g, for a request to http://eblog.fly.dev/</span>
+    <span class="com">// GET / HTTP/1.1</span>
+    <span class="com">// Host: eblog.fly.dev</span>
+    <span class="com">// User-Agent: httpget</span>
+    <span class="com">//</span>
+
+    <span class="pln">request</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">Join</span><span class="pun">(</span><span class="pln">reqfields</span><span class="pun">,</span> <span class="str">&#34;\r\n&#34;</span><span class="pun">)</span> <span class="pun">+</span> <span class="str">&#34;\r\n&#34;</span> <span class="com">// note windows-style line endings</span>
+
+    <span class="pln">conn</span><span class="pun">.</span><span class="typ">Write</span><span class="pun">(</span><span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span><span class="pun">(</span><span class="pln">request</span><span class="pun">)</span><span class="pun">)</span>
+    <span class="pln">log</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;sent request:\n%s&#34;</span><span class="pun">,</span> <span class="pln">request</span><span class="pun">)</span>
+
+    <span class="kwd">for</span> <span class="pln">scanner</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">bufio</span><span class="pun">.</span><span class="typ">NewScanner</span><span class="pun">(</span><span class="pln">conn</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">scanner</span><span class="pun">.</span><span class="typ">Scan</span><span class="pun">(</span><span class="pun">)</span><span class="pun">;</span> <span class="pun">{</span>
+        <span class="pln">line</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">scanner</span><span class="pun">.</span><span class="typ">Bytes</span><span class="pun">(</span><span class="pun">)</span>
+        <span class="kwd">if</span> <span class="pln">_</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Fprintf</span><span class="pun">(</span><span class="pln">os</span><span class="pun">.</span><span class="typ">Stdout</span><span class="pun">,</span> <span class="str">&#34;%s\n&#34;</span><span class="pun">,</span> <span class="pln">line</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+            <span class="pln">log</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;error writing to connection: %s&#34;</span><span class="pun">,</span> <span class="pln">err</span><span class="pun">)</span>
+        <span class="pun">}</span>
+        <span class="kwd">if</span> <span class="pln">scanner</span><span class="pun">.</span><span class="typ">Err</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+            <span class="pln">log</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;error reading from connection: %s&#34;</span><span class="pun">,</span> <span class="pln">err</span><span class="pun">)</span>
+            <span class="kwd">return</span>
+        <span class="pun">}</span>
+    <span class="pun">}</span>
+
+<span class="pun">}</span>
+</code></pre>
+
+<p>Let’s try it out on the index page of this blog (running on localhost:8080):</p>
+
+<pre><code class="language-go"><span class="pln">go</span> <span class="pln">build</span> <span class="pun">-</span><span class="pln">o</span> <span class="pln">sendreq</span> <span class="pun">.</span><span class="pun">/</span><span class="pln">sendreq</span><span class="pun">.</span><span class="pln">go</span>    
+<span class="pun">.</span><span class="pun">/</span><span class="pln">sendreq</span> <span class="pun">-</span><span class="pln">host</span> <span class="pln">eblog</span><span class="pun">.</span><span class="pln">fly</span><span class="pun">.</span><span class="pln">dev</span> <span class="pun">-</span><span class="pln">port</span> <span class="dec">8080</span>
+</code></pre>
+
+<pre><code>2023/09/07 13:59:19 connected to localhost (@ 127.0.0.1:8080)
+2023/09/07 13:59:19 sent request:
+</code></pre>
+
+<pre><code class="language-http"><span class="typ">GET</span> <span class="pun">/</span> <span class="typ">HTTP</span><span class="pun">/</span><span class="dec">1.1</span>
+<span class="typ">Host</span><span class="pun">:</span> <span class="pln">localhost</span>
+<span class="typ">User</span><span class="pun">-</span><span class="typ">Agent</span><span class="pun">:</span> <span class="pln">httpget</span>
+</code></pre>
+
+<p>And we get back a response, a <em>redirect</em> to <code>/index.html</code>:</p>
+
+<pre><code class="language-http"><span class="typ">HTTP</span><span class="pun">/</span><span class="dec">1.1</span> <span class="dec">308</span> <span class="typ">Permanent</span> <span class="typ">Redirect</span>
+<span class="typ">Content</span><span class="pun">-</span><span class="typ">Type</span><span class="pun">:</span> <span class="pln">text</span><span class="pun">/</span><span class="pln">html</span><span class="pun">;</span> <span class="pln">charset</span><span class="pun">=</span><span class="pln">utf</span><span class="pun">-</span><span class="dec">8</span>
+<span class="typ">E</span><span class="pun">-</span><span class="typ">Req</span><span class="pun">-</span><span class="typ">Id</span><span class="pun">:</span> <span class="pln">b641130b240142ae82ae8b122c35c80f</span>
+<span class="typ">E</span><span class="pun">-</span><span class="typ">Trace</span><span class="pun">-</span><span class="typ">Id</span><span class="pun">:</span> <span class="dec">086e9</span><span class="pln">e55</span><span class="pun">-</span><span class="dec">364</span><span class="pln">b</span><span class="pun">-</span><span class="dec">4</span><span class="pln">cfd</span><span class="pun">-</span><span class="pln">b8fe</span><span class="pun">-</span><span class="dec">6497214</span><span class="pln">af367</span>
+<span class="typ">Location</span><span class="pun">:</span> <span class="pun">/</span><span class="pln">index</span><span class="pun">.</span><span class="pln">html</span>
+<span class="typ">Date</span><span class="pun">:</span> <span class="typ">Thu</span><span class="pun">,</span> <span class="dec">07</span> <span class="typ">Sep</span> <span class="dec">2023</span> <span class="dec">20</span><span class="pun">:</span><span class="dec">59</span><span class="pun">:</span><span class="dec">19</span> <span class="typ">GMT</span>
+<span class="typ">Content</span><span class="pun">-</span><span class="typ">Length</span><span class="pun">:</span> <span class="dec">47</span>
+
+<span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/index.html&#34;</span><span class="pun">&gt;</span><span class="typ">Permanent</span> <span class="typ">Redirect</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span><span class="pun">.</span>
+</code></pre>
+
+<p>Let’s quickly discuss the response format before we move on to the next section.</p>
+
+<p>A <strong>HTTP</strong> response is also plain text, and looks like this:</p>
+
+<pre><code class="language-http"><span class="pun">&lt;</span><span class="typ">PROTOCOL</span><span class="pun">/</span><span class="typ">VERSION</span><span class="pun">&gt;</span> <span class="pun">&lt;</span><span class="typ">STATUS</span> <span class="typ">CODE</span><span class="pun">&gt;</span> <span class="pun">&lt;</span><span class="typ">STATUS</span> <span class="typ">MESSAGE</span><span class="pun">&gt;</span>
+<span class="pun">[</span><span class="pun">&lt;</span><span class="typ">HEADER</span><span class="pun">&gt;</span><span class="pun">:</span> <span class="pun">&lt;</span><span class="typ">VALUE</span><span class="pun">&gt;</span><span class="pun">]</span> <span class="pun">(</span><span class="pln">these</span> <span class="pln">guys</span> <span class="pln">are</span> <span class="pln">optional</span><span class="pun">)</span>
+<span class="pun">[</span><span class="pun">&lt;</span><span class="typ">HEADER</span><span class="pun">&gt;</span><span class="pun">:</span> <span class="pun">&lt;</span><span class="typ">VALUE</span><span class="pun">&gt;</span><span class="pun">]</span>
+<span class="pun">[</span><span class="pun">&lt;</span><span class="typ">HEADER</span><span class="pun">&gt;</span><span class="pun">:</span> <span class="pun">&lt;</span><span class="typ">VALUE</span><span class="pun">&gt;</span><span class="pun">]</span>
+
+<span class="pun">[</span><span class="pun">&lt;</span><span class="typ">RESPONSE</span> <span class="typ">BODY</span><span class="pun">&gt;</span><span class="pun">]</span> <span class="pun">(</span><span class="kwd">this</span> <span class="kwd">is</span> <span class="pln">optional</span><span class="pun">)</span><span class="pun">.</span>
+</code></pre>
+
+<p>The first line is the <strong>STATUS LINE</strong>. It has three parts:</p>
+
+<ul>
+<li>the <strong>PROTOCOL/VERSION</strong> is the protocol and version of the response; it should always be the same as the request.</li>
+<li>the <strong>STATUS CODE</strong>  is a three-digit number that tells you whether the request succeeded or failed. The first digit tells you the general category of the response::
+
+<ul>
+<li><code>1xx</code> means “informational”. These are not used very often.</li>
+<li><code>2xx</code> means “success”  <strong>200 OK</strong> and <strong>201</strong> created are the only ones you’ll see in practice.</li>
+<li><code>3xx</code> means “redirect” <strong>301</strong> and <strong>308</strong> are the only ones you’ll see in practice.</li>
+<li><code>4xx</code> means “client error”; you’re probably familiar with <strong>404 Not Found</strong> and <strong>403 Forbidden</strong>, but there are a lot of others.</li>
+<li><code>5xx</code> means “server error”. <strong>500 Internal Server Error</strong> is the only one you’ll see in practice; it’s the default error code for any unhandled error.
+Each status code has exactly one corresponding <strong>STATUS MESSAGE</strong>; for example, <strong>200 OK</strong> or <strong>404 Not Found</strong>. The status message is just a human-readable description of the status code.</li>
+</ul></li>
+</ul>
+
+<p>Headers work the same way as in requests: they’re key-value pairs separated by a colon (<code>:</code>), and the key should be formatted in <code>Title-Case</code> and the value should be formatted in <code>lower-case</code>. Headers of the response are usually ‘symmetric’ to the headers of the request; if you send an <code>Accept-Encoding: gzip</code> header, you’ll usually get a <code>Content-Encoding: gzip</code> header back.</p>
+
+<p>The final section is the <strong>response body</strong>. Here, it’s some <strong>HTML</strong> that tells the browser to redirect to <code>/index.html</code>.  Don’t worry, I’m not going to cover HTML: this is a backend article, not a frontend article.</p>
+
+<p>Let’s follow the redirect and request <code>/index.html</code>:</p>
+
+<pre><code class="language-sh"><span class="pun">.</span><span class="pun">/</span><span class="pln">sendreq</span> <span class="pun">-</span><span class="pln">host</span> <span class="pln">eblog</span><span class="pun">.</span><span class="pln">fly</span><span class="pun">.</span><span class="pln">dev</span> <span class="pun">-</span><span class="pln">port</span> <span class="dec">8080</span> <span class="pun">-</span><span class="pln">path</span> <span class="pun">/</span><span class="pln">index</span><span class="pun">.</span><span class="pln">html</span>
+</code></pre>
+
+<p>We get back a 200 OK response and the (very sparse) contents of the index page:</p>
+
+<pre><code class="language-http"><span class="typ">HTTP</span><span class="pun">/</span><span class="dec">1.1</span> <span class="dec">200</span> <span class="typ">OK</span>
+<span class="typ">E</span><span class="pun">-</span><span class="typ">Req</span><span class="pun">-</span><span class="typ">Id</span><span class="pun">:</span> <span class="dec">47</span><span class="pln">cf0abba4fd4629a9a926769649f653</span>
+<span class="typ">E</span><span class="pun">-</span><span class="typ">Trace</span><span class="pun">-</span><span class="typ">Id</span><span class="pun">:</span> <span class="pln">dc2c9528</span><span class="pun">-</span><span class="dec">0322</span><span class="pun">-</span><span class="dec">4</span><span class="pln">a16</span><span class="pun">-</span><span class="dec">8688</span><span class="pun">-</span><span class="dec">8</span><span class="pln">ce760fff374</span>
+<span class="typ">Date</span><span class="pun">:</span> <span class="typ">Thu</span><span class="pun">,</span> <span class="dec">07</span> <span class="typ">Sep</span> <span class="dec">2023</span> <span class="dec">21</span><span class="pun">:</span><span class="dec">04</span><span class="pun">:</span><span class="dec">28</span> <span class="typ">GMT</span>
+<span class="typ">Content</span><span class="pun">-</span><span class="typ">Length</span><span class="pun">:</span> <span class="dec">1300</span>
+<span class="typ">Content</span><span class="pun">-</span><span class="typ">Type</span><span class="pun">:</span> <span class="pln">text</span><span class="pun">/</span><span class="pln">html</span><span class="pun">;</span> <span class="pln">charset</span><span class="pun">=</span><span class="pln">utf</span><span class="pun">-</span><span class="dec">8</span>
+
+<span class="pun">&lt;</span><span class="pun">!</span><span class="typ">DOCTYPE</span> <span class="pln">html</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">html</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">head</span><span class="pun">&gt;</span>
+        <span class="pun">&lt;</span><span class="pln">title</span><span class="pun">&gt;</span><span class="pln">index</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">title</span><span class="pun">&gt;</span>
+        <span class="pun">&lt;</span><span class="pln">meta</span> <span class="pln">charset</span><span class="pun">=</span><span class="str">&#34;utf-8&#34;</span><span class="pun">/</span><span class="pun">&gt;</span>
+        <span class="pun">&lt;</span><span class="pln">link</span> <span class="pln">rel</span><span class="pun">=</span><span class="str">&#34;stylesheet&#34;</span> <span class="kwd">type</span><span class="pun">=</span><span class="str">&#34;text/css&#34;</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/dark.css&#34;</span><span class="pun">/</span><span class="pun">&gt;</span>
+        <span class="pun">&lt;</span><span class="pun">/</span><span class="pln">head</span><span class="pun">&gt;</span>
+        <span class="pun">&lt;</span><span class="pln">body</span><span class="pun">&gt;</span>
+        <span class="pun">&lt;</span><span class="pln">h1</span><span class="pun">&gt;</span> <span class="pln">articles</span> <span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h1</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/performanceanxiety.html&#34;</span><span class="pun">&gt;</span><span class="pln">performanceanxiety</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/onoff.html&#34;</span><span class="pun">&gt;</span><span class="pln">onoff</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/fastdocker.html&#34;</span><span class="pun">&gt;</span><span class="pln">fastdocker</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/README.html&#34;</span><span class="pun">&gt;</span><span class="typ">README</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/mermaid_test.html&#34;</span><span class="pun">&gt;</span><span class="pln">mermaid_test</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/quirks3.html&#34;</span><span class="pun">&gt;</span><span class="pln">quirks3</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/console-autocomplete.html&#34;</span><span class="pun">&gt;</span><span class="pln">console</span><span class="pun">-</span><span class="pln">autocomplete</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/console.html&#34;</span><span class="pun">&gt;</span><span class="pln">console</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/cheatsheet.html&#34;</span><span class="pun">&gt;</span><span class="pln">cheatsheet</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/testfast.html&#34;</span><span class="pun">&gt;</span><span class="pln">testfast</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/quirks2.html&#34;</span><span class="pun">&gt;</span><span class="pln">quirks2</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/bytehacking.html&#34;</span><span class="pun">&gt;</span><span class="pln">bytehacking</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/benchmark_results.html&#34;</span><span class="pun">&gt;</span><span class="pln">benchmark_results</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/index.html&#34;</span><span class="pun">&gt;</span><span class="pln">index</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/noframework.html&#34;</span><span class="pun">&gt;</span><span class="pln">noframework</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/faststack.html&#34;</span><span class="pun">&gt;</span><span class="pln">faststack</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/backendbasics.html&#34;</span><span class="pun">&gt;</span><span class="pln">backendbasics</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/startfast.html&#34;</span><span class="pun">&gt;</span><span class="pln">startfast</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/quirks.html&#34;</span><span class="pun">&gt;</span><span class="pln">quirks</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+<span class="pun">&lt;</span><span class="pun">/</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">h4</span><span class="pun">&gt;</span><span class="pun">&lt;</span><span class="pln">a</span> <span class="pln">href</span><span class="pun">=</span><span class="str">&#34;/reflect.html&#34;</span><span class="pun">&gt;</span><span class="pln">reflect</span><span class="pun">.</span><span class="pln">html</span><span class="pun">&lt;</span><span class="pun">/</span><span class="pln">a</span><span class="pun">&gt;</span>
+</code></pre>
+
+<h3>Dealing Programmatically with HTTP Requests and Responses</h3>
+
+<p>This is OK, but dealing with raw HTTP requests and Responses is kind of a pain. Before we dive into Go’s <code>net/http</code> package, let’s think about how we might implement a HTTP library ourselves.</p>
+
+<p>We’d like a way to write our requests and responses without having to worry about the details of the protocol, like making sure our newlines are windows-style <code>\r\n</code> instead of unix-style <code>\n</code> or title-casing our headers.</p>
+
+<p>That is, we’ll need four things, roughly in order of difficulty (easiest first):</p>
+
+<ul>
+<li>a way to represent a HTTP request or response in memory</li>
+<li>a way to add headers to a request or response.</li>
+<li>a way to serialize them as text in the HTTP format</li>
+<li>a way to parse them from text in the HTTP format</li>
+</ul>
+
+<h4>The Request and Response structs</h4>
+
+<p>Restricting ourselves for now to HTTP 1.1, we can think of a HTTP request as a struct with the following fields:</p>
+
+<pre><code class="language-go">
+<span class="com">// Header represents a HTTP header. A HTTP header is a key-value pair, separated by a colon (:);</span>
+<span class="com">// the key should be formatted in Title-Case.</span>
+<span class="com">// Use Request.AddHeader() or Response.AddHeader() to add headers to a request or response and guarantee title-casing of the key.</span>
+<span class="kwd">type</span> <span class="typ">Header</span> <span class="kwd">struct</span> <span class="pun">{</span><span class="typ">Key</span><span class="pun">,</span> <span class="typ">Value</span> <span class="pln">string</span><span class="pun">}</span>
+<span class="com">// Request represents a HTTP 1.1 request.</span>
+<span class="kwd">type</span> <span class="typ">Request</span> <span class="kwd">struct</span> <span class="pun">{</span>
+    <span class="typ">Method</span> <span class="pln">string</span> <span class="com">// e.g, GET, POST, PUT, DELETE</span>
+    <span class="typ">Path</span> <span class="pln">string</span> <span class="com">// e.g, /index.html</span>
+    <span class="typ">Headers</span> <span class="pun">[</span><span class="pun">]</span><span class="kwd">struct</span> <span class="pun">{</span><span class="typ">Key</span><span class="pun">,</span> <span class="typ">Value</span> <span class="pln">string</span><span class="pun">}</span>  <span class="com">// e.g, Host: eblog.fly.dev</span>
+    <span class="typ">Body</span> <span class="pln">string</span> <span class="com">// e.g, &lt;html&gt;&lt;body&gt;&lt;h1&gt;hello, world!&lt;/h1&gt;&lt;/body&gt;&lt;/html&gt;</span>
+<span class="pun">}</span>
+</code></pre>
+
+<p>and a HTTP response as a struct with the following fields:</p>
+
+<pre><code class="language-go"><span class="kwd">type</span> <span class="typ">Response</span> <span class="kwd">struct</span> <span class="pun">{</span>
+    <span class="typ">StatusCode</span> <span class="kwd">int</span> <span class="com">// e.g, 200</span>
+    <span class="typ">Headers</span> <span class="pun">[</span><span class="pun">]</span><span class="kwd">struct</span> <span class="pun">{</span><span class="typ">Key</span><span class="pun">,</span> <span class="typ">Value</span> <span class="pln">string</span><span class="pun">}</span>  <span class="com">// e.g, Content-Type: text/html</span>
+    <span class="typ">Body</span> <span class="pln">string</span> <span class="com">// e.g, &lt;html&gt;&lt;body&gt;&lt;h1&gt;hello, world!&lt;/h1&gt;&lt;/body&gt;&lt;/html&gt;</span>
+<span class="pun">}</span>
+</code></pre>
+
+<p>The following functions will build a request or response for us:</p>
+
+<pre><code class="language-go"><span class="kwd">func</span> <span class="typ">NewRequest</span><span class="pun">(</span><span class="pln">method</span><span class="pun">,</span> <span class="pln">path</span><span class="pun">,</span> <span class="pln">host</span><span class="pun">,</span> <span class="pln">body</span> <span class="pln">string</span><span class="pun">)</span> <span class="pun">(</span><span class="pun">*</span><span class="typ">Request</span><span class="pun">,</span> <span class="pln">error</span><span class="pun">)</span> <span class="pun">{</span>
+    <span class="kwd">switch</span> <span class="pun">{</span>
+    <span class="kwd">case</span> <span class="pln">method</span> <span class="pun">=</span><span class="pun">=</span> <span class="str">&#34;&#34;</span><span class="pun">:</span>
+        <span class="kwd">return</span> <span class="kwd">nil</span><span class="pun">,</span> <span class="pln">errors</span><span class="pun">.</span><span class="typ">New</span><span class="pun">(</span><span class="str">&#34;missing required argument: method&#34;</span><span class="pun">)</span>
+    <span class="kwd">case</span> <span class="pln">path</span> <span class="pun">=</span><span class="pun">=</span> <span class="str">&#34;&#34;</span><span class="pun">:</span>
+        <span class="kwd">return</span> <span class="kwd">nil</span><span class="pun">,</span> <span class="pln">errors</span><span class="pun">.</span><span class="typ">New</span><span class="pun">(</span><span class="str">&#34;missing required argument: path&#34;</span><span class="pun">)</span>
+    <span class="kwd">case</span> <span class="pun">!</span><span class="pln">strings</span><span class="pun">.</span><span class="typ">HasPrefix</span><span class="pun">(</span><span class="pln">path</span><span class="pun">,</span> <span class="str">&#34;/&#34;</span><span class="pun">)</span><span class="pun">:</span>
+        <span class="kwd">return</span> <span class="kwd">nil</span><span class="pun">,</span> <span class="pln">errors</span><span class="pun">.</span><span class="typ">New</span><span class="pun">(</span><span class="str">&#34;path must start with /&#34;</span><span class="pun">)</span>
+    <span class="kwd">case</span> <span class="pln">host</span> <span class="pun">=</span><span class="pun">=</span> <span class="str">&#34;&#34;</span><span class="pun">:</span>
+        <span class="kwd">return</span> <span class="kwd">nil</span><span class="pun">,</span> <span class="pln">errors</span><span class="pun">.</span><span class="typ">New</span><span class="pun">(</span><span class="str">&#34;missing required argument: host&#34;</span><span class="pun">)</span>
+    <span class="kwd">default</span><span class="pun">:</span>
+        <span class="pln">headers</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">make</span><span class="pun">(</span><span class="pun">[</span><span class="pun">]</span><span class="typ">Header</span><span class="pun">,</span> <span class="dec">2</span><span class="pun">)</span>
+        <span class="pln">headers</span><span class="pun">[</span><span class="dec">0</span><span class="pun">]</span> <span class="pun">=</span> <span class="typ">Header</span><span class="pun">{</span><span class="str">&#34;Host&#34;</span><span class="pun">,</span> <span class="pln">host</span><span class="pun">}</span>
+        <span class="kwd">if</span> <span class="pln">body</span> <span class="pun">!</span><span class="pun">=</span> <span class="str">&#34;&#34;</span>  <span class="pun">{</span>
+            <span class="pln">headers</span> <span class="pun">=</span> <span class="kwd">append</span><span class="pun">(</span><span class="pln">headers</span><span class="pun">,</span> <span class="typ">Header</span><span class="pun">{</span><span class="str">&#34;Content-Length&#34;</span><span class="pun">,</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Sprintf</span><span class="pun">(</span><span class="str">&#34;%d&#34;</span><span class="pun">,</span> <span class="pln">len</span><span class="pun">(</span><span class="pln">body</span><span class="pun">)</span><span class="pun">)</span><span class="pun">}</span><span class="pun">)</span>
+        <span class="pun">}</span>
+        <span class="kwd">return</span> <span class="pun">&amp;</span><span class="typ">Request</span><span class="pun">{</span><span class="typ">Method</span><span class="pun">:</span> <span class="pln">method</span><span class="pun">,</span> <span class="typ">Path</span><span class="pun">:</span> <span class="pln">path</span><span class="pun">,</span> <span class="typ">Headers</span><span class="pun">:</span> <span class="pln">headers</span><span class="pun">,</span> <span class="typ">Body</span><span class="pun">:</span> <span class="pln">body</span><span class="pun">}</span><span class="pun">,</span> <span class="kwd">nil</span>
+    <span class="pun">}</span>
+<span class="pun">}</span>
+
+<span class="kwd">func</span> <span class="typ">NewResponse</span><span class="pun">(</span><span class="pln">status</span> <span class="kwd">int</span><span class="pun">,</span> <span class="pln">body</span> <span class="pln">string</span><span class="pun">)</span> <span class="pun">(</span><span class="pun">*</span><span class="typ">Response</span><span class="pun">,</span> <span class="pln">error</span><span class="pun">)</span> <span class="pun">{</span>
+    <span class="kwd">switch</span> <span class="pun">{</span>
+    <span class="kwd">case</span> <span class="pln">status</span> <span class="pun">&lt;</span> <span class="dec">100</span> <span class="pun">|</span><span class="pun">|</span> <span class="pln">status</span> <span class="pun">&gt;</span> <span class="dec">599</span><span class="pun">:</span>
+        <span class="kwd">return</span> <span class="kwd">nil</span><span class="pun">,</span> <span class="pln">errors</span><span class="pun">.</span><span class="typ">New</span><span class="pun">(</span><span class="str">&#34;invalid status code&#34;</span><span class="pun">)</span>
+    <span class="kwd">default</span><span class="pun">:</span>
+        <span class="kwd">if</span> <span class="pln">body</span> <span class="pun">=</span><span class="pun">=</span> <span class="str">&#34;&#34;</span> <span class="pun">{</span>
+            <span class="pln">body</span> <span class="pun">=</span> <span class="pln">http</span><span class="pun">.</span><span class="typ">StatusText</span><span class="pun">(</span><span class="pln">status</span><span class="pun">)</span>
+        <span class="pun">}</span>
+        <span class="pln">headers</span> <span class="pun">:</span><span class="pun">=</span> <span class="pun">[</span><span class="pun">]</span><span class="typ">Header</span> <span class="pun">{</span><span class="str">&#34;Content-Length&#34;</span><span class="pun">,</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Sprintf</span><span class="pun">(</span><span class="str">&#34;%d&#34;</span><span class="pun">,</span> <span class="pln">len</span><span class="pun">(</span><span class="pln">body</span><span class="pun">)</span><span class="pun">)</span><span class="pun">}</span>
+        <span class="kwd">return</span> <span class="pun">&amp;</span><span class="typ">Response</span><span class="pun">{</span>
+            <span class="typ">StatusCode</span><span class="pun">:</span> <span class="pln">status</span><span class="pun">,</span>
+            <span class="typ">Headers</span><span class="pun">:</span> <span class="pln">headers</span><span class="pun">,</span>
+            <span class="typ">Body</span><span class="pun">:</span> <span class="pln">body</span><span class="pun">,</span>
+        <span class="pun">}</span><span class="pun">,</span> <span class="kwd">nil</span>
+    <span class="pun">}</span>
+<span class="pun">}</span>
+</code></pre>
+
+<h4>Adding headers</h4>
+
+<p>We’d like to be able to add headers to a request or response without worrying about casing of the keys. We’ll do this with a ‘builder’ method on <code>*Request</code> and <code>*Response</code>:</p>
+
+<pre><code class="language-go"><span class="kwd">func</span> <span class="pun">(</span><span class="pln">resp</span> <span class="pun">*</span><span class="typ">Response</span><span class="pun">)</span> <span class="typ">WithHeader</span><span class="pun">(</span><span class="pln">key</span><span class="pun">,</span> <span class="pln">value</span> <span class="pln">string</span><span class="pun">)</span> <span class="pun">*</span><span class="typ">Response</span> <span class="pun">{</span>
+    <span class="pln">resp</span><span class="pun">.</span><span class="typ">Headers</span> <span class="pun">=</span> <span class="kwd">append</span><span class="pun">(</span><span class="pln">resp</span><span class="pun">.</span><span class="typ">Headers</span><span class="pun">,</span> <span class="typ">Header</span><span class="pun">{</span><span class="typ">AsTitle</span><span class="pun">(</span><span class="pln">key</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">value</span><span class="pun">}</span><span class="pun">)</span>
+    <span class="kwd">return</span> <span class="pln">resp</span>
+<span class="pun">}</span>
+<span class="kwd">func</span> <span class="pun">(</span><span class="pln">r</span> <span class="pun">*</span><span class="typ">Request</span><span class="pun">)</span> <span class="typ">WithHeader</span><span class="pun">(</span><span class="pln">key</span><span class="pun">,</span> <span class="pln">value</span> <span class="pln">string</span><span class="pun">)</span> <span class="pun">*</span><span class="typ">Request</span> <span class="pun">{</span>
+    <span class="pln">r</span><span class="pun">.</span><span class="typ">Headers</span> <span class="pun">=</span> <span class="kwd">append</span><span class="pun">(</span><span class="pln">r</span><span class="pun">.</span><span class="typ">Headers</span><span class="pun">,</span> <span class="typ">Header</span><span class="pun">{</span><span class="typ">AsTitle</span><span class="pun">(</span><span class="pln">key</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">value</span><span class="pun">}</span><span class="pun">)</span>
+    <span class="kwd">return</span> <span class="pln">r</span>
+<span class="pun">}</span>
+</code></pre>
+
+<p>We can use these to build a request a header at a time:</p>
+
+<pre><code class="language-go"><span class="pln">req</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="typ">NewRequest</span><span class="pun">(</span><span class="str">&#34;POST&#34;</span><span class="pun">,</span> <span class="str">&#34;/api/v1/users&#34;</span><span class="pun">,</span> <span class="str">&#34;eblog.fly.dev&#34;</span><span class="pun">,</span> <span class="str">`{&#34;name&#34;: &#34;eblog&#34;, &#34;email&#34;: &#34;efron.dev@gmail.com&#34;}`</span><span class="pun">)</span>
+<span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+    <span class="pln">panic</span><span class="pun">(</span><span class="pln">err</span><span class="pun">)</span>
+<span class="pun">}</span>
+<span class="pln">req</span> <span class="pun">=</span> <span class="pln">req</span><span class="pun">.</span><span class="typ">WithHeader</span><span class="pun">(</span><span class="str">&#34;Content-Type&#34;</span><span class="pun">,</span> <span class="str">&#34;application/json&#34;</span><span class="pun">)</span><span class="pun">.</span>
+    <span class="typ">WithHeader</span><span class="pun">(</span><span class="str">&#34;Accept&#34;</span><span class="pun">,</span> <span class="str">&#34;application/json&#34;</span><span class="pun">)</span><span class="pun">.</span>
+    <span class="typ">WithHeader</span><span class="pun">(</span><span class="str">&#34;User-Agent&#34;</span><span class="pun">,</span> <span class="str">&#34;httpget&#34;</span><span class="pun">)</span>
+</code></pre>
+
+<p>But how is <code>AsTitle</code> implemented? Let’s write a quick test first to make sure we understand the requirements:</p>
+
+<pre><code class="language-go"><span class="kwd">func</span> <span class="typ">TestTitleCaseKey</span><span class="pun">(</span><span class="pln">t</span> <span class="pun">*</span><span class="pln">testing</span><span class="pun">.</span><span class="typ">T</span><span class="pun">)</span> <span class="pun">{</span>
+    <span class="kwd">for</span> <span class="pln">input</span><span class="pun">,</span> <span class="pln">want</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">range</span> <span class="kwd">map</span><span class="pun">[</span><span class="pln">string</span><span class="pun">]</span><span class="pln">string</span><span class="pun">{</span>
+        <span class="str">&#34;foo-bar&#34;</span><span class="pun">:</span>      <span class="str">&#34;Foo-Bar&#34;</span><span class="pun">,</span>
+        <span class="str">&#34;cONTEnt-tYPE&#34;</span><span class="pun">:</span> <span class="str">&#34;Content-Type&#34;</span><span class="pun">,</span>
+        <span class="str">&#34;host&#34;</span><span class="pun">:</span>         <span class="str">&#34;Host&#34;</span><span class="pun">,</span>
+        <span class="str">&#34;host-&#34;</span><span class="pun">:</span>        <span class="str">&#34;Host-&#34;</span><span class="pun">,</span>
+        <span class="str">&#34;ha22-o3st&#34;</span><span class="pun">:</span>    <span class="str">&#34;Ha22-O3st&#34;</span><span class="pun">,</span>
+    <span class="pun">}</span> <span class="pun">{</span>
+        <span class="kwd">if</span> <span class="pln">got</span> <span class="pun">:</span><span class="pun">=</span> <span class="typ">AsTitle</span><span class="pun">(</span><span class="pln">input</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">got</span> <span class="pun">!</span><span class="pun">=</span> <span class="pln">want</span> <span class="pun">{</span>
+            <span class="pln">t</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;TitleCaseKey(%q) = %q, want %q&#34;</span><span class="pun">,</span> <span class="pln">input</span><span class="pun">,</span> <span class="pln">got</span><span class="pun">,</span> <span class="pln">want</span><span class="pun">)</span>
+        <span class="pun">}</span>
+    <span class="pun">}</span>
+<span class="pun">}</span>
+</code></pre>
+
+<p>[MIME]headers are assumed to be ASCII-only, so we don’t need to worry about unicode here.</p>
+
+<pre><code class="language-go"><span class="com">// AsTitle returns the given header key as title case; e.g. &#34;content-type&#34; -&gt; &#34;Content-Type&#34;</span>
+<span class="com">// It will panic if the key is empty.</span>
+<span class="kwd">func</span> <span class="typ">AsTitle</span><span class="pun">(</span><span class="pln">key</span> <span class="pln">string</span><span class="pun">)</span> <span class="pln">string</span> <span class="pun">{</span>
+    <span class="com">/* design note --- an empty string could be considered &#39;in title case&#39;, 
+    but in practice it&#39;s probably programmer error. rather than guess, we&#39;ll panic.
+    */</span>
+    <span class="kwd">if</span> <span class="pln">key</span> <span class="pun">=</span><span class="pun">=</span> <span class="str">&#34;&#34;</span> <span class="pun">{</span>
+        <span class="pln">panic</span><span class="pun">(</span><span class="str">&#34;empty header key&#34;</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="kwd">if</span> <span class="pln">isTitleCase</span><span class="pun">(</span><span class="pln">key</span><span class="pun">)</span> <span class="pun">{</span>
+        <span class="kwd">return</span> <span class="pln">key</span>
+    <span class="pun">}</span>
+    <span class="com">/* ---- design note: allocation is very expensive, while iteration through strings is very cheap.
+    in general, better to check twice rather than allocate once. ----
+    */</span>
+    <span class="kwd">return</span> <span class="pln">newTitleCase</span><span class="pun">(</span><span class="pln">key</span><span class="pun">)</span>
+<span class="pun">}</span>
+
+
+
+<span class="com">// newTitleCase returns the given header key as title case; e.g. &#34;content-type&#34; -&gt; &#34;Content-Type&#34;;</span>
+<span class="com">// it always allocates a new string.</span>
+<span class="kwd">func</span> <span class="pln">newTitleCase</span><span class="pun">(</span><span class="pln">key</span> <span class="pln">string</span><span class="pun">)</span> <span class="pln">string</span> <span class="pun">{</span>
+    <span class="kwd">var</span> <span class="pln">b</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">Builder</span>
+    <span class="pln">b</span><span class="pun">.</span><span class="typ">Grow</span><span class="pun">(</span><span class="pln">len</span><span class="pun">(</span><span class="pln">key</span><span class="pun">)</span><span class="pun">)</span>
+    <span class="kwd">for</span> <span class="pln">i</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">range</span> <span class="pln">key</span> <span class="pun">{</span>
+
+        <span class="kwd">if</span> <span class="pln">i</span> <span class="pun">=</span><span class="pun">=</span> <span class="dec">0</span> <span class="pun">|</span><span class="pun">|</span> <span class="pln">key</span><span class="pun">[</span><span class="pln">i</span><span class="pun">-</span><span class="dec">1</span><span class="pun">]</span> <span class="pun">=</span><span class="pun">=</span> <span class="str">&#39;-&#39;</span> <span class="pun">{</span>
+            <span class="pln">b</span><span class="pun">.</span><span class="typ">WriteByte</span><span class="pun">(</span><span class="pln">upper</span><span class="pun">(</span><span class="pln">key</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">)</span><span class="pun">)</span>
+        <span class="pun">}</span> <span class="kwd">else</span> <span class="pun">{</span>
+            <span class="pln">b</span><span class="pun">.</span><span class="typ">WriteByte</span><span class="pun">(</span><span class="pln">lower</span><span class="pun">(</span><span class="pln">key</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">)</span><span class="pun">)</span>
+        <span class="pun">}</span>
+    <span class="pun">}</span>
+    <span class="kwd">return</span> <span class="pln">b</span><span class="pun">.</span><span class="typ">String</span><span class="pun">(</span><span class="pun">)</span>
+<span class="pun">}</span>
+
+
+<span class="com">// straight from K&amp;R C, 2nd edition, page 43. some classics never go out of style.</span>
+<span class="kwd">func</span> <span class="pln">lower</span><span class="pun">(</span><span class="pln">c</span> <span class="kwd">byte</span><span class="pun">)</span> <span class="kwd">byte</span> <span class="pun">{</span>
+    <span class="com">/* if you&#39;re having trouble understanding this:
+        the idea is as follows: A..=Z are 65..=90, and a..=z are 97..=122.
+        so upper-case letters are 32 less than their lower-case counterparts (or &#39;a&#39;-&#39;A&#39; == 32).
+        rather than using the &#39;magic&#39; number 32, we use &#39;a&#39;-&#39;A&#39; to get the same result.
+    */</span>
+    <span class="kwd">if</span> <span class="pln">c</span> <span class="pun">&gt;</span><span class="pun">=</span> <span class="str">&#39;A&#39;</span> <span class="pun">&amp;</span><span class="pun">&amp;</span> <span class="pln">c</span> <span class="pun">&lt;</span><span class="pun">=</span> <span class="str">&#39;Z&#39;</span> <span class="pun">{</span>
+        <span class="kwd">return</span> <span class="pln">c</span> <span class="pun">+</span> <span class="str">&#39;a&#39;</span> <span class="pun">-</span> <span class="str">&#39;A&#39;</span>
+    <span class="pun">}</span>
+    <span class="kwd">return</span> <span class="pln">c</span>
+<span class="pun">}</span>
+<span class="kwd">func</span> <span class="pln">upper</span><span class="pun">(</span><span class="pln">c</span> <span class="kwd">byte</span><span class="pun">)</span> <span class="kwd">byte</span> <span class="pun">{</span>
+    <span class="kwd">if</span> <span class="pln">c</span> <span class="pun">&gt;</span><span class="pun">=</span> <span class="str">&#39;a&#39;</span> <span class="pun">&amp;</span><span class="pun">&amp;</span> <span class="pln">c</span> <span class="pun">&lt;</span><span class="pun">=</span> <span class="str">&#39;z&#39;</span> <span class="pun">{</span>
+        <span class="kwd">return</span> <span class="pln">c</span> <span class="pun">+</span> <span class="str">&#39;A&#39;</span> <span class="pun">-</span> <span class="str">&#39;a&#39;</span>
+    <span class="pun">}</span>
+    <span class="kwd">return</span> <span class="pln">c</span>
+<span class="pun">}</span>
+
+
+
+<span class="com">// isTitleCase returns true if the given header key is already title case; i.e, it is of the form &#34;Content-Type&#34; or &#34;Content-Length&#34;, &#34;Some-Odd-Header&#34;, etc.</span>
+<span class="kwd">func</span> <span class="pln">isTitleCase</span><span class="pun">(</span><span class="pln">key</span> <span class="pln">string</span><span class="pun">)</span> <span class="kwd">bool</span> <span class="pun">{</span>
+    <span class="com">// check if this is already title case.</span>
+    <span class="kwd">for</span> <span class="pln">i</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">range</span> <span class="pln">key</span> <span class="pun">{</span>
+        <span class="kwd">if</span> <span class="pln">i</span> <span class="pun">=</span><span class="pun">=</span> <span class="dec">0</span> <span class="pun">|</span><span class="pun">|</span> <span class="pln">key</span><span class="pun">[</span><span class="pln">i</span><span class="pun">-</span><span class="dec">1</span><span class="pun">]</span> <span class="pun">=</span><span class="pun">=</span> <span class="str">&#39;-&#39;</span> <span class="pun">{</span>
+            <span class="kwd">if</span> <span class="pln">key</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span> <span class="pun">&gt;</span><span class="pun">=</span> <span class="str">&#39;a&#39;</span> <span class="pun">&amp;</span><span class="pun">&amp;</span> <span class="pln">key</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span> <span class="pun">&lt;</span><span class="pun">=</span> <span class="str">&#39;z&#39;</span> <span class="pun">{</span>
+                <span class="kwd">return</span> <span class="kwd">false</span>
+            <span class="pun">}</span>
+        <span class="pun">}</span> <span class="kwd">else</span> <span class="kwd">if</span> <span class="pln">key</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span> <span class="pun">&gt;</span><span class="pun">=</span> <span class="str">&#39;A&#39;</span> <span class="pun">&amp;</span><span class="pun">&amp;</span> <span class="pln">key</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span> <span class="pun">&lt;</span><span class="pun">=</span> <span class="str">&#39;Z&#39;</span> <span class="pun">{</span>
+            <span class="kwd">return</span> <span class="kwd">false</span>
+        <span class="pun">}</span>
+    <span class="pun">}</span>
+    <span class="kwd">return</span> <span class="kwd">true</span>
+<span class="pun">}</span>
+
+</code></pre>
+
+<p>We run the test and it passes, so we’re good to go. Compare to the actual standard library’s <a href="https://cs.opensource.google/go/go/+/refs/tags/go1.21.1:src/net/textproto/reader.go;l=632">implementation</a> of <a href="https://golang.org/pkg/net/textproto/#CanonicalMIMEHeaderKey"><code>textproto.CanonicalMIMEHeaderKey</code></a>; ours is essentially the same but doesn’t handle some corner cases and optimizations for common headers.</p>
+
+<p>We’ll implement the <a href="https://golang.org/pkg/io/#WriterTo"><code>io.WriterTo</code></a> interface on both of these structs so we can efficiently write them to a <code>net.Conn</code> or other <code>io.Writer</code>.</p>
+
+<pre><code class="language-go"><span class="com">// Write writes the Request to the given io.Writer.</span>
+<span class="kwd">func</span> <span class="pun">(</span><span class="pln">r</span> <span class="pun">*</span><span class="typ">Request</span><span class="pun">)</span> <span class="typ">WriteTo</span><span class="pun">(</span><span class="pln">w</span> <span class="pln">io</span><span class="pun">.</span><span class="typ">Writer</span><span class="pun">)</span> <span class="pun">(</span><span class="pln">n</span> <span class="kwd">int64</span><span class="pun">,</span> <span class="pln">err</span> <span class="pln">error</span><span class="pun">)</span> <span class="pun">{</span>
+    <span class="com">// write &amp; count bytes written.</span>
+    <span class="com">// using small closures like this to cut down on repetition</span>
+    <span class="com">// can be nice; but you sometimes pay a performance penalty.</span>
+    <span class="pln">printf</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">func</span><span class="pun">(</span><span class="pln">format</span> <span class="pln">string</span><span class="pun">,</span> <span class="pln">args</span> <span class="pun">.</span><span class="pun">.</span><span class="pun">.</span><span class="pln">any</span><span class="pun">)</span> <span class="pln">error</span> <span class="pun">{</span>
+        <span class="pln">m</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Fprintf</span><span class="pun">(</span><span class="pln">w</span><span class="pun">,</span> <span class="pln">format</span><span class="pun">,</span> <span class="pln">args</span><span class="pun">.</span><span class="pun">.</span><span class="pun">.</span><span class="pun">)</span>
+        <span class="pln">n</span> <span class="pun">+</span><span class="pun">=</span> <span class="kwd">int64</span><span class="pun">(</span><span class="pln">m</span><span class="pun">)</span>
+        <span class="kwd">return</span> <span class="pln">err</span>
+    <span class="pun">}</span>
+    <span class="com">// remember, a HTTP request looks like this:</span>
+    <span class="com">// &lt;METHOD&gt;  &lt;PATH&gt;  &lt;PROTOCOL/VERSION&gt;</span>
+    <span class="com">// &lt;HEADER&gt;: &lt;VALUE&gt;</span>
+    <span class="com">// &lt;HEADER&gt;: &lt;VALUE&gt;</span>
+    <span class="com">// </span>
+    <span class="com">// &lt;REQUEST BODY&gt;</span>
+
+    <span class="com">// write the request line: like &#34;GET /index.html HTTP/1.1&#34;</span>
+    <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">printf</span><span class="pun">(</span><span class="str">&#34;%s %s HTTP/1.1\r\n&#34;</span><span class="pun">,</span> <span class="pln">r</span><span class="pun">.</span><span class="typ">Method</span><span class="pun">,</span> <span class="pln">r</span><span class="pun">.</span><span class="typ">Path</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+        <span class="kwd">return</span> <span class="pln">n</span><span class="pun">,</span> <span class="pln">err</span>
+    <span class="pun">}</span>
+
+    <span class="com">// write the headers. we don&#39;t do anything to order them or combine/merge duplicate headers; this is just an example.</span>
+    <span class="kwd">for</span> <span class="pln">_</span><span class="pun">,</span> <span class="pln">h</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">range</span> <span class="pln">r</span><span class="pun">.</span><span class="typ">Headers</span> <span class="pun">{</span>
+        <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">printf</span><span class="pun">(</span><span class="str">&#34;%s: %s\r\n&#34;</span><span class="pun">,</span> <span class="pln">h</span><span class="pun">.</span><span class="typ">Key</span><span class="pun">,</span> <span class="pln">h</span><span class="pun">.</span><span class="typ">Value</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+            <span class="kwd">return</span> <span class="pln">n</span><span class="pun">,</span> <span class="pln">err</span>
+        <span class="pun">}</span>
+    <span class="pun">}</span>
+    <span class="pln">printf</span><span class="pun">(</span><span class="str">&#34;\r\n&#34;</span><span class="pun">)</span> <span class="com">// write the empty line that separates the headers from the body</span>
+    <span class="pln">err</span> <span class="pun">=</span> <span class="pln">printf</span><span class="pun">(</span><span class="str">&#34;%s\r\n&#34;</span><span class="pun">,</span> <span class="pln">r</span><span class="pun">.</span><span class="typ">Body</span><span class="pun">)</span> <span class="com">// write the body and terminate with a newline</span>
+    <span class="kwd">return</span> <span class="pln">n</span><span class="pun">,</span> <span class="pln">err</span>
+<span class="pun">}</span>
+</code></pre>
+
+<p>Response has a nearly identical implementation:</p>
+
+<pre><code class="language-go"><span class="kwd">func</span> <span class="pun">(</span><span class="pln">resp</span> <span class="pun">*</span><span class="typ">Response</span><span class="pun">)</span> <span class="typ">WriteTo</span><span class="pun">(</span><span class="pln">w</span> <span class="pln">io</span><span class="pun">.</span><span class="typ">Writer</span><span class="pun">)</span> <span class="pun">(</span><span class="pln">n</span> <span class="kwd">int64</span><span class="pun">,</span> <span class="pln">err</span> <span class="pln">error</span><span class="pun">)</span> <span class="pun">{</span>
+    <span class="pln">printf</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">func</span><span class="pun">(</span><span class="pln">format</span> <span class="pln">string</span><span class="pun">,</span> <span class="pln">args</span> <span class="pun">.</span><span class="pun">.</span><span class="pun">.</span><span class="pln">any</span><span class="pun">)</span> <span class="pln">error</span> <span class="pun">{</span>
+        <span class="pln">m</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Fprintf</span><span class="pun">(</span><span class="pln">w</span><span class="pun">,</span> <span class="pln">format</span><span class="pun">,</span> <span class="pln">args</span><span class="pun">.</span><span class="pun">.</span><span class="pun">.</span><span class="pun">)</span>
+        <span class="pln">n</span> <span class="pun">+</span><span class="pun">=</span> <span class="kwd">int64</span><span class="pun">(</span><span class="pln">m</span><span class="pun">)</span>
+        <span class="kwd">return</span> <span class="pln">err</span>
+    <span class="pun">}</span>
+    <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">printf</span><span class="pun">(</span><span class="str">&#34;HTTP/1.1 %d %s\r\n&#34;</span><span class="pun">,</span> <span class="pln">resp</span><span class="pun">.</span><span class="typ">StatusCode</span><span class="pun">,</span> <span class="pln">http</span><span class="pun">.</span><span class="typ">StatusText</span><span class="pun">(</span><span class="pln">resp</span><span class="pun">.</span><span class="typ">StatusCode</span><span class="pun">)</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+        <span class="kwd">return</span> <span class="pln">n</span><span class="pun">,</span> <span class="pln">err</span>
+    <span class="pun">}</span>
+    <span class="kwd">for</span> <span class="pln">_</span><span class="pun">,</span> <span class="pln">h</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">range</span> <span class="pln">resp</span><span class="pun">.</span><span class="typ">Headers</span> <span class="pun">{</span>
+        <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">printf</span><span class="pun">(</span><span class="str">&#34;%s: %s\r\n&#34;</span><span class="pun">,</span> <span class="pln">h</span><span class="pun">.</span><span class="typ">Key</span><span class="pun">,</span> <span class="pln">h</span><span class="pun">.</span><span class="typ">Value</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+            <span class="kwd">return</span> <span class="pln">n</span><span class="pun">,</span> <span class="pln">err</span>
+        <span class="pun">}</span>
+
+    <span class="pun">}</span>
+    <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">printf</span><span class="pun">(</span><span class="str">&#34;\r\n%s\r\n&#34;</span><span class="pun">,</span> <span class="pln">resp</span><span class="pun">.</span><span class="typ">Body</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+        <span class="kwd">return</span> <span class="pln">n</span><span class="pun">,</span> <span class="pln">err</span>
+    <span class="pun">}</span>
+    <span class="kwd">return</span> <span class="pln">n</span><span class="pun">,</span> <span class="kwd">nil</span>
+<span class="pun">}</span>
+</code></pre>
+
+<h4>Sidenote: Go’s standard interfaces</h4>
+
+<p>Go has a number of standard interfaces that are used throughout the standard library. You’ve probably already seen <a href="https://golang.org/pkg/io/#Reader"><code>io.Reader</code></a> and <a href="https://golang.org/pkg/io/#Writer"><code>io.Writer</code></a>, but there are a lot more. Many functions in the standard library work better with types that implement these interfaces; for example, <a href="https://golang.org/pkg/io/#Copy"><code>io.Copy</code></a> will copy from an <code>io.Reader</code> to an <code>io.Writer</code>, but if the <code>src</code> implements <code>[io.WriterTo](https://golang.org/pkg/io/#WriterTo)</code> or the <code>dst</code> implements <a href="https://golang.org/pkg/io/#ReaderFrom"><code>io.ReaderFrom</code></a>, it will use those methods instead, which can be more efficient.</p>
+
+<p>Similarly, <a href="https://golang.org/pkg/fmt/#Stringer"><code>fmt.Stringer</code></a> is used to get a string representation of a type, and <a href="https://golang.org/pkg/encoding/#TextMarshaler"><code>encoding.TextMarshaler</code></a> is used to get a byte slice representation of a type in order to serialize it out across the network or to disk.</p>
+
+<p>We’ll implement both of those interfaces on our <code>Request</code> and <code>Response</code> types for convenience and to make our tests easier to write.</p>
+
+<p>All we need to do is call <code>WriteTo</code> and return the result:</p>
+
+<pre><code class="language-go"><span class="kwd">var</span> <span class="pln">_</span><span class="pun">,</span> <span class="pln">_</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Stringer</span> <span class="pun">=</span> <span class="pun">(</span><span class="pun">*</span><span class="typ">Request</span><span class="pun">)</span><span class="pun">(</span><span class="kwd">nil</span><span class="pun">)</span><span class="pun">,</span> <span class="pun">(</span><span class="pun">*</span><span class="typ">Response</span><span class="pun">)</span><span class="pun">(</span><span class="kwd">nil</span><span class="pun">)</span> <span class="com">// compile-time check that Request and Response implement fmt.Stringer</span>
+<span class="kwd">var</span> <span class="pln">_</span><span class="pun">,</span> <span class="pln">_</span> <span class="pln">encoding</span><span class="pun">.</span><span class="typ">TextMarshaler</span> <span class="pun">=</span> <span class="pun">(</span><span class="pun">*</span><span class="typ">Request</span><span class="pun">)</span><span class="pun">(</span><span class="kwd">nil</span><span class="pun">)</span><span class="pun">,</span> <span class="pun">(</span><span class="pun">*</span><span class="typ">Response</span><span class="pun">)</span><span class="pun">(</span><span class="kwd">nil</span><span class="pun">)</span>
+<span class="kwd">func</span> <span class="pun">(</span><span class="pln">r</span> <span class="pun">*</span><span class="typ">Request</span><span class="pun">)</span> <span class="typ">String</span><span class="pun">(</span><span class="pun">)</span> <span class="pln">string</span> <span class="pun">{</span> <span class="pln">b</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">new</span><span class="pun">(</span><span class="pln">strings</span><span class="pun">.</span><span class="typ">Builder</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">r</span><span class="pun">.</span><span class="typ">WriteTo</span><span class="pun">(</span><span class="pln">b</span><span class="pun">)</span><span class="pun">;</span> <span class="kwd">return</span> <span class="pln">b</span><span class="pun">.</span><span class="typ">String</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">}</span>
+<span class="kwd">func</span> <span class="pun">(</span><span class="pln">resp</span> <span class="pun">*</span><span class="typ">Response</span><span class="pun">)</span> <span class="typ">String</span><span class="pun">(</span><span class="pun">)</span> <span class="pln">string</span> <span class="pun">{</span> <span class="pln">b</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">new</span><span class="pun">(</span><span class="pln">strings</span><span class="pun">.</span><span class="typ">Builder</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">resp</span><span class="pun">.</span><span class="typ">WriteTo</span><span class="pun">(</span><span class="pln">b</span><span class="pun">)</span><span class="pun">;</span> <span class="kwd">return</span> <span class="pln">b</span><span class="pun">.</span><span class="typ">String</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">}</span>
+<span class="kwd">func</span> <span class="pun">(</span><span class="pln">r</span> <span class="pun">*</span><span class="typ">Request</span><span class="pun">)</span> <span class="typ">MarshalText</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">(</span><span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span><span class="pun">,</span> <span class="pln">error</span><span class="pun">)</span> <span class="pun">{</span> <span class="pln">b</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">new</span><span class="pun">(</span><span class="pln">bytes</span><span class="pun">.</span><span class="typ">Buffer</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">r</span><span class="pun">.</span><span class="typ">WriteTo</span><span class="pun">(</span><span class="pln">b</span><span class="pun">)</span><span class="pun">;</span> <span class="kwd">return</span> <span class="pln">b</span><span class="pun">.</span><span class="typ">Bytes</span><span class="pun">(</span><span class="pun">)</span><span class="pun">,</span> <span class="kwd">nil</span> <span class="pun">}</span>
+<span class="kwd">func</span> <span class="pun">(</span><span class="pln">resp</span> <span class="pun">*</span><span class="typ">Response</span><span class="pun">)</span> <span class="typ">MarshalText</span><span class="pun">(</span><span class="pun">)</span> <span class="pun">(</span><span class="pun">[</span><span class="pun">]</span><span class="kwd">byte</span><span class="pun">,</span> <span class="pln">error</span><span class="pun">)</span> <span class="pun">{</span> <span class="pln">b</span> <span class="pun">:</span><span class="pun">=</span> <span class="kwd">new</span><span class="pun">(</span><span class="pln">bytes</span><span class="pun">.</span><span class="typ">Buffer</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">resp</span><span class="pun">.</span><span class="typ">WriteTo</span><span class="pun">(</span><span class="pln">b</span><span class="pun">)</span><span class="pun">;</span> <span class="kwd">return</span> <span class="pln">b</span><span class="pun">.</span><span class="typ">Bytes</span><span class="pun">(</span><span class="pun">)</span><span class="pun">,</span> <span class="kwd">nil</span> <span class="pun">}</span>
+</code></pre>
+
+<h4>Parsing HTTP Requests and Responses</h4>
+
+<p>One last thing: we’d like to be able to parse HTTP requests and responses from text. This is a bit more complicated than writing them, but given what we’ve done so far, it should be relatively straightforward.</p>
+
+<pre><code class="language-go"><span class="com">// ParseRequest parses a HTTP request from the given text.</span>
+<span class="kwd">func</span> <span class="typ">ParseRequest</span><span class="pun">(</span><span class="pln">raw</span> <span class="pln">string</span><span class="pun">)</span> <span class="pun">(</span><span class="pln">r</span> <span class="typ">Request</span><span class="pun">,</span> <span class="pln">err</span> <span class="pln">error</span><span class="pun">)</span> <span class="pun">{</span>
+    <span class="com">// request has three parts:</span>
+    <span class="com">// 1. Request linedd</span>
+    <span class="com">// 2. Headers</span>
+    <span class="com">// 3. Body (optional)</span>
+    <span class="pln">lines</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">splitLines</span><span class="pun">(</span><span class="pln">raw</span><span class="pun">)</span>
+
+    <span class="pln">log</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">)</span>
+    <span class="kwd">if</span> <span class="pln">len</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">)</span> <span class="pun">&lt;</span> <span class="dec">3</span> <span class="pun">{</span>
+        <span class="kwd">return</span> <span class="typ">Request</span><span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;malformed request: should have at least 3 lines&#34;</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="com">// First line is special.</span>
+    <span class="pln">first</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">Fields</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="pun">)</span>
+    <span class="pln">r</span><span class="pun">.</span><span class="typ">Method</span><span class="pun">,</span> <span class="pln">r</span><span class="pun">.</span><span class="typ">Path</span> <span class="pun">=</span> <span class="pln">first</span><span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="pun">,</span> <span class="pln">first</span><span class="pun">[</span><span class="dec">1</span><span class="pun">]</span>
+    <span class="kwd">if</span> <span class="pun">!</span><span class="pln">strings</span><span class="pun">.</span><span class="typ">HasPrefix</span><span class="pun">(</span><span class="pln">r</span><span class="pun">.</span><span class="typ">Path</span><span class="pun">,</span> <span class="str">&#34;/&#34;</span><span class="pun">)</span> <span class="pun">{</span>
+        <span class="kwd">return</span> <span class="typ">Request</span><span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;malformed request: path should start with /&#34;</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="kwd">if</span> <span class="pun">!</span><span class="pln">strings</span><span class="pun">.</span><span class="typ">Contains</span><span class="pun">(</span><span class="pln">first</span><span class="pun">[</span><span class="dec">2</span><span class="pun">]</span><span class="pun">,</span> <span class="str">&#34;HTTP&#34;</span><span class="pun">)</span> <span class="pun">{</span>
+        <span class="kwd">return</span> <span class="typ">Request</span><span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;malformed request: first line should contain HTTP version&#34;</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="kwd">var</span> <span class="pln">foundhost</span> <span class="kwd">bool</span>
+    <span class="kwd">var</span> <span class="pln">bodyStart</span> <span class="kwd">int</span>
+    <span class="com">// then we have headers, up until the an empty line.</span>
+    <span class="kwd">for</span> <span class="pln">i</span> <span class="pun">:</span><span class="pun">=</span> <span class="dec">1</span><span class="pun">;</span> <span class="pln">i</span> <span class="pun">&lt;</span> <span class="pln">len</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">i</span><span class="pun">+</span><span class="pun">+</span> <span class="pun">{</span>
+        <span class="kwd">if</span> <span class="pln">lines</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span> <span class="pun">=</span><span class="pun">=</span> <span class="str">&#34;&#34;</span> <span class="pun">{</span> <span class="com">// empty line</span>
+            <span class="pln">bodyStart</span> <span class="pun">=</span> <span class="pln">i</span> <span class="pun">+</span> <span class="dec">1</span>
+            <span class="kwd">break</span>
+        <span class="pun">}</span>
+        <span class="pln">key</span><span class="pun">,</span> <span class="pln">val</span><span class="pun">,</span> <span class="pln">ok</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">Cut</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">,</span> <span class="str">&#34;: &#34;</span><span class="pun">)</span>
+        <span class="kwd">if</span> <span class="pun">!</span><span class="pln">ok</span> <span class="pun">{</span>
+            <span class="kwd">return</span> <span class="typ">Request</span><span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;malformed request: header %q should be of form &#39;key: value&#39;&#34;</span><span class="pun">,</span> <span class="pln">lines</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">)</span>
+        <span class="pun">}</span>
+        <span class="kwd">if</span> <span class="pln">key</span> <span class="pun">=</span><span class="pun">=</span> <span class="str">&#34;Host&#34;</span> <span class="pun">{</span> <span class="com">// special case: host header is required.</span>
+            <span class="pln">foundhost</span> <span class="pun">=</span> <span class="kwd">true</span>
+        <span class="pun">}</span>
+        <span class="pln">key</span> <span class="pun">=</span> <span class="typ">AsTitle</span><span class="pun">(</span><span class="pln">key</span><span class="pun">)</span>
+
+        <span class="pln">r</span><span class="pun">.</span><span class="typ">Headers</span> <span class="pun">=</span> <span class="kwd">append</span><span class="pun">(</span><span class="pln">r</span><span class="pun">.</span><span class="typ">Headers</span><span class="pun">,</span> <span class="typ">Header</span><span class="pun">{</span><span class="pln">key</span><span class="pun">,</span> <span class="pln">val</span><span class="pun">}</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="kwd">end</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">len</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">)</span> <span class="pun">-</span> <span class="dec">1</span> <span class="com">// recombine the body using normal newlines; skip the last empty line.</span>
+    <span class="pln">r</span><span class="pun">.</span><span class="typ">Body</span> <span class="pun">=</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">Join</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">[</span><span class="pln">bodyStart</span><span class="pun">:</span><span class="kwd">end</span><span class="pun">]</span><span class="pun">,</span> <span class="str">&#34;\r\n&#34;</span><span class="pun">)</span>
+    <span class="kwd">if</span> <span class="pun">!</span><span class="pln">foundhost</span> <span class="pun">{</span>
+        <span class="kwd">return</span> <span class="typ">Request</span><span class="pun">{</span><span class="pun">}</span><span class="pun">,</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;malformed request: missing Host header&#34;</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="kwd">return</span> <span class="pln">r</span><span class="pun">,</span> <span class="kwd">nil</span>
+<span class="pun">}</span>
+
+
+<span class="com">// ParseResponse parses the given HTTP/1.1 response string into the Response. It returns an error if the Response is invalid,</span>
+<span class="com">// - not a valid integer</span>
+<span class="com">// - invalid status code</span>
+<span class="com">// - missing status text</span>
+<span class="com">// - invalid headers</span>
+<span class="com">// it doesn&#39;t properly handle multi-line headers, headers with multiple values, or html-encoding, etc.zzs</span>
+<span class="kwd">func</span> <span class="typ">ParseResponse</span><span class="pun">(</span><span class="pln">raw</span> <span class="pln">string</span><span class="pun">)</span> <span class="pun">(</span><span class="pln">resp</span> <span class="pun">*</span><span class="typ">Response</span><span class="pun">,</span> <span class="pln">err</span> <span class="pln">error</span><span class="pun">)</span> <span class="pun">{</span>
+    <span class="com">// response has three parts:</span>
+    <span class="com">// 1. Response line</span>
+    <span class="com">// 2. Headers</span>
+    <span class="com">// 3. Body (optional)</span>
+    <span class="pln">lines</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">splitLines</span><span class="pun">(</span><span class="pln">raw</span><span class="pun">)</span>
+    <span class="pln">log</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">)</span>
+
+    <span class="com">// First line is special.</span>
+    <span class="pln">first</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">SplitN</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="pun">,</span> <span class="str">&#34; &#34;</span><span class="pun">,</span> <span class="dec">3</span><span class="pun">)</span>
+    <span class="kwd">if</span> <span class="pun">!</span><span class="pln">strings</span><span class="pun">.</span><span class="typ">Contains</span><span class="pun">(</span><span class="pln">first</span><span class="pun">[</span><span class="dec">0</span><span class="pun">]</span><span class="pun">,</span> <span class="str">&#34;HTTP&#34;</span><span class="pun">)</span> <span class="pun">{</span>
+        <span class="kwd">return</span> <span class="kwd">nil</span><span class="pun">,</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;malformed response: first line should contain HTTP version&#34;</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="pln">resp</span> <span class="pun">=</span> <span class="kwd">new</span><span class="pun">(</span><span class="typ">Response</span><span class="pun">)</span>
+    <span class="pln">resp</span><span class="pun">.</span><span class="typ">StatusCode</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">=</span> <span class="pln">strconv</span><span class="pun">.</span><span class="typ">Atoi</span><span class="pun">(</span><span class="pln">first</span><span class="pun">[</span><span class="dec">1</span><span class="pun">]</span><span class="pun">)</span>
+    <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+        <span class="kwd">return</span> <span class="kwd">nil</span><span class="pun">,</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;malformed response: expected status code to be an integer, got %q&#34;</span><span class="pun">,</span> <span class="pln">first</span><span class="pun">[</span><span class="dec">1</span><span class="pun">]</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="kwd">if</span> <span class="pln">first</span><span class="pun">[</span><span class="dec">2</span><span class="pun">]</span> <span class="pun">=</span><span class="pun">=</span> <span class="str">&#34;&#34;</span> <span class="pun">|</span><span class="pun">|</span> <span class="pln">http</span><span class="pun">.</span><span class="typ">StatusText</span><span class="pun">(</span><span class="pln">resp</span><span class="pun">.</span><span class="typ">StatusCode</span><span class="pun">)</span> <span class="pun">!</span><span class="pun">=</span> <span class="pln">first</span><span class="pun">[</span><span class="dec">2</span><span class="pun">]</span> <span class="pun">{</span>
+        <span class="pln">log</span><span class="pun">.</span><span class="typ">Printf</span><span class="pun">(</span><span class="str">&#34;missing or incorrect status text for status code %d: expected %q, but got %q&#34;</span><span class="pun">,</span> <span class="pln">resp</span><span class="pun">.</span><span class="typ">StatusCode</span><span class="pun">,</span> <span class="pln">http</span><span class="pun">.</span><span class="typ">StatusText</span><span class="pun">(</span><span class="pln">resp</span><span class="pun">.</span><span class="typ">StatusCode</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">first</span><span class="pun">[</span><span class="dec">2</span><span class="pun">]</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="kwd">var</span> <span class="pln">bodyStart</span> <span class="kwd">int</span>
+    <span class="com">// then we have headers, up until the an empty line.</span>
+    <span class="kwd">for</span> <span class="pln">i</span> <span class="pun">:</span><span class="pun">=</span> <span class="dec">1</span><span class="pun">;</span> <span class="pln">i</span> <span class="pun">&lt;</span> <span class="pln">len</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">i</span><span class="pun">+</span><span class="pun">+</span> <span class="pun">{</span>
+        <span class="pln">log</span><span class="pun">.</span><span class="typ">Println</span><span class="pun">(</span><span class="pln">i</span><span class="pun">,</span> <span class="pln">lines</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">)</span>
+        <span class="kwd">if</span> <span class="pln">lines</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span> <span class="pun">=</span><span class="pun">=</span> <span class="str">&#34;&#34;</span> <span class="pun">{</span> <span class="com">// empty line</span>
+            <span class="pln">bodyStart</span> <span class="pun">=</span> <span class="pln">i</span> <span class="pun">+</span> <span class="dec">1</span>
+            <span class="kwd">break</span>
+        <span class="pun">}</span>
+        <span class="pln">key</span><span class="pun">,</span> <span class="pln">val</span><span class="pun">,</span> <span class="pln">ok</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">Cut</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">,</span> <span class="str">&#34;: &#34;</span><span class="pun">)</span>
+        <span class="kwd">if</span> <span class="pun">!</span><span class="pln">ok</span> <span class="pun">{</span>
+            <span class="kwd">return</span> <span class="kwd">nil</span><span class="pun">,</span> <span class="pln">fmt</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;malformed response: header %q should be of form &#39;key: value&#39;&#34;</span><span class="pun">,</span> <span class="pln">lines</span><span class="pun">[</span><span class="pln">i</span><span class="pun">]</span><span class="pun">)</span>
+        <span class="pun">}</span>
+        <span class="pln">key</span> <span class="pun">=</span> <span class="typ">AsTitle</span><span class="pun">(</span><span class="pln">key</span><span class="pun">)</span>
+        <span class="pln">resp</span><span class="pun">.</span><span class="typ">Headers</span> <span class="pun">=</span> <span class="kwd">append</span><span class="pun">(</span><span class="pln">resp</span><span class="pun">.</span><span class="typ">Headers</span><span class="pun">,</span> <span class="typ">Header</span><span class="pun">{</span><span class="pln">key</span><span class="pun">,</span> <span class="pln">val</span><span class="pun">}</span><span class="pun">)</span>
+    <span class="pun">}</span>
+    <span class="pln">resp</span><span class="pun">.</span><span class="typ">Body</span> <span class="pun">=</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">TrimSpace</span><span class="pun">(</span><span class="pln">strings</span><span class="pun">.</span><span class="typ">Join</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">[</span><span class="pln">bodyStart</span><span class="pun">:</span><span class="pun">]</span><span class="pun">,</span> <span class="str">&#34;\r\n&#34;</span><span class="pun">)</span><span class="pun">)</span> <span class="com">// recombine the body using normal newlines.</span>
+    <span class="kwd">return</span> <span class="pln">resp</span><span class="pun">,</span> <span class="kwd">nil</span>
+<span class="pun">}</span>
+<span class="com">// splitLines on the &#34;\r\n&#34; sequence; multiple separators in a row are NOT collapsed.</span>
+<span class="kwd">func</span> <span class="pln">splitLines</span><span class="pun">(</span><span class="pln">s</span> <span class="pln">string</span><span class="pun">)</span> <span class="pun">[</span><span class="pun">]</span><span class="pln">string</span> <span class="pun">{</span>
+    <span class="kwd">if</span> <span class="pln">s</span> <span class="pun">=</span><span class="pun">=</span> <span class="str">&#34;&#34;</span> <span class="pun">{</span>
+        <span class="kwd">return</span> <span class="kwd">nil</span>
+    <span class="pun">}</span>
+    <span class="kwd">var</span> <span class="pln">lines</span> <span class="pun">[</span><span class="pun">]</span><span class="pln">string</span>
+    <span class="pln">i</span> <span class="pun">:</span><span class="pun">=</span> <span class="dec">0</span>
+    <span class="kwd">for</span> <span class="pun">{</span>
+        <span class="pln">j</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">strings</span><span class="pun">.</span><span class="typ">Index</span><span class="pun">(</span><span class="pln">s</span><span class="pun">[</span><span class="pln">i</span><span class="pun">:</span><span class="pun">]</span><span class="pun">,</span> <span class="str">&#34;\r\n&#34;</span><span class="pun">)</span>
+        <span class="kwd">if</span> <span class="pln">j</span> <span class="pun">=</span><span class="pun">=</span> <span class="pun">-</span><span class="dec">1</span> <span class="pun">{</span>
+            <span class="pln">lines</span> <span class="pun">=</span> <span class="kwd">append</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">,</span> <span class="pln">s</span><span class="pun">[</span><span class="pln">i</span><span class="pun">:</span><span class="pun">]</span><span class="pun">)</span>
+            <span class="kwd">return</span> <span class="pln">lines</span>
+        <span class="pun">}</span>
+        <span class="pln">lines</span> <span class="pun">=</span> <span class="kwd">append</span><span class="pun">(</span><span class="pln">lines</span><span class="pun">,</span> <span class="pln">s</span><span class="pun">[</span><span class="pln">i</span><span class="pun">:</span><span class="pln">i</span><span class="pun">+</span><span class="pln">j</span><span class="pun">]</span><span class="pun">)</span> <span class="com">// up to but not including the \r\n</span>
+        <span class="pln">i</span> <span class="pun">+</span><span class="pun">=</span> <span class="pln">j</span> <span class="pun">+</span> <span class="dec">2</span> <span class="com">// skip the \r\n</span>
+    <span class="pun">}</span>
+<span class="pun">}</span>
+</code></pre>
+
+<p>As before, let’s write a few quick tests to make sure we understand the requirements.</p>
+
+<p>I’m omitting the error cases for brevity here; this article is more than long enough already.</p>
+
+<pre><code class="language-go"><span class="kwd">func</span> <span class="typ">TestHTTPResponse</span><span class="pun">(</span><span class="pln">t</span> <span class="pun">*</span><span class="pln">testing</span><span class="pun">.</span><span class="typ">T</span><span class="pun">)</span> <span class="pun">{</span>
+    <span class="kwd">for</span> <span class="pln">name</span><span class="pun">,</span> <span class="pln">tt</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">range</span> <span class="kwd">map</span><span class="pun">[</span><span class="pln">string</span><span class="pun">]</span><span class="kwd">struct</span> <span class="pun">{</span>
+        <span class="pln">input</span> <span class="pln">string</span>
+        <span class="pln">want</span>  <span class="pun">*</span><span class="typ">Response</span>
+    <span class="pun">}</span><span class="pun">{</span>
+        <span class="str">&#34;200 OK (no body)&#34;</span><span class="pun">:</span> <span class="pun">{</span>
+            <span class="pln">input</span><span class="pun">:</span> <span class="str">&#34;HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n&#34;</span><span class="pun">,</span>
+            <span class="pln">want</span><span class="pun">:</span> <span class="pun">&amp;</span><span class="typ">Response</span><span class="pun">{</span>
+                <span class="typ">StatusCode</span><span class="pun">:</span> <span class="dec">200</span><span class="pun">,</span>
+                <span class="typ">Headers</span><span class="pun">:</span> <span class="pun">[</span><span class="pun">]</span><span class="typ">Header</span><span class="pun">{</span>
+                    <span class="pun">{</span><span class="str">&#34;Content-Length&#34;</span><span class="pun">,</span> <span class="str">&#34;0&#34;</span><span class="pun">}</span><span class="pun">,</span>
+                <span class="pun">}</span><span class="pun">,</span>
+            <span class="pun">}</span><span class="pun">,</span>
+        <span class="pun">}</span><span class="pun">,</span>
+        <span class="str">&#34;404 Not Found (w/ body)&#34;</span><span class="pun">:</span> <span class="pun">{</span>
+            <span class="pln">input</span><span class="pun">:</span> <span class="str">&#34;HTTP/1.1 404 Not Found\r\nContent-Length: 11\r\n\r\nHello World\r\n&#34;</span><span class="pun">,</span>
+            <span class="pln">want</span><span class="pun">:</span> <span class="pun">&amp;</span><span class="typ">Response</span><span class="pun">{</span>
+                <span class="typ">StatusCode</span><span class="pun">:</span> <span class="dec">404</span><span class="pun">,</span>
+                <span class="typ">Headers</span><span class="pun">:</span> <span class="pun">[</span><span class="pun">]</span><span class="typ">Header</span><span class="pun">{</span>
+                    <span class="pun">{</span><span class="str">&#34;Content-Length&#34;</span><span class="pun">,</span> <span class="str">&#34;11&#34;</span><span class="pun">}</span><span class="pun">,</span>
+                <span class="pun">}</span><span class="pun">,</span>
+                <span class="typ">Body</span><span class="pun">:</span> <span class="str">&#34;Hello World&#34;</span><span class="pun">,</span>
+            <span class="pun">}</span><span class="pun">,</span>
+        <span class="pun">}</span><span class="pun">,</span>
+    <span class="pun">}</span> <span class="pun">{</span>
+        <span class="pln">t</span><span class="pun">.</span><span class="typ">Run</span><span class="pun">(</span><span class="pln">name</span><span class="pun">,</span> <span class="kwd">func</span><span class="pun">(</span><span class="pln">t</span> <span class="pun">*</span><span class="pln">testing</span><span class="pun">.</span><span class="typ">T</span><span class="pun">)</span> <span class="pun">{</span>
+            <span class="pln">got</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="typ">ParseResponse</span><span class="pun">(</span><span class="pln">tt</span><span class="pun">.</span><span class="pln">input</span><span class="pun">)</span>
+            <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+                <span class="pln">t</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;ParseResponse(%q) returned error: %v&#34;</span><span class="pun">,</span> <span class="pln">tt</span><span class="pun">.</span><span class="pln">input</span><span class="pun">,</span> <span class="pln">err</span><span class="pun">)</span>
+            <span class="pun">}</span>
+            <span class="kwd">if</span> <span class="pun">!</span><span class="pln">reflect</span><span class="pun">.</span><span class="typ">DeepEqual</span><span class="pun">(</span><span class="pln">got</span><span class="pun">,</span> <span class="pln">tt</span><span class="pun">.</span><span class="pln">want</span><span class="pun">)</span> <span class="pun">{</span>
+                <span class="pln">t</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;ParseResponse(%q) = %#+v, want %#+v&#34;</span><span class="pun">,</span> <span class="pln">tt</span><span class="pun">.</span><span class="pln">input</span><span class="pun">,</span> <span class="pln">got</span><span class="pun">,</span> <span class="pln">tt</span><span class="pun">.</span><span class="pln">want</span><span class="pun">)</span>
+            <span class="pun">}</span>
+
+            <span class="kwd">if</span> <span class="pln">got2</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="typ">ParseResponse</span><span class="pun">(</span><span class="pln">got</span><span class="pun">.</span><span class="typ">String</span><span class="pun">(</span><span class="pun">)</span><span class="pun">)</span><span class="pun">;</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+                <span class="pln">t</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;ParseResponse(%q) returned error: %v&#34;</span><span class="pun">,</span> <span class="pln">got</span><span class="pun">.</span><span class="typ">String</span><span class="pun">(</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">err</span><span class="pun">)</span>
+            <span class="pun">}</span> <span class="kwd">else</span> <span class="kwd">if</span> <span class="pun">!</span><span class="pln">reflect</span><span class="pun">.</span><span class="typ">DeepEqual</span><span class="pun">(</span><span class="pln">got2</span><span class="pun">,</span> <span class="pln">got</span><span class="pun">)</span> <span class="pun">{</span>
+                <span class="pln">t</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;ParseResponse(%q) = %#+v, want %#+v&#34;</span><span class="pun">,</span> <span class="pln">got</span><span class="pun">.</span><span class="typ">String</span><span class="pun">(</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">got2</span><span class="pun">,</span> <span class="pln">got</span><span class="pun">)</span>
+            <span class="pun">}</span>
+
+        <span class="pun">}</span><span class="pun">)</span>
+    <span class="pun">}</span>
+<span class="pun">}</span>
+
+<span class="kwd">func</span> <span class="typ">TestHTTPRequest</span><span class="pun">(</span><span class="pln">t</span> <span class="pun">*</span><span class="pln">testing</span><span class="pun">.</span><span class="typ">T</span><span class="pun">)</span> <span class="pun">{</span>
+    <span class="kwd">for</span> <span class="pln">name</span><span class="pun">,</span> <span class="pln">tt</span> <span class="pun">:</span><span class="pun">=</span> <span class="pln">range</span> <span class="kwd">map</span><span class="pun">[</span><span class="pln">string</span><span class="pun">]</span><span class="kwd">struct</span> <span class="pun">{</span>
+        <span class="pln">input</span> <span class="pln">string</span>
+        <span class="pln">want</span>  <span class="typ">Request</span>
+    <span class="pun">}</span><span class="pun">{</span>
+        <span class="str">&#34;GET (no body)&#34;</span><span class="pun">:</span> <span class="pun">{</span>
+            <span class="pln">input</span><span class="pun">:</span> <span class="str">&#34;GET / HTTP/1.1\r\nHost: www.example.com\r\n\r\n&#34;</span><span class="pun">,</span>
+            <span class="pln">want</span><span class="pun">:</span> <span class="typ">Request</span><span class="pun">{</span>
+                <span class="typ">Method</span><span class="pun">:</span> <span class="str">&#34;GET&#34;</span><span class="pun">,</span>
+                <span class="typ">Path</span><span class="pun">:</span>   <span class="str">&#34;/&#34;</span><span class="pun">,</span>
+                <span class="typ">Headers</span><span class="pun">:</span> <span class="pun">[</span><span class="pun">]</span><span class="typ">Header</span><span class="pun">{</span>
+                    <span class="pun">{</span><span class="str">&#34;Host&#34;</span><span class="pun">,</span> <span class="str">&#34;www.example.com&#34;</span><span class="pun">}</span><span class="pun">,</span>
+                <span class="pun">}</span><span class="pun">,</span>
+            <span class="pun">}</span><span class="pun">,</span>
+        <span class="pun">}</span><span class="pun">,</span>
+        <span class="str">&#34;POST (w/ body)&#34;</span><span class="pun">:</span> <span class="pun">{</span>
+            <span class="pln">input</span><span class="pun">:</span> <span class="str">&#34;POST / HTTP/1.1\r\nHost: www.example.com\r\nContent-Length: 11\r\n\r\nHello World\r\n&#34;</span><span class="pun">,</span>
+            <span class="pln">want</span><span class="pun">:</span> <span class="typ">Request</span><span class="pun">{</span>
+                <span class="typ">Method</span><span class="pun">:</span> <span class="str">&#34;POST&#34;</span><span class="pun">,</span>
+                <span class="typ">Path</span><span class="pun">:</span>   <span class="str">&#34;/&#34;</span><span class="pun">,</span>
+                <span class="typ">Headers</span><span class="pun">:</span> <span class="pun">[</span><span class="pun">]</span><span class="typ">Header</span><span class="pun">{</span>
+                    <span class="pun">{</span><span class="str">&#34;Host&#34;</span><span class="pun">,</span> <span class="str">&#34;www.example.com&#34;</span><span class="pun">}</span><span class="pun">,</span>
+                    <span class="pun">{</span><span class="str">&#34;Content-Length&#34;</span><span class="pun">,</span> <span class="str">&#34;11&#34;</span><span class="pun">}</span><span class="pun">,</span>
+                <span class="pun">}</span><span class="pun">,</span>
+                <span class="typ">Body</span><span class="pun">:</span> <span class="str">&#34;Hello World&#34;</span><span class="pun">,</span>
+            <span class="pun">}</span><span class="pun">,</span>
+        <span class="pun">}</span><span class="pun">,</span>
+    <span class="pun">}</span> <span class="pun">{</span>
+        <span class="pln">t</span><span class="pun">.</span><span class="typ">Run</span><span class="pun">(</span><span class="pln">name</span><span class="pun">,</span> <span class="kwd">func</span><span class="pun">(</span><span class="pln">t</span> <span class="pun">*</span><span class="pln">testing</span><span class="pun">.</span><span class="typ">T</span><span class="pun">)</span> <span class="pun">{</span>
+            <span class="pln">got</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="typ">ParseRequest</span><span class="pun">(</span><span class="pln">tt</span><span class="pun">.</span><span class="pln">input</span><span class="pun">)</span>
+            <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+                <span class="pln">t</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;ParseRequest(%q) returned error: %v&#34;</span><span class="pun">,</span> <span class="pln">tt</span><span class="pun">.</span><span class="pln">input</span><span class="pun">,</span> <span class="pln">err</span><span class="pun">)</span>
+            <span class="pun">}</span>
+            <span class="kwd">if</span> <span class="pun">!</span><span class="pln">reflect</span><span class="pun">.</span><span class="typ">DeepEqual</span><span class="pun">(</span><span class="pln">got</span><span class="pun">,</span> <span class="pln">tt</span><span class="pun">.</span><span class="pln">want</span><span class="pun">)</span> <span class="pun">{</span>
+                <span class="pln">t</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;ParseRequest(%q) = %#+v, want %#+v&#34;</span><span class="pun">,</span> <span class="pln">tt</span><span class="pun">.</span><span class="pln">input</span><span class="pun">,</span> <span class="pln">got</span><span class="pun">,</span> <span class="pln">tt</span><span class="pun">.</span><span class="pln">want</span><span class="pun">)</span>
+            <span class="pun">}</span>
+            <span class="com">// test that the request can be written to a string and parsed back into the same request.</span>
+            <span class="pln">got2</span><span class="pun">,</span> <span class="pln">err</span> <span class="pun">:</span><span class="pun">=</span> <span class="typ">ParseRequest</span><span class="pun">(</span><span class="pln">got</span><span class="pun">.</span><span class="typ">String</span><span class="pun">(</span><span class="pun">)</span><span class="pun">)</span>
+            <span class="kwd">if</span> <span class="pln">err</span> <span class="pun">!</span><span class="pun">=</span> <span class="kwd">nil</span> <span class="pun">{</span>
+                <span class="pln">t</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;ParseRequest(%q) returned error: %v&#34;</span><span class="pun">,</span> <span class="pln">got</span><span class="pun">.</span><span class="typ">String</span><span class="pun">(</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">err</span><span class="pun">)</span>
+            <span class="pun">}</span>
+            <span class="kwd">if</span> <span class="pun">!</span><span class="pln">reflect</span><span class="pun">.</span><span class="typ">DeepEqual</span><span class="pun">(</span><span class="pln">got</span><span class="pun">,</span> <span class="pln">got2</span><span class="pun">)</span> <span class="pun">{</span>
+                <span class="pln">t</span><span class="pun">.</span><span class="typ">Errorf</span><span class="pun">(</span><span class="str">&#34;ParseRequest(%q) = %+v, want %+v&#34;</span><span class="pun">,</span> <span class="pln">got</span><span class="pun">.</span><span class="typ">String</span><span class="pun">(</span><span class="pun">)</span><span class="pun">,</span> <span class="pln">got2</span><span class="pun">,</span> <span class="pln">got</span><span class="pun">)</span>
+            <span class="pun">}</span>
+
+        <span class="pun">}</span><span class="pun">)</span>
+    <span class="pun">}</span>
+<span class="pun">}</span>
+</code></pre>
+
+<p>We run the tests and they pass, so we’re good to go.  This should give you a pretty good idea of how HTTP works under the hood.</p>
+
+<h4>Conclusion</h4>
+
+<p>You’re rarely going to directly parse HTTP, but when things go wrong it’s important to know how they actually work. The relative simplicity of the protocol should raise some eyebrows when you compare it to the incredibly overengineered complexity of the modern web. In the next article, we’ll start diving in to how to deal with HTTP ‘the real way’ and dive into the standard library’s <code>net/http</code> package.</p>
+
+<p>Like this article? Need help making great software, or just want to save a couple hundred thousand dollars on your cloud bill? Hire me, or bring me in to consult. Professional enquiries at
+<a href="efron.dev@gmail.com">efron.dev@gmail.com</a> or <a href="https://www.linkedin.com/in/efronlicht">linkedin</a></p>
+
+
+
