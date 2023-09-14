@@ -14,6 +14,17 @@ import (
 	"gitlab.com/efronlicht/blog/articles/backendbasics/cmd/trace"
 )
 
+// Default returns a middleware that combines the Trace, Log, TimeRequest, and RetryOn5xx middlewares, applying them Last-In, First-Out.
+// If no http.RoundTripper is provided, it will use http.DefaultTransport, just like http.Client.
+func Default(h http.RoundTripper) http.RoundTripper {
+	if h == nil {
+		h = http.DefaultTransport
+	}
+	h = TimeRequest(Log(Trace(h)))
+	const wait, tries = 10 * time.Millisecond, 3
+	return RetryOn5xx(h, wait, tries)
+}
+
 // RoundTripFunc is an adapter to allow the use of ordinary functions as RoundTrippers, a-la http.HandlerFunc
 type RoundTripFunc func(*http.Request) (*http.Response, error)
 
@@ -79,6 +90,7 @@ func TimeRequest(rt http.RoundTripper) RoundTripFunc {
 	}
 }
 
+// Log wraps the given RoundTripper with a middleware that logs the request method, url, status code, and duration.
 func Log(rt http.RoundTripper) RoundTripFunc {
 	return func(r *http.Request) (*http.Response, error) {
 		defer logExec("log")()
@@ -112,6 +124,8 @@ func logExec(name string) func() {
 	return func() { defer log.Printf("middleware: end %s", name) }
 }
 
+// Trace wraps the given RoundTripper with a middleware that injects a trace.Trace into the request context or updates a pre-existing Trace with a new RequestID.
+// It will generate a new trace.TraceID if one doesn't exist, and a new trace.RequestID for each request.
 func Trace(rt http.RoundTripper) RoundTripFunc {
 	return func(r *http.Request) (*http.Response, error) {
 		defer logExec("trace")()

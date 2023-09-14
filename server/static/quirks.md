@@ -531,23 +531,27 @@ Struct types can have unreachable fields using the [blank identifier](https://go
 
     Be careful with this: sometimes you _want_ changes to the API to be breaking changes, and changing the size of commonly-used types can have unforseen performance ramifications.
 
-    > **WEIRD EDGE CASE WARNING:** **A ZERO-SIZED TYPE IS ONLY ZERO-SIZED IF IT'S NOT THE FINAL MEMBER OF THE STRUCT**. 
-    > 
-    > That is, do this:
-    > ```go
-    > type s struct {
-    >        _ [0]func()
-    >        a int
-    > }
-    > ```
-    > And not this:
-    > ```go
-    > type s struct {
-    >    a int
-    >    _ [0]func()
-    > }
-    > ```
-    > See [issue 58483](https://github.com/golang/go/issues/58483). I found this out in a response to this article!
+    **WEIRD EDGE CASE WARNING:** **A ZERO-SIZED TYPE IS ONLY ZERO-SIZED IF IT'S NOT THE FINAL MEMBER OF THE STRUCT**.
+
+    That is, do this:
+
+     ```go
+     type s struct {
+            _ [0]func()
+            a int
+     }
+     ```
+
+     And not this:
+
+     ```go
+    type s struct {
+        a int
+        _ [0]func()
+     }
+     ```
+
+    See [issue 58483](https://github.com/golang/go/issues/58483). I found this out in a response to this article!
 
     Blank fields should be used sparingly, but can be nice for configuration.
 

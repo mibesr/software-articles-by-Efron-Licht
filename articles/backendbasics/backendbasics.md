@@ -16,7 +16,7 @@ Source code for this article (& the entire blog) is publically available on my [
 
 One of the most common questions I get from new developers starting with Go is **"what web framework should I use?"** The answer I always give is "you don't need a framework", but the problem is, backend devs are _used_ to frameworks.
 
-Thinking about it, the motivation is understandable: engineers are under a lot of pressure, and the internet _seems_ really complicated, the idea of learning all these layers of abstraction (tcp, http, etc) is daunting, and _everyone else seems to use a framework_ - in most languages (javascript, python, etc), it's practically required. There's only one problem with this: **it means you never learn how things actually work**. Constantly relying on suites of specialized tools rather than learning the basics is the equivalent of being a senior chef who can't use a knife. Sure, you can argue that your fancy food processor chops faster, but the second you need to do something for which your pre-packaged tools aren't designed, you're screwed; you have no idea how to do it yourself and no time to learn. 
+Thinking about it, the motivation is understandable: engineers are under a lot of pressure, and the internet _seems_ really complicated, the idea of learning all these layers of abstraction (tcp, http, etc) is daunting, and _everyone else seems to use a framework_ - in most languages (javascript, python, etc), it's practically required. There's only one problem with this: **it means you never learn how things actually work**. Constantly relying on suites of specialized tools rather than learning the basics is the equivalent of being a senior chef who can't use a knife. Sure, you can argue that your fancy food processor chops faster, but the second you need to do something for which your pre-packaged tools aren't designed, you're screwed; you have no idea how to do it yourself and no time to learn.
 
 This may sound like an exaggeration, but **I have now met four different senior software engineers who couldn't tell me how to make a HTTP request to google without a framework**.
 
@@ -32,9 +32,8 @@ It's five words.
 If you don't know what stuff means or how I got that IP address, don't worry; we'll get to that. The point is, it's not actually that hard; hard is ten thousand layers of callbacks and libraries and frameworks and tools and languages and abstractions and indirections and wrappers around wrappers. The problem is, most software engineers are so used to having so many layers of abstraction between them and the network that 'getting to the bottom' seems impossible. Now, some may argue that this is OK, because the increased power & flexibility of frameworks leads to faster, better, software development. The only problem is, software isn't getting better; it's getting _measurably worse_. Both [desktop software](https://www.youtube.com/watch?v=GC-0tCy4P1U&t=2190s) and [web pages](https://httparchive.org/reports/state-of-the-web#bytesTotal) are measurably slower year over year. Software is getting slower faster than computers are speeding up. With this in mind, it's no surprise that software is **drowning in complexity**. Every year, we add more layers of abstraction, more libraries, more frameworks, more tools, more languages, more everything, but even our 'experts' don't understand the basics of the stuff they're building. It's no wonder that software is so slow and buggy and impossible to maintain.
 
 > "An idiot admires complexity, a genius admires simplicity"
->
-> - Terry A. Davis
 
+- Terry A. Davis
 
 Of course, knowing that things are done badly doesn't help you learn how do do it _well_, so I'm writing this series of articles to try and fill the gap by teaching the basics of backend web development in Go. Each article will be filled with _real_ programs you can run on your computer, not cherry-picked code samples that don't even compile.
 
@@ -42,7 +41,7 @@ This series will not be enough to teach you everything. At best it will expose y
 
 That said, I hope it will help.
 
-## Series overview:
+## Series overview
 
 ### 1. backend basics, part 1: TCP, DNS, & HTTP
 
@@ -53,11 +52,11 @@ That said, I hope it will help.
   
 ### 2. Practical backend: `net/http` and `encoding/json`
 
-In the second article, we'll graduate to using the `net/http` and `encoding/json` packages to build basic web clients and servers that can handle most day-to-day backend workloads. We'll make a basic  client & server to play games over the internet.
+In the second article, we'll graduate to using the `net/http` and `encoding/json` packages to build basic web clients and servers that can handle most day-to-day backend workloads. We'll start diving into Go's standard library and  the show how it provides everything you need for basic client/server HTTP communication; using `net/http` and `net/url` to send and receive HTTP requests and responses, `encoding/json` to manage our API payloads, and `context` to manage timeouts and cancellation.
 
-### 3. Finishing touches: middleware and routing
+### 3. Finishing touches: middlewares, routing, and basic database access
 
-In the third article, we'll cover middleware and routing, the two 'missing pieces' of the `net/http` package. These are the bits that usually make people reach for a framework, but they're actually pretty simple to implement yourself. We'll talk a little bit about logging and authentication, and restrict access to our chess server to logged-in users.
+In the third article, we'll cover middleware and routing, the two 'missing pieces' of the `net/http` package. These are the bits that usually make people reach for a framework, but they're actually pretty simple to implement yourself. We'll also cover basic database access using the `database/sql` package.
 
 ### 4. When I hear the word 'framework' I reach for my gun
 
@@ -65,7 +64,7 @@ In the third article, we'll cover middleware and routing, the two 'missing piece
 
 ## What is backend?
 
-'Backend' is connecting together computers via the internet. You know what a computer is, so... 
+'Backend' is connecting together computers via the internet. You know what a computer is, so...
 
 ### What's the internet anyways?
 
@@ -84,7 +83,6 @@ The details of TCP are out of scope for this article, but at a high level it loo
 - You send packets of data to the remote computer. Each packet has a sequence number, ("which packet is this?") and a checksum ("did this packet get corrupted in transit?"). The remote computer sends back an acknowledgement ("I got packet 5") for each packet you send.
 - If you don't get an acknowledgement for a packet, you resend it; if you get a corrupted packet, you resend it.
 - This back-and-forth ensures that all of the data gets through, in order, and that you know when it doesn't.
-
 
 ### IP: how do I make sure that when I send a message through a network it gets to the right place?
 
@@ -119,8 +117,8 @@ IPV6 looks like this: XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX:XXXX, where XXXX is a 1
 
 It's common for a computer to want to host multiple internet services that behave in different ways. For example, we could want to host a game server (like `starcraft`), a web server (like this website), and a database (like `postgresql`) all on the same computer. Since they're all on the same physical computer, they'll share an IP address, so we'll need some way to tell apart requests to the file server from requests to the game server. We do this by assigning a `PORT` to each service. A port is just a number between 0 and 65535. Even if we're only hosting one service, each service needs (at least one) port.
 
-`eblog` is hosted at port 6483. Some common ports include:
-but there's
+`eblog` is hosted at port 6483. The following table lists default ports for some common services:
+
 | Service | Port |
 |---------|------|
 | HTTP    | 80   |
@@ -233,9 +231,9 @@ To briefly review, the following functions and types are relevant to our example
 
     Now let's put together the server; since it echoes back whatever it receives, in uppercase, we'll call it `tcpupperecho`.
 
-    Usually when working in backend, we want to s.parate your 'business logic' from the networking code. Since all of go's networking APIs use the [net.Conn](https://golang.org/pkg/net/#Conn) interface, which implements both [io.Reader](https://golang.org/pkg/io/#Reader) and [io.Writer](https://golang.org/pkg/io/#Writer), we can write our business logic using standard text-handling functions and structs like [fmt.Fprintf](https://golang.org/pkg/fmt/#Fprintf) and [bufio.Scanner](https://golang.org/pkg/bufio/#Scanner) and
+    Usually when working in backend, we want to s.parate your 'business logic' from the networking code. Since all of go's networking APIs use the [net.Conn](https://golang.org/pkg/net/#Conn) interface, which implements both [io.Reader](https://golang.org/pkg/io/#Reader) and [io.Writer](https://golang.org/pkg/io/#Writer), we can write our business logic using standard text-handling functions and structs like [fmt.Fprintf](https://golang.org/pkg/fmt/#Fprintf) and [bufio.Scanner](https://golang.org/pkg/bufio/#Scanner).
 
-    That is, our server's 'business logic' will look like this:
+    Our server's 'business logic' will look like this:
 
     ```go
     // echoUpper reads lines from r, uppercases them, and writes them to w.
@@ -253,7 +251,8 @@ To briefly review, the following functions and types are relevant to our example
     }
     ```
 
-    Using this function, we can write our server like this:
+    Which we can then use in our server like this:
+
 
     ```go
 

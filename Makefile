@@ -53,7 +53,6 @@ deploy-test: deps
 	--verbose
 
 deploy: deps 
-	go mod vendor
 	fly apps destroy -y eblog # remove the old app
 	# deploy the new one
 	fly launch \

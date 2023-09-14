@@ -9,7 +9,6 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
-	"runtime/debug"
 	"syscall"
 	"time"
 )
@@ -71,59 +70,6 @@ func LoadCtx[T any](ctx context.Context) (T, bool) {
 // MustLoadCtx loads t from ctx, panicking if t was not found.
 func MustLoadCtx[T any](ctx context.Context) T { return ctx.Value(key[T]{}).(T) }
 
-// LoggingMiddleware is a middleware that does the following
-//   - inject a logger into the request's context, using SaveCtx (to be retrieved by LoadCtx in later handlers or middlewares)
-//   - populate that logger with some useful context from the request (method, path, query parameters)
-//   - log at debug level at the beginning of the request
-//   - log at info level at the end of the request, if the status code is not 2xx, and at debug level otherwise
-//   - catch & log panics at error level, writing a 500 status code to the response
-func LoggingMiddleware(log *slog.Logger, h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		// add some useful context to the logger from the request
-		querykvs := make([]any, 0, (len(r.URL.Query()))*2)
-		for k, v := range r.URL.Query() {
-			querykvs = append(querykvs, k, v)
-		}
-		queryAttr := slog.Group("query", querykvs...)
-		request := slog.Group("request", "method", "start", time.Now(), r.Method, "path", r.URL.Path, "query", queryAttr)
-		log = log.With(request)
-
-		// save the logger in the request's context so that it can be used by other handlers
-		ctx := SaveCtx(r.Context(), log)
-
-		start := time.Now()
-		prefix := fmt.Sprintf("%s %s: ", r.Method, r.URL.Path)
-		log.DebugContext(r.Context(), prefix+"begin", "query", queryAttr)
-
-		// wrap the response writer so that we can log the status code; recordingWriter implements http.ResponseWriter
-		// but keeps track of the status code written to it.
-		recordingWriter := &StatusRecordingResponseWriter{RW: w}
-
-		// after we respond, we'll log the status code and elapsed time.
-		// panics will be caught and logged as well.
-		defer func() {
-			elapsed := time.Since(start)
-			log = log.With("elapsed", elapsed, "status", recordingWriter.StatusCode)
-
-			if p := recover(); p != nil {
-				log.ErrorContext(ctx, prefix+"panic", "panic", p, "stack", string(debug.Stack()))
-				recordingWriter.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			if recordingWriter.StatusCode < 200 || recordingWriter.StatusCode >= 300 {
-				log.InfoContext(ctx, prefix+"end: error")
-			} else {
-				log.DebugContext(ctx, prefix+"end: OK")
-			}
-		}()
-
-		// call the next handler in the chain with the substituted request & response writers
-		h.ServeHTTP(recordingWriter, r.WithContext(ctx))
-
-	})
-}
-
 func addAuthHeader(r *http.Request) *http.Request { return r /*stub for demo purposes*/ }
 
 // DoRequest is a helper function that sends the given request using the given client. It adds the following functionality:
@@ -164,34 +110,6 @@ func DoRequest(c *http.Client, r *http.Request) (*http.Response, error) {
 	}
 	return nil, fmt.Errorf("failed after 3 retries: %w", retryErrs)
 
-}
-
-// StatusRecordingResponseWriter is an http.ResponseWriter that keeps track of the status code written to it.
-type StatusRecordingResponseWriter struct {
-	// underlying response writer
-	RW         http.ResponseWriter
-	StatusCode int
-}
-
-// WriteHeader sets the status code, if it hasn't been set already.
-func (w *StatusRecordingResponseWriter) WriteHeader(statusCode int) {
-	if w.StatusCode == 0 {
-		w.StatusCode = statusCode
-	}
-	w.RW.WriteHeader(statusCode)
-}
-
-// Header returns the underlying response writer's header.
-func (w *StatusRecordingResponseWriter) Header() http.Header {
-	return w.RW.Header()
-}
-
-// Write writes the given bytes to the underlying response writer, setting the status code to 200 if it hasn't been set already.
-func (w *StatusRecordingResponseWriter) Write(b []byte) (int, error) {
-	if w.StatusCode == 0 {
-		w.WriteHeader(http.StatusOK)
-	}
-	return w.RW.Write(b)
 }
 
 // for this example, both efronlicht and jdoe have the same password; "mypassword".

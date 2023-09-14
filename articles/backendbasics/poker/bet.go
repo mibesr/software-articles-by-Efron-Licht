@@ -120,7 +120,7 @@ func TakeAction(g *Game, player string, action ActionKind, amount int) error {
 			return TakeAction(g, player, ALLIN, 0)
 		}
 		if amount < g.currentBet*2 {
-			return fmt.Errorf("amount %d is less than twice the current bet: cannot raise without going all-in", player, amount, g.currentBet)
+			return fmt.Errorf("amount %d is less than twice the current bet: cannot raise without going all-in", amount)
 		}
 		// otherwise, raise by the given amount
 		g.currentBet = amount

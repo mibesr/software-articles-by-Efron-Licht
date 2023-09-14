@@ -1,7 +1,7 @@
 #### more articles
 - backend from the beginning: a complete guide to backend development in go
   1. [bftb 1: Introduction, TCP, DNS, HTTP](https://eblog.fly.dev/backendbasics.html) 
-  2. ~~[bftb 2: Practical Backend with the Go stdlib]~~ **(COMING SOON)**
+  2. [bftb 2: Practical backend with `net/http`, `net/url`, `encoding/json`, and `context`](https://eblog.fly.dev/backendbasics2.html)
   3. ~~[bftb 3: Finishing touches: middleware & routing]~~ **(COMING SOON)**
   4. ~~[bftb 4: When I hear the word 'framework' I reach for my revolver]~~ **(COMING SOON)**
 
