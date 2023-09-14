@@ -14,6 +14,8 @@ In this one, we'll start diving into Go's standard library and  the show how it 
 
 In the next article, we'll talk about middleware, routing, and the basics of databases.
 
+As before, **all source code** for each article is available on [gitlab](https://gitlab.com/efronlicht/blog); I also have links to runnable examples for many of these programs on the [go playground](https://go.dev/play).
+
 ## The `net/http` package
 
 `net/http` provides a complete HTTP client and server implementation. It's a great place to start when building a web application in Go. Let's start by looking at the client side.
