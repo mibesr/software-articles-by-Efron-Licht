@@ -13,8 +13,10 @@ import (
 	"time"
 )
 
-var errMissingAuthorization = errors.New("missing or improperly formed 'Authorization' header: see https://en.wikipedia.org/wiki/Basic_access_authentication")
-var errBadAuthorization = errors.New("unknown or invalid username and password for basic 'Authorization' header")
+var (
+	errMissingAuthorization = errors.New("missing or improperly formed 'Authorization' header: see https://en.wikipedia.org/wiki/Basic_access_authentication")
+	errBadAuthorization     = errors.New("unknown or invalid username and password for basic 'Authorization' header")
+)
 
 // writeErr sets the Content-Type header to application/json, then writes the given error as JSON to w's body.
 func writeErr(w http.ResponseWriter, err error, statusCode int) {
@@ -109,7 +111,6 @@ func DoRequest(c *http.Client, r *http.Request) (*http.Response, error) {
 
 	}
 	return nil, fmt.Errorf("failed after 3 retries: %w", retryErrs)
-
 }
 
 // for this example, both efronlicht and jdoe have the same password; "mypassword".

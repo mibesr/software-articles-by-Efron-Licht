@@ -48,6 +48,7 @@ func (h Hand) Equal(o Hand) bool {
 		return h.High == o.High
 	}
 }
+
 func (h Hand) Greater(o Hand) bool {
 	if h == o {
 		return false
@@ -133,7 +134,6 @@ func CardFromString(s string) (Card, bool) {
 		return CardFromNotation(s)
 	}
 	return CardFromName(s)
-
 }
 
 func CardFromName(s string) (Card, bool) {

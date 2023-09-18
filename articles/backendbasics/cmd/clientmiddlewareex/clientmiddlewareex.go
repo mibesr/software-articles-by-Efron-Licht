@@ -20,6 +20,7 @@ func clientMiddleware() http.RoundTripper {
 	rt = clientmw.Trace(rt)                                      // add trace id to request header
 	return rt
 }
+
 func main() {
 	if len(os.Args) < 2 {
 		log.Fatal("target url required")

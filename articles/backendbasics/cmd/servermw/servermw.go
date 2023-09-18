@@ -35,7 +35,6 @@ func Recovery(h http.Handler) http.HandlerFunc {
 			// write 500 status code and "internal server error" message to response so it doesn't hang
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = w.Write([]byte("500 Internal Server Error"))
-
 		}()
 		h.ServeHTTP(w, r)
 	}
@@ -66,7 +65,6 @@ func Trace(h http.Handler) http.HandlerFunc {
 		// serve the request using the populated context
 		h.ServeHTTP(w, r)
 	}
-
 }
 
 // Log returns a middleware that injects a logger into the request context. It uses the trace from the context as a prefix, if it exists.
@@ -77,10 +75,10 @@ func Log(h http.Handler) http.HandlerFunc {
 		var prefix string
 		if ok {
 			// like GET /articles: [trace-id request-id]:
-			prefix = fmt.Sprintf("%s %s: [%s %s]: ", r.Method, r.URL, trace.TraceID, trace.RequestID)
+			prefix = fmt.Sprintf("server: %s %s: [%s %s]: ", r.Method, r.URL, trace.TraceID, trace.RequestID)
 		} else {
 			// like GET /articles:
-			prefix = fmt.Sprintf("%s %s: ", r.Method, r.URL)
+			prefix = fmt.Sprintf("server: %s %s: ", r.Method, r.URL)
 		}
 		logger := log.New(os.Stderr, prefix, log.LstdFlags)
 		ctx := ctxutil.WithValue(r.Context(), logger)

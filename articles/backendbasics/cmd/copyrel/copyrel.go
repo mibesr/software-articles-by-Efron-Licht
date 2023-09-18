@@ -94,14 +94,12 @@ func main() {
 		return
 	}
 	log.Fatalf("copied %d files, %d errors", nOK, nErr)
-
 }
 
 func copyFile(dstPath, srcPath string) error {
 	srcFile, err := os.Open(srcPath)
 	if err != nil {
 		return fmt.Errorf("open %q: %w", srcPath, err)
-
 	}
 	defer srcFile.Close()
 	dstFile, err := os.Create(dstPath)

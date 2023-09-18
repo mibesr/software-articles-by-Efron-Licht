@@ -63,10 +63,12 @@ type Game struct {
 	}
 }
 
-const startingSmallBlind = 10
-const startingCash = 1000
-const blindIncreasesEvery = 10 // blind increases every N hands
-const blindIncreasesBy = 10    // blind increases by N
+const (
+	startingSmallBlind  = 10
+	startingCash        = 1000
+	blindIncreasesEvery = 10 // blind increases every N hands
+	blindIncreasesBy    = 10 // blind increases by N
+)
 
 type ActionKind byte
 
@@ -290,7 +292,6 @@ func (g *Game) resolveHand() {
 
 // bestHand returns the best hand of any remaining player.
 func bestHand(players []Player, shared *[5]Card) Hand {
-
 	var best Hand
 	for i := range players {
 		hand := GetHand(players[i].Cards[0], players[i].Cards[1], shared)

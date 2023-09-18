@@ -48,5 +48,4 @@ func main() {
 	if _, err := io.Copy(f, resp.Body); err != nil {
 		log.Fatalf("copying response to file: %v", err)
 	}
-
 }

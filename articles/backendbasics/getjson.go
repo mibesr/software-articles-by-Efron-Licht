@@ -106,7 +106,6 @@ type Game struct {
 func handle(r *http.Request, s *Sessions) ([8][8]piece, error, int) {
 	if r.Method != http.MethodPost {
 		return [8][8]piece{}, fmt.Errorf("invalid method %q", r.Method), http.StatusMethodNotAllowed
-
 	}
 	gameID := r.URL.Query().Get("gameID")
 	if gameID == "" {

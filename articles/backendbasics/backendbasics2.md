@@ -391,25 +391,26 @@ That covers an outbound `*http.Request`: let's talk about serving incoming ones.
 
 ## Handlers & Servers
 
-The [`http.Handler`](https://pkg.go.dev/net/http#Handler) interface is the core of Go's HTTP server. We might expect the interface to mirror the `http.Transport` API, like so:
+The [`http.Handler`](https://pkg.go.dev/net/http#Handler) interface is the core of Go's HTTP server. We might expect the interface to mirror the Client's `Do` method:
 
 ```go
-type NotQuiteHandler interface {
-    ServeHTTP(req *http.Request) (*http.Response, error)
-}
+func (c *Client) Do(req *Request) (*Response, error)
+```
+Maybe something like this:
+
+```go
+type NotQuiteHandler interface { ServeHTTP(req *http.Request) (*http.Response, error) }
 ```
 
-But this is not the case. Why?
-
-- HTTP is a _streaming_ response protocol; we need some way to write the response body as it's generated without buffering the entire response in memory. For us to 'return' a response, we'd need to buffer the entire response in memory before sending it to the client; this might be literally impossible for extremely large responses.
+But this is not the case. Among other things,  HTTP is a _streaming_ response protocol; we need some way to write the response body as it's generated without buffering the entire response in memory; something that might be inadviseable or even impossible for large responses (like a file download).
 
 So instead of returning a response, `http.Handler` has the following signature:
 
 ```go
-type Handler interface { ServeHTTP(ResponseWriter, *Request) }
+type Handler interface { ServeHTTP(http.ResponseWriter, *http.Request) }
 ```
 
-We've already seen plenty of `*http.Request`s, so let's talk about [`http.ResponseWriter`](https://pkg.go.dev/net/http#ResponseWriter). It's an interface with three methods: `Header`, `Write`, and `WriteHeader`. It's the `http.Handler`'s job to call these methods to construct the response.
+We've already seen plenty of `*http.Request`, so let's talk about [`http.ResponseWriter`](https://pkg.go.dev/net/http#ResponseWriter). It's an interface with three methods: `Header`, `Write`, and `WriteHeader`. It's the `http.Handler`'s job to call these methods to construct the response.
 
 ```go
 // ResponseWriter interface is used by an HTTP handler to construct a HTTP response.
@@ -454,7 +455,7 @@ func (t TextHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request) { w.Write
 
 OUT:
 
-```
+```http
 HTTP/1.1 200 OK
 Content-Length: 12
 Content-Type: text/plain; charset=utf-8
@@ -667,7 +668,7 @@ A few hints on producing good JSON APIs:
 
 ### Helpful generic functions
 
-Reading and writing JSON can seem tedious. The following generic functions can help reduce boilerplate and help you avoid common 'gotchas', like forgetting to close the response body.
+Reading and writing JSON can seem tedious. The following generic functions can help reduce boilerplate and help you avoid common 'gotchas', like forgetting to close the response body. 
 
 ```go
 // ReadJSON reads a JSON object from an io.ReadCloser, closing the reader when it's done. It's primarily useful for reading JSON from *http.Request.Body.

@@ -1,0 +1,78 @@
+GET /panic:
+HTTP/1.1 500 Internal Server Error
+Content-Length: 25
+Content-Type: text/plain; charset=utf-8
+Date: Mon, 18 Sep 2023 17:04:59 GMT
+
+500 Internal Server ErrorGET http://localhost:8080/: 
+HTTP/1.1 200 OK
+Content-Length: 15
+Content-Type: text/plain; charset=utf-8
+Date: Mon, 18 Sep 2023 17:04:59 GMT
+
+Hello, world!
+
+-------
+GET http://localhost:8080/echo/first/second/third: 
+HTTP/1.1 200 OK
+Content-Length: 39
+Content-Type: application/json
+Date: Mon, 18 Sep 2023 17:04:59 GMT
+
+{"a":"first","b":"second","c":"third"}
+
+-------
+GET http://localhost:8080/echo/first/second/third?case=upper: 
+HTTP/1.1 200 OK
+Content-Length: 39
+Content-Type: application/json
+Date: Mon, 18 Sep 2023 17:04:59 GMT
+
+{"a":"FIRST","b":"SECOND","c":"THIRD"}
+
+-------
+GET http://localhost:8080/echo/first/second/third?case=lower: 
+HTTP/1.1 200 OK
+Content-Length: 39
+Content-Type: application/json
+Date: Mon, 18 Sep 2023 17:04:59 GMT
+
+{"a":"first","b":"second","c":"third"}
+
+-------
+GET http://localhost:8080/time: 
+HTTP/1.1 200 OK
+Content-Length: 37
+Content-Type: application/json
+Date: Mon, 18 Sep 2023 17:04:59 GMT
+
+{"time":"2023-09-18T10:04:59-07:00"}
+
+-------
+GET http://localhost:8080/time?format=Mon%2C+02+Jan+2006+15%3A04%3A05+MST: 
+HTTP/1.1 200 OK
+Content-Length: 41
+Content-Type: application/json
+Date: Mon, 18 Sep 2023 17:04:59 GMT
+
+{"time":"Mon, 18 Sep 2023 10:04:59 PDT"}
+
+-------
+GET http://localhost:8080/time?format=Mon%2C+02+Jan+2006+15%3A04%3A05+MST&tz=America%2FNew_York: 
+HTTP/1.1 200 OK
+Content-Length: 41
+Content-Type: application/json
+Date: Mon, 18 Sep 2023 17:04:59 GMT
+
+{"time":"Mon, 18 Sep 2023 13:04:59 EDT"}
+
+-------
+GET http://localhost:8080/time?format=Mon%2C+02+Jan+2006+15%3A04%3A05+MST&tz=America%2FLos_Angeles: 
+HTTP/1.1 200 OK
+Content-Length: 41
+Content-Type: application/json
+Date: Mon, 18 Sep 2023 17:04:59 GMT
+
+{"time":"Mon, 18 Sep 2023 10:04:59 PDT"}
+
+-------

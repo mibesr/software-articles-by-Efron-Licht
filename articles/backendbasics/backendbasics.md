@@ -1,7 +1,5 @@
 # Backend from the Beginning, Pt 1: Introduction, TCP, DNS, HTTP
 
-# THIS NEEDS ANOTHER EDITING PASS. CONSIDER IT A PREVIEW
-
 A software article by Efron Licht
 
 September 2023
@@ -253,7 +251,6 @@ To briefly review, the following functions and types are relevant to our example
 
     Which we can then use in our server like this:
 
-
     ```go
 
     // tcpupperecho serves tcp connections on port 8080, reading from each connection line-by-line and writing the upper-case version of each line back to the client.
@@ -357,7 +354,7 @@ Browsers and other clients use `DNS` service to look up the IP address of a doma
 ### Finding the IP address of a server
 
 2021/08/18 16:00:00 tcpupperecho listening at localhost:
-OK, so we want to connect to a server at a **web address**: say, `https://eblog.fly.dev`. How do we do that? Well, first we need to get the IP address of the server. The **domain name service**, or `DNS`, is a service that maps domain names to IP addresses. You can use the built-in `nslookup` command to look up the IP address of a domain name from your command-line on windows, mac, or linux (and probably bsd):
+OK, so we want to connect to a server at a **web address**: say, `https://eblog.fly.dev`. How do we do that? Well, first we need to get the IP address of the server. The **domain name service**, or `DNS`, is a service that maps domain names to IP addresses. You can use the built-in `nslookup` command to look up the IP address of a domain name from your command-line on windows, mac, or linux.
 
 IN:
 

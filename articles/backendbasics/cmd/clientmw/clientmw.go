@@ -44,7 +44,6 @@ func RetryOn5xx(rt http.RoundTripper, wait time.Duration, tries int) RoundTripFu
 		panic("wait must be > 0")
 	}
 	return func(r *http.Request) (*http.Response, error) {
-		defer logExec("retryOn5xx")()
 		// retry logic
 		var retryErrs error
 		for retry := 0; retry < tries; retry++ {
@@ -58,7 +57,6 @@ func RetryOn5xx(rt http.RoundTripper, wait time.Duration, tries int) RoundTripFu
 			}
 
 			if err != nil {
-
 				return nil, fmt.Errorf("failed after %d retries: %w", retry, errors.Join(retryErrs, err))
 			}
 			switch sc := resp.StatusCode; {
@@ -78,7 +76,6 @@ func RetryOn5xx(rt http.RoundTripper, wait time.Duration, tries int) RoundTripFu
 // TimeRequest returns a RoundTripFunc that logs the duration of the request.
 func TimeRequest(rt http.RoundTripper) RoundTripFunc {
 	return func(r *http.Request) (*http.Response, error) {
-		defer logExec("timeRequest")()
 		start := time.Now()
 		resp, err := rt.RoundTrip(r) // call next middleware, or http.DefaultTransport.RoundTrip if this is the last middleware
 		if err != nil {
@@ -93,13 +90,12 @@ func TimeRequest(rt http.RoundTripper) RoundTripFunc {
 // Log wraps the given RoundTripper with a middleware that logs the request method, url, status code, and duration.
 func Log(rt http.RoundTripper) RoundTripFunc {
 	return func(r *http.Request) (*http.Response, error) {
-		defer logExec("log")()
 		trace, ok := ctxutil.Value[trace.Trace](r.Context()) // retrieve trace from context
 		var prefix string
 		if ok {
-			prefix = fmt.Sprintf("%s %s: [%s %s]: ", r.Method, r.URL, trace.TraceID, trace.RequestID)
+			prefix = fmt.Sprintf("client: %s %s: [%s %s]: ", r.Method, r.URL, trace.TraceID, trace.RequestID)
 		} else {
-			prefix = fmt.Sprintf("%s %s: ", r.Method, r.URL)
+			prefix = fmt.Sprintf("client: %s %s: ", r.Method, r.URL)
 		}
 
 		logger := log.New(os.Stderr, prefix, log.LstdFlags|log.Lshortfile)
@@ -117,19 +113,10 @@ func Log(rt http.RoundTripper) RoundTripFunc {
 	}
 }
 
-// we'll use this helper function to log the beginning and end of each middleware. no need for this in the real world,
-// but it should help you understand what's going on.
-func logExec(name string) func() {
-	log.Printf("middleware: begin %s", name)
-	return func() { defer log.Printf("middleware: end %s", name) }
-}
-
 // Trace wraps the given RoundTripper with a middleware that injects a trace.Trace into the request context or updates a pre-existing Trace with a new RequestID.
 // It will generate a new trace.TraceID if one doesn't exist, and a new trace.RequestID for each request.
 func Trace(rt http.RoundTripper) RoundTripFunc {
 	return func(r *http.Request) (*http.Response, error) {
-		defer logExec("trace")()
-
 		// retrieve trace from context, or create a new one if it doesn't exist
 		ctx := r.Context()
 		trace, ok := ctxutil.Value[trace.Trace](ctx)
