@@ -390,7 +390,7 @@ import (
 
 func main() {
     if len(os.Args) != 2 {
-        log.Infof("%s: usage: <host>", os.Args[0])
+        log.Printf("%s: usage: <host>", os.Args[0])
         log.Fatalf("expected exactly one argument; got %d", len(os.Args)-1)
     }
     host := os.Args[1]
