@@ -568,8 +568,6 @@ But some characters can only be used unescaped in certain contexts:
 | `;` | path | separates path segments; rarely used |
 | `$` | path | rarely used |
 
-Note that `%` itself must be escaped as `%25`.
-
 Everything else must be escaped. For example, the following request path is valid:
 
 ```http
@@ -614,7 +612,7 @@ GET /search?q=ice&order=released&dir=asc HTTP/1.1
 
 This would have three query parameters: "q=ice", "order=released", and "dir=asc". Note that the `=` and `&` characters are not escaped in the query parameters.
 
-That's pretty much all there is to HTTP requests. Lert's try sending a `HTTP` request to `eblog.fly.dev` using TCP. The following complete program, `sendreq`, sends a HTTP request to a server at a given host, port, and path, and prints the response to stdout.
+That's pretty much all there is to HTTP requests. Let's try sending a `HTTP` request to `eblog.fly.dev` using TCP. The following complete program, `sendreq`, sends a HTTP request to a server at a given host, port, and path, and prints the response to stdout.
 
 ```go
 // sendreq sends a request to the specified host, port, and path, and prints the response to stdout.
