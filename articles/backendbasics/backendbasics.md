@@ -204,9 +204,6 @@ To briefly review, the following functions and types are relevant to our example
                 if err := connScanner.Err(); err != nil {
                     log.Fatalf("error reading from %s: %v", conn.RemoteAddr(), err)
                 }
-                if connScanner.Err() != nil {
-                    log.Fatalf("error reading from %s: %v", conn.RemoteAddr(), err)
-                }
             }
         }()
 
@@ -231,7 +228,7 @@ To briefly review, the following functions and types are relevant to our example
 
     Now let's put together the server; since it echoes back whatever it receives, in uppercase, we'll call it `tcpupperecho`.
 
-    Usually when working in backend, we want to s.parate your 'business logic' from the networking code. Since all of go's networking APIs use the [net.Conn](https://golang.org/pkg/net/#Conn) interface, which implements both [io.Reader](https://golang.org/pkg/io/#Reader) and [io.Writer](https://golang.org/pkg/io/#Writer), we can write our business logic using standard text-handling functions and structs like [fmt.Fprintf](https://golang.org/pkg/fmt/#Fprintf) and [bufio.Scanner](https://golang.org/pkg/bufio/#Scanner).
+    Usually when working in backend, we want to separate your 'business logic' from the networking code. Since all of go's networking APIs use the [net.Conn](https://golang.org/pkg/net/#Conn) interface, which implements both [io.Reader](https://golang.org/pkg/io/#Reader) and [io.Writer](https://golang.org/pkg/io/#Writer), we can write our business logic using standard text-handling functions and structs like [fmt.Fprintf](https://golang.org/pkg/fmt/#Fprintf) and [bufio.Scanner](https://golang.org/pkg/bufio/#Scanner).
 
     Our server's 'business logic' will look like this:
 
