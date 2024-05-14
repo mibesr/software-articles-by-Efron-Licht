@@ -218,7 +218,7 @@ func main() {
     c := http.Client{Timeout: *timeout}
 
     // don't worry about the details of context for now; we'll talk about it later in this article.
-    // if you don't know what context to use, use context.TODO(). 
+    // if you don't know what context to use, use context.TODO().
     if err := downloadAndSave(context.TODO(), &c, url, filename); err != nil {
         log.Fatal(err)
     }
@@ -228,7 +228,7 @@ func downloadAndSave(ctx context.Context, c *http.Client, url, dst string) error
     if err != nil {
         return fmt.Errorf("creating request: GET %q: %v", url, err)
     }
-    resp, err := c.Do(req) // Do serializes a http.Request, sends it to the server, and then deserializes the response to a http.Response. 
+    resp, err := c.Do(req) // Do serializes a http.Request, sends it to the server, and then deserializes the response to a http.Response.
 
     // always check for errors after calling Do. errors from 'Do' usually mean something went wrong on the network.
     if err != nil {
@@ -249,7 +249,7 @@ func downloadAndSave(ctx context.Context, c *http.Client, url, dst string) error
         return fmt.Errorf("creating file: %v", err)
     }
     defer dstFile.Close() // always close files when you're done with them.
-    if _, err := io.Copy(dstFile, resp.Body); err != nil { 
+    if _, err := io.Copy(dstFile, resp.Body); err != nil {
         return fmt.Errorf("copying response to file: %v", err)
     }
 }
@@ -428,7 +428,7 @@ type ResponseWriter interface {
 }
 ```
 
-Build a [`Server`] by passing it a [`Handler`](https://pkg.go.dev/net/http#Handler) and address to listen on, then calling [`Server.ListenAndServe`](https://pkg.go.dev/net/http#Server.ListenAndServe).
+Build a [`Server`](https://pkg.go.dev/net/http#Server) by passing it a [`Handler`](https://pkg.go.dev/net/http#Handler) and address to listen on, then calling [`Server.ListenAndServe`](https://pkg.go.dev/net/http#Server.ListenAndServe).
 
 The following complete program demonstrates a minimal HTTP server that returns a 200 OK response with the text "hello, world".
 
@@ -668,7 +668,7 @@ A few hints on producing good JSON APIs:
 
 ### Helpful generic functions
 
-Reading and writing JSON can seem tedious. The following generic functions can help reduce boilerplate and help you avoid common 'gotchas', like forgetting to close the response body. 
+Reading and writing JSON can seem tedious. The following generic functions can help reduce boilerplate and help you avoid common 'gotchas', like forgetting to close the response body.
 
 ```go
 // ReadJSON reads a JSON object from an io.ReadCloser, closing the reader when it's done. It's primarily useful for reading JSON from *http.Request.Body.
@@ -688,7 +688,7 @@ func WriteJSON(w http.ResponseWriter, v any) error {
 Similarly, you may wish to define some helper functions for your own JSON APIs.
 
 ```go
-// WriteError logs an error, then writes it as a JSON object in the form {"error": <error>}, setting the Content-Type header to application/json. 
+// WriteError logs an error, then writes it as a JSON object in the form {"error": <error>}, setting the Content-Type header to application/json.
 func WriteError(w http.ResponseWriter, err error, code int) {
     og.Printf("%d %v: %v", code, http.StatusText(code), err) // log the error; http.StatusText gets "Not Found" from 404, etc.
     w.Header().Set("Content-Type", "encoding/json")
@@ -751,7 +751,7 @@ We've now covered the basics of HTTP servers and clients, but there's one big pi
 
 Any internet communication can fail. The network can go down, the server can crash, or the server can just be slow. When I make a network call, I'm implicitly expecting it to finish _soon_, not just 'eventually'; it's no good for me if my request to buy a plane ticket finishes after the flight has already left.
 
-Go's [`context.Context`](https://pkg.go.dev/context#Context)` type is for managing state 'about' a function, rather than 'in' a function. These break down into two large groups: function metadata (start time, request IDs) and deadlines/cancellation. This package is too complex for me to cover in detail here, so I strongly recommend you read both the [package documentation](https://pkg.go.dev/context) and [the blog post that introduced it](https://blog.golang.org/context).
+Go's [`context.Context`](https://pkg.go.dev/context#Context) type is for managing state 'about' a function, rather than 'in' a function. These break down into two large groups: function metadata (start time, request IDs) and deadlines/cancellation. This package is too complex for me to cover in detail here, so I strongly recommend you read both the [package documentation](https://pkg.go.dev/context) and [the blog post that introduced it](https://blog.golang.org/context).
 
 In short, context is used for two related-but-distinct purposes:
 

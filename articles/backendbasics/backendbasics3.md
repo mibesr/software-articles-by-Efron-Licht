@@ -42,7 +42,7 @@ But traditional relational databases are by far the most common, so we'll focus 
 
 ## Connecting to a Database
 
-Like most databases, **PostgreSQL** is a client-server application that uses the TCP/IP stack to communicate with clients.  We covered the TCP/IP stack in the [first article](https://eblog.fly.dev/backendbasics.html), so we won't go into detail here. Unlike our servers so far, which used `HTTP` on top of that, `postgres` uses it's own binary application-level protocol.If we wanted to communicate with postgres directly, the process would look broadly similar to the HTTP-by-hand we did in the [first article](https://eblog.fly.dev/backendbasics.html). Starting with a URL like "postgres://user:password@host:port/database", we'd do something like this:
+Like most databases, **PostgreSQL** is a client-server application that uses the TCP/IP stack to communicate with clients.  We covered the TCP/IP stack in the [first article](https://eblog.fly.dev/backendbasics.html), so we won't go into detail here. Unlike our servers so far, which used `HTTP` on top of that, `postgres` uses it's own binary application-level protocol. If we wanted to communicate with postgres directly, the process would look broadly similar to the HTTP-by-hand we did in the [first article](https://eblog.fly.dev/backendbasics.html). Starting with a URL like "postgres://user:password@host:port/database", we'd do something like this:
 
 - Use `net.ResolveTCPAddr` to resolve the hostname and port to an IP address.
 - Use `net.DialTCP` to connect to the server.
@@ -173,7 +173,7 @@ func main() {
     // ---- connect to postgres ----
 
     db, err := sql.Open(
-        "postgres", 
+        "postgres",
         cfg.String(), // defined below
     )
     if err != nil {
@@ -332,7 +332,7 @@ That is, instead of:
 
 ```go
 // example: 'global' database connection
-var db *sql.DB 
+var db *sql.DB
 func init() {
     db, err := sql.Open("postgres", "...")
     if err != nil {
@@ -412,7 +412,7 @@ Another approach might be to make our own `DoRequest` function that would encaps
 //   - retries the request up to 3 times if the server is unavailable or returns a 5xx status code
 //   - returns an error if the server returns a 4xx status code
 //   - logs the request duration
-//   
+//
 func DoRequest(ctx context.Context, c *http.Client, r *http.Request) (*http.Response, error) {
     r = r.WithContext(ctx) // add context to request
     // track execution time
@@ -475,7 +475,7 @@ Our desired API will look something like this:
 
 ```go
 var rt http.RoundTripper = http.DefaultTransport
-rt = TimeRequest(rt) 
+rt = TimeRequest(rt)
 rt = RetryOn5xx(rt, 10*time.Millisecond, 3)
 rt = ...
 client := &http.Client{
@@ -624,7 +624,7 @@ Let's put together a `Trace` middleware that adds a `Trace` struct to the contex
 
 ```go
 package clientmw
-// Trace returns a RoundTripFunc that 
+// Trace returns a RoundTripFunc that
 // - adds a trace to the request context
 // - generating a new one if necessary
 // - adds the X-Trace-ID and X-Request-ID headers to the request
@@ -640,13 +640,13 @@ func Trace(rt http.RoundTripper) RoundTripFunc {
 
         // build the trace. it's a small struct, so we put it directly in the context and don't bother with a pointer.
         trace := trace.Trace{ TraceID: traceID, RequestID: uuid.New()}
-        
+
 
         ctx := ctxutil.WithValue(r.Context(), trace) // add trace to context; retrieve with ctxutil.Value[Trace](ctx)
         r = r.WithContext(ctx) // add context to request
 
         // add trace id & request id to headers
-        r.Header.Set("X-Trace-ID", trace.TraceID.String())  
+        r.Header.Set("X-Trace-ID", trace.TraceID.String())
         r.Header.Set("X-Request-ID", trace.RequestID.String())
         return rt.RoundTrip(r) // call next middleware, or http.DefaultTransport.RoundTrip if this is the last middleware
     }
@@ -1387,8 +1387,8 @@ package main
 func buildBaseRouter() (*Router, error) {
     var r = new(Router) // we'll add routes to this router.
     /* --- design note: ---
-    you could just add the routes on a separate line for each, 
-    but I like building the slice of routes and iterating over it; 
+    you could just add the routes on a separate line for each,
+    but I like building the slice of routes and iterating over it;
     it makes the essential similarity of each route more obvious.
     */
     for _, route := range []struct {
@@ -1638,7 +1638,7 @@ If you run both programs, you should see something like this (lightly edited and
 ```
 server: GET /echo/first/second/third: [d4df5e13-fadf-4f4a-8eb9-7ca1dca0428b c16dc184-90ae-4a23-85cd-4898456ac25e]: 2023/09/18 10:59:04 200 OK: 39 bytes in 28.093µs
 client: GET http://localhost:8080/echo/first/second/third: 2023/09/18 10:59:04 clientmw.go:112: 200 OK in 348.138µs
-GET http://localhost:8080/echo/first/second/third: 
+GET http://localhost:8080/echo/first/second/third:
 HTTP/1.1 200 OK
 Content-Length: 39
 Content-Type: application/json
@@ -1648,7 +1648,7 @@ Date: Mon, 18 Sep 2023 17:59:04 GMT
 
 server: GET /echo/first/second/third?case=upper: [2253f79f-e49d-455e-b32a-3d842c7f1ea5 bb748b7a-2a07-4d86-8992-0ba3f2e7423c]: 2023/09/18 10:59:04 200 OK: 39 bytes in 21.069µs
 client: GET http://localhost:8080/echo/first/second/third?case=upper: 2023/09/18 10:59:04 clientmw.go:112: 200 OK in 342.51µs
-GET http://localhost:8080/echo/first/second/third?case=upper: 
+GET http://localhost:8080/echo/first/second/third?case=upper:
 HTTP/1.1 200 OK
 Content-Length: 39
 Content-Type: application/json
@@ -1658,7 +1658,7 @@ Date: Mon, 18 Sep 2023 17:59:04 GMT
 
 server: GET /time?format=Mon%2C+02+Jan+2006+15%3A04%3A05+MST&tz=America%2FLos_Angeles: [de41ddc1-fd01-4aa7-b666-a9a5d81a1c08 e7605ac9-aa5d-43b1-9fcc-5a90af39d737]: 2023/09/18 10:59:04 200 OK: 41 bytes in 21.901µs
 client: GET http://localhost:8080/time?format=Mon%2C+02+Jan+2006+15%3A04%3A05+MST&tz=America%2FLos_Angeles: 2023/09/18 10:59:04 clientmw.go:112: 200 OK in 244.977µs
-GET http://localhost:8080/time?format=Mon%2C+02+Jan+2006+15%3A04%3A05+MST&tz=America%2FLos_Angeles: 
+GET http://localhost:8080/time?format=Mon%2C+02+Jan+2006+15%3A04%3A05+MST&tz=America%2FLos_Angeles:
 HTTP/1.1 200 OK
 Content-Length: 41
 Content-Type: application/json

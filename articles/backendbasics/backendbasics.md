@@ -33,7 +33,7 @@ If you don't know what stuff means or how I got that IP address, don't worry; we
 
 - Terry A. Davis
 
-Of course, knowing that things are done badly doesn't help you learn how do do it _well_, so I'm writing this series of articles to try and fill the gap by teaching the basics of backend web development in Go. Each article will be filled with _real_ programs you can run on your computer, not cherry-picked code samples that don't even compile.
+Of course, knowing that things are done badly doesn't help you learn how to do it _well_, so I'm writing this series of articles to try and fill the gap by teaching the basics of backend web development in Go. Each article will be filled with _real_ programs you can run on your computer, not cherry-picked code samples that don't even compile.
 
 This series will not be enough to teach you everything. At best it will expose you to enough of how things _really_ work that you can start seeing the edges of your knowledge and begin filling in the gaps yourself. It will also necessarially have to simplify or omit some details or tell "white lies" to make things easier to understand; there's no substitute for experience (or for reading the source code & documentation of the standard library).  It will also largely omit databases; I hope to make those the subject of a future series.
 
@@ -47,7 +47,7 @@ That said, I hope it will help.
 - What's DNS? How do we turn [www.google.com](https://www.google.com) into an IP address?
 - What's HTTP and how does it work? How would we read or write a HTTP request or response by hand, without a library?
 - Building a Request/Response library from scratch
-  
+
 ### 2. Practical backend: `net/http` and `encoding/json`
 
 In the second article, we'll graduate to using the `net/http` and `encoding/json` packages to build basic web clients and servers that can handle most day-to-day backend workloads. We'll start diving into Go's standard library and  the show how it provides everything you need for basic client/server HTTP communication; using `net/http` and `net/url` to send and receive HTTP requests and responses, `encoding/json` to manage our API payloads, and `context` to manage timeouts and cancellation.
@@ -66,7 +66,7 @@ In the third article, we'll cover middleware and routing, the two 'missing piece
 
 ### What's the internet anyways?
 
-What is the internet? No, I'm serious. What is the problem the internet solves? The internet is a _network_ of computers that can reliably communicate with each other even if some of the computers 'in the middle' are down. It allows you to reliably send messages (that is, text or binary data) to other computers, even if you don't know where those computers are or how they're connected to you. You can send a message to another computer, so long as there is a path of computers from you (the `LOCALADDR`) to the destination computer (the `REMOTEADDR`)**.
+What is the internet? No, I'm serious. What is the problem the internet solves? The internet is a _network_ of computers that can reliably communicate with each other even if some of the computers 'in the middle' are down. It allows you to reliably send messages (that is, text or binary data) to other computers, even if you don't know where those computers are or how they're connected to you. You can send a message to another computer, so long as there is a path of computers from you (the `LOCALADDR`) to the destination computer (the `REMOTEADDR`).
 
 To do this, the internet must solve two problems:
 
@@ -337,7 +337,7 @@ This works fine for local addresses, but what if we want to connect to a server 
 
 #### DNS
 
-**D**omain **N**ame **S**ervice, or `DNS`, is a service that maps domain names to IP addresses. It's essentially a big table that looks like this:  
+**D**omain **N**ame **S**ervice, or `DNS`, is a service that maps domain names to IP addresses. It's essentially a big table that looks like this:
 
 |domain| last known ipv4 | last known ipv6 |
 |------|-----------------|-----------------|
@@ -592,11 +592,11 @@ The PATH can also contain **query parameters**; these are key-value pairs in the
 If I want to make a google search for "backend_basics", I would send the following request:
 
 ```http
-GET /search?q=backendbasics HTTP/1.1
+GET /search?q=backend_basics HTTP/1.1
 Host: google.com
 ```
 
-This has a single query parameter, with **KEY** `q` and VALUE `backendbasics`. I could add additional query parameters by separating them with `&`:
+This has a single query parameter, with **KEY** `q` and VALUE `backend_basics`. I could add additional query parameters by separating them with `&`:
 
 The **[scryfall](https://scryfall.com/)** API allows you to search for magic cards using a variety of query parameters: if I wanted to search for cards with the word "ice" in their name, ordered by their release date, I would send the following request:
 
@@ -690,7 +690,7 @@ func main() {
 Let's try it out on the index page of this blog (running on localhost:8080):
 
 ```go
-go build -o sendreq ./sendreq.go    
+go build -o sendreq ./sendreq.go
 ./sendreq -host eblog.fly.dev -port 8080
 ```
 
@@ -920,13 +920,13 @@ func TestTitleCaseKey(t *testing.T) {
 }
 ```
 
-[MIME]headers are assumed to be ASCII-only, so we don't need to worry about unicode here.
+[MIME](https://en.wikipedia.org/wiki/MIME) headers are assumed to be ASCII-only, so we don't need to worry about unicode here.
 
 ```go
 // AsTitle returns the given header key as title case; e.g. "content-type" -> "Content-Type"
 // It will panic if the key is empty.
 func AsTitle(key string) string {
-    /* design note --- an empty string could be considered 'in title case', 
+    /* design note --- an empty string could be considered 'in title case',
     but in practice it's probably programmer error. rather than guess, we'll panic.
     */
     if key == "" {
@@ -1017,7 +1017,7 @@ func (r *Request) WriteTo(w io.Writer) (n int64, err error) {
     // <METHOD>  <PATH>  <PROTOCOL/VERSION>
     // <HEADER>: <VALUE>
     // <HEADER>: <VALUE>
-    // 
+    //
     // <REQUEST BODY>
 
     // write the request line: like "GET /index.html HTTP/1.1"
@@ -1064,7 +1064,7 @@ func (resp *Response) WriteTo(w io.Writer) (n int64, err error) {
 
 #### Sidenote: Go's standard interfaces
 
-Go has a number of standard interfaces that are used throughout the standard library. You've probably already seen [`io.Reader`](https://golang.org/pkg/io/#Reader) and [`io.Writer`](https://golang.org/pkg/io/#Writer), but there are a lot more. Many functions in the standard library work better with types that implement these interfaces; for example, [`io.Copy`](https://golang.org/pkg/io/#Copy) will copy from an `io.Reader` to an `io.Writer`, but if the `src` implements `[io.WriterTo](https://golang.org/pkg/io/#WriterTo)` or the `dst` implements [`io.ReaderFrom`](https://golang.org/pkg/io/#ReaderFrom), it will use those methods instead, which can be more efficient.
+Go has a number of standard interfaces that are used throughout the standard library. You've probably already seen [`io.Reader`](https://golang.org/pkg/io/#Reader) and [`io.Writer`](https://golang.org/pkg/io/#Writer), but there are a lot more. Many functions in the standard library work better with types that implement these interfaces; for example, [`io.Copy`](https://golang.org/pkg/io/#Copy) will copy from an `io.Reader` to an `io.Writer`, but if the `src` implements [`io.WriterTo`](https://golang.org/pkg/io/#WriterTo) or the `dst` implements [`io.ReaderFrom`](https://golang.org/pkg/io/#ReaderFrom), it will use those methods instead, which can be more efficient.
 
 Similarly, [`fmt.Stringer`](https://golang.org/pkg/fmt/#Stringer) is used to get a string representation of a type, and [`encoding.TextMarshaler`](https://golang.org/pkg/encoding/#TextMarshaler) is used to get a byte slice representation of a type in order to serialize it out across the network or to disk.
 
@@ -1098,7 +1098,7 @@ func ParseRequest(raw string) (r Request, err error) {
     if len(lines) < 3 {
         return Request{}, fmt.Errorf("malformed request: should have at least 3 lines")
     }
-    // First line is special.
+    // The first line is special.
     first := strings.Fields(lines[0])
     r.Method, r.Path = first[0], first[1]
     if !strings.HasPrefix(r.Path, "/") {
@@ -1109,7 +1109,7 @@ func ParseRequest(raw string) (r Request, err error) {
     }
     var foundhost bool
     var bodyStart int
-    // then we have headers, up until the an empty line.
+    // then we have headers, up until an empty line.
     for i := 1; i < len(lines); i++ {
         if lines[i] == "" { // empty line
             bodyStart = i + 1
@@ -1140,7 +1140,7 @@ func ParseRequest(raw string) (r Request, err error) {
 // - invalid status code
 // - missing status text
 // - invalid headers
-// it doesn't properly handle multi-line headers, headers with multiple values, or html-encoding, etc.zzs
+// it doesn't properly handle multi-line headers, headers with multiple values, or html-encoding, etc.
 func ParseResponse(raw string) (resp *Response, err error) {
     // response has three parts:
     // 1. Response line
@@ -1149,7 +1149,7 @@ func ParseResponse(raw string) (resp *Response, err error) {
     lines := splitLines(raw)
     log.Println(lines)
 
-    // First line is special.
+    // The first line is special.
     first := strings.SplitN(lines[0], " ", 3)
     if !strings.Contains(first[0], "HTTP") {
         return nil, fmt.Errorf("malformed response: first line should contain HTTP version")
@@ -1163,7 +1163,7 @@ func ParseResponse(raw string) (resp *Response, err error) {
         log.Printf("missing or incorrect status text for status code %d: expected %q, but got %q", resp.StatusCode, http.StatusText(resp.StatusCode), first[2])
     }
     var bodyStart int
-    // then we have headers, up until the an empty line.
+    // then we have headers, up until an empty line.
     for i := 1; i < len(lines); i++ {
         log.Println(i, lines[i])
         if lines[i] == "" { // empty line

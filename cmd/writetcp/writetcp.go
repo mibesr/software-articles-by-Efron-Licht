@@ -1,4 +1,4 @@
-// writetcp connects to a TCP server at at localhost with the specified port (8080 by default) and forwards stdin to the server,
+// writetcp connects to a TCP server at localhost with the specified port (8080 by default) and forwards stdin to the server,
 // line-by-line, until EOF is reached.
 // received lines from the server are printed to stdout.
 package main
