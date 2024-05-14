@@ -395,26 +395,36 @@ We can cleanly abstract both 'classic' lazy initialization and the nonblocking e
 // nonblocking[T] is a lazy-initialized value of type T.
 // build a nonblocking[T] with NewLazy[T]() or NewEager[T]()
 type nonblocking[T any] struct {
-    once sync.Once // guards initialization
-    val T // result of initialization, once initialized
-    err  error  // error from initialization, once initialized
-    fn   func() (T, error) // initializing function, called with Once().
+	once sync.Once         // guards initialization
+	val  T                 // result of initialization, once initialized
+	err  error             // error from initialization, once initialized
+	fn   func() (T, error) // initializing function, called with Once().
 }
 
 // initialize the nonblocking[T] by evaluating fn() and storing the result.
-func (nb *nonblocking[T]) initialize() {nb.once.Do(func() {nb.val, nb.err = nb.fn})}
+func (nb *nonblocking[T]) initialize() { nb.once.Do(func() { nb.val, nb.err = nb.fn() }) }
 
 // NewEager returns a *nonblocking[T] that will be initialized immediately in its own goroutine.
-func NewEager[T any](f func() (T, error)) *nonblocking[T] {nb := &nonblocking[T]{fn: f}; go nb.initialize(); return nb}
-
+func NewEager[T any](f func() (T, error)) *nonblocking[T] {
+	nb := &nonblocking[T]{fn: f}
+	go nb.initialize()
+	return nb
+}
 
 // NewLazy returns a *nonblocking[T] that will be initialized on first call to Get().
-func NewLazy[T any](f func() (T, error)) *nonblocking[T] {return &nonblocking[T]{fn: f}}
+func NewLazy[T any](f func() (T, error)) *nonblocking[T] { return &nonblocking[T]{fn: f} }
 
 // Get returns the value of the nonblocking[T], initializing it if necessary.
-func (nb *nonblocking[T]) Get() (T, error) {nb.initialize(); return nb.val, nb.err}
+func (nb *nonblocking[T]) Get() (T, error) { nb.initialize(); return nb.val, nb.err }
+
 // MustGet is as Get, but panics on error.
-func (nb *nonblocking[T]) MustGet() T { nb.initialize(); if nb.err != nil {panic(nb.err)}; return nb.val}
+func (nb *nonblocking[T]) MustGet() T {
+	nb.initialize()
+	if nb.err != nil {
+		panic(nb.err)
+	}
+	return nb.val
+}
 ```
 
 This new API is much simpler to use:
