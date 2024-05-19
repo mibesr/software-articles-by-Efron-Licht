@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/sourcegraph/syntaxhighlight v0.0.0-20170531221838-bd320f5d308e
-	gitlab.com/efronlicht/enve v1.0.0
+	gitlab.com/efronlicht/enve v1.1.0
 )
 
 require (
