@@ -1,67 +1,128 @@
-// in this example, we'll make 'procedures' (that is, functions).
-// we are now approaching a 'real' computer program.
-// all functions will have a uniform ABI (Application Binary Interface).
+//	# Go Two Virtual Machine
 //
-// # Function ABI
-// The variables A[0x0]..A[0xF] are used to pass arguments to functions.
-// The variable R[0x0]..R[0xF] are used to return values from functions.
-// The variable SCRATCH[0x0]..SCRATCH[0xF] are used as scratch space.
+// The "Go Two" virtual machine is a cursed subset of the Go programming language
+// that is still capable of writing useful programs.
+// It's meant to teach how programs "really" work by stripping away many layers of abstraction,
+// but since it's a valid subset of Go, it should be more approachable than "raw" assembly,
+// plus you can just run it with the Go compiler.
+// It also makes it easy to extend, since you can write ordinary Go functions if you want.
+// Introduction to "Go Two" Virtual Machine: see <LINK TO PREVIOUS ARTICLE>.
+//
+// # Memory Layout
+//
+// 33 ints of memory:
+// - A[0]..A[0xF]: procedure (function) argument registers.
+// - R[0]..R[0xF]: procedure (function) return values registers.
+// - D: return address stack depth.
+// 255 ints of return address stack memory.
+// 16 bytes of I/O memory.
+//
+// # Calling Conventions
+//
+// To call a function:
+// set the arguments in A[0]..A[0xF].
+// Add 1 to D (the return address stack depth).
+// Set RET[D] to the return label of the function.
+// Jump to the function.
+// Example: ADD(A[0], A[1]) -> R[0].
+//
+// # Example Procedure: ADD
+//
+// ADD:
+//
+//	 {
+//		  R[0] = A[0] + A[1]
+//		  goto RETURN
+//	 }
+//
+// # Example Call to ADD(1, 2)
+//
+//	A[0] = 1 // set the first argument.
+//	A[1] = 2 // set the second argument.
+//	D++ // increment the return address stack depth.
+//	RET[D] = _RETURN_FROM_ADD // set the return label.
+//	goto ADD // call the function.
+//	RETURN_FROM_ADD:
+//	  // program resumes execution here, with the return value (1+2=3) in R[0].
+//
+// # IO:
+//
+// Use SCAN to read up to 16 bytes from stdin into R[0]..R[0xF].
+// Use PRINT to write up to 16 bytes from R[0]..R[0xF] to stdout.
+//
+// # Example Program: TriplePrint
+// TriplePrint reads a base-10 number from stdin, triples it, and then prints it out.
+// It uses ATOI and ITOA to convert between strings and integers.
+//
+// <TODO>
 package main
 
-import "os"
+import (
+	"os"
+)
 
 // the gotwo virtual machine has a fixed set of global variables.
-// these are the registers and memory: for now, don't worry about the distinction, and just reinterpret "register" as "variable".
+// 33 word (int)-sized registers:
+//   - A[0]..A[0xF]: procedure (function) argument registers, also used as scratch space.
+//     I.E, A[0] is the first argument, A[1] is the second argument, etc.
+//   - R[0]..R[0xF]: procedure (function) return values registers, also used as scratch space.
+//     I.E, R[0] is the first return value, R[1] is the second return value, etc.
+//   - D: return address stack depth. if D < 0, the program exits after the current procedure returns.
+//
+// 255 words of return address stack memory RET, used to store return addresses. RET[D] is the label to jump to after the current procedure returns.
+//   - RET[0]..RET[0xFF]: return address stack memory
+//
+// 16 bytes of I/O memory.
+// Don't worry about the distinctions between arguments and return values too much: they're all just registers in the end and we'll use both as scratch space.
+// Similarly, don't worry about distinctions between registers and memory.
 var (
-	A   [16]int  // procedure (function) argument registers. this is often re-used as scratch space. (in the 'real' world, arguments and return values share one set of registers, but we're not going to do that here.)
-	R   [16]int  // procedure (function) return values registers.
+	A   [16]int
+	R   [16]int
 	D   int      // return address stack depth. if < 0, the program exits.
-	RET [255]int // return address stack memory. the return address of our current caller is at RET[D].
+	RET [256]int // return address stack memory. the return address of our current caller is at RET[D].
 	io  [16]byte // memory, used as a buffer for I/O.
 
 )
 
 // RETURN LABELS, used as psuedo-program-counter values.
 // these are the 'public' procedures that can be called from anywhere.
-// each L_XXX corresponds to a procedure XXX: e.g. L_FIB corresponds to the procedure FIB.
+// each _XXX corresponds to a procedure XXX: e.g. _FIB corresponds to the procedure FIB.
 // See the body of RETURN for more information.
 //
 // # Naming
 //
 // we use the following naming conventions:
-//   - L_XXX is the RETURN LABEL corresponding to the procedure XXX.
+//   - _XXX is the RETURN LABEL corresponding to the procedure XXX.
 //   - XXX is the procedure itself.
 //
-// That is, the label L_EXIT corresponds to the procedure EXIT.
-// If a procedure contains a loop, we append _LOOP to the label name.
-// If that loop is nested, we add _0, _1, _2, etc. to the loop name:
-//
-//   - L_POWER_LOOP is the RETURN LABEL corresponding to the loop in the POWER procedure.
-//   - POWER_LOOP is the loop in the POWER procedure.
-//
+// That is, the label _EXIT corresponds to the procedure EXIT.
+// If a procedure contains a loop, we append _L0, _L1, _L2, etc. to the label.
+// For example, the loop in POW is called POW_L0.
 // Not all LABELS have a corresponding constant: only those that are "public" procedures.
-
+//
 // "system call" procedures that have special behavior (i.e, call actual go functions, not gotwo 'procedures')
 // these are written as close to "go two" style as possible, but cheat at the edges in order to provide input and output.
 // system calls count DOWN from zero
 const (
-	_       = -iota // skip the first value: it's always zero.
-	L_EXIT          // exit the program with code specified in A[0].
-	L_PRINT         // print R[0]..R[0xF] to the screen until a zero is encountered. uses a "system call" to write to stdout.
-	L_SCAN          // read up to 16 bytes from stdin and store them in R[0]..R[0xF]... a zero byte terminates the input. uses a "system call" to read from stdin.
+	_      = -iota // skip the first value: it's always zero.
+	_EXIT          // exit the program with code specified in A[0].
+	_PRINT         // print R[0]..R[0xF] to the screen until a zero is encountered. uses a "system call" to write to stdout.
+	_SCAN          // read up to 16 bytes from stdin and store them in R[0]..R[0xF]... a zero byte terminates the input. uses a "system call" to read from stdin.
 )
 
-// "public" procedures that can be called from anywhere.
+// public procedure labels, used as pseudo-program-counter values.
+// goto _XXX to call the procedure XXX.
+// e.g, goto _FIB to call the FIB procedure.
 const (
-	L_ENTRY       = iota // skip L_ENTRY: it's the default value of RET[0].
-	L_MUL                // mul(A[0], A[1]) -> R[0].
-	L_FIB                // fib(A[0]) -> R[0].
-	L_POWER              // power(A[0], A[1]) -> R[0].
-	L_DIVMOD             // div(A[0], A[1]. A[0] / A[1]) -> R[0], A[0] % A[1] -> R[1].
-	L_READPAGE           // read a page from disk.
-	L_POWER_LOOP         // loop in the POWER procedure, used as a "return label" for MUL, among others.
-	L_ATOI               // convert a string of up to 16 decimal digits (in A[0]..A[0xF]) to an integer. the result, if any, is in R[0]. if the string is invalid, R[0] is zero and R[1] is nonzero.
-	L_ATOI_RETURN        // return label for ATOI, used by MUL.
+	_ENTRY       = iota // skip _ENTRY: it's the default value of RET[0].
+	_MUL                // A[0]*A[1] -> R[0].
+	_FIB                // generalized fibonacci function: A[0]: n, A[1]: "current" value, A[2]: "previous" value. Fib(0, 1, 0) = 1, Fib(1, 1, 0) = 1, Fib(2, 1, 0) = 2, Fib(3, 1, 0) = 3, Fib(4, 1, 0) = 5, etc.
+	_POW                // A[0]^A[1] -> R[0].
+	_DIVMOD             // div(A[0], A[1]. A[0] / A[1]) -> R[0], A[0] % A[1] -> R[1].
+	_READPAGE           // read a page from disk.
+	_POWL0              // loop in the POWER procedure, used as a "return label" for MUL, among others.
+	_ATOI               // convert a string of up to 16 decimal digits (in A[0]..A[0xF]) to an integer. the result, if any, is in R[0]. if the string is invalid, R[0] is zero and R[1] is nonzero.
+	_ATOI_RETURN        // return label for ATOI, used by MUL.
 
 )
 
@@ -78,54 +139,73 @@ const (
 //		}
 //
 // Since we have only global variables, this is unnecessary, but it makes the code easier to read.
+
 func main() {
 	// start of the program.
-	RET[0] = L_ENTRY
-
-RETURN:
-	/* ----------------- RETURN ----------------- */
-	// all functions return here.
+	RET[0] = _ENTRY
+	/* DISPATCHER */
 	// at this point:
 	// - D is the depth of the return address stack.
 	// - RET[D] contains the RETURN LABEL for the next jump.
 	// - R[0]..R[0xF] contain the return values of the called procedure, if any.
 	// - A[0]..A[0xF] may contain any data: they are not guaranteed to hold the originally passed arguments.
 
-	/* design note:
-	    // this is a "trampoline".
-	   	// an 'ordinary' virtual machine would let us jump to a specific address.
-	   	// however, go doesn't have computed gotos: we must jump to EXACTLY one label.
-	   	// we could have each function contain a jump table for every possible caller, but this is not extensible and would hugely bloat the code.
-	   	// instead, we have exactly one place, RETURN, where all functions return to.
-	   	// they then look at RET[D] to see where they should go next, and 'bounce' to that label: you only jump
-	   	// on to RETURN in order to bounce somewhere else, hence the term 'trampoline'.
-	*/
+	// # Design Note: Trampoline
+	// we use a 'trampoline' system to handle function calls.
+	// an 'ordinary' virtual machine would let us jump to a specific address.
+	// e.g, we could do:
+	//		goto $RET[D] // jump to the address stored in RET[D].
+	// this would let us directly jump from one function to another while preserving the return address stack and other state.
+	// however, go doesn't allow arbitrary jumps: we can only jump to predefined labels.
+	// we could have each function contain a jump table for every possible caller, but this is not extensible and would hugely bloat the code.
+	// instead, we have exactly one place, RETURN, where all functions return to.
+	// they then look at RET[D] to see where they should go next, and 'bounce' to that label: you only jump
+	// on to RETURN in order to bounce somewhere else, hence the term 'trampoline'.
 
+RETURN:
 	D-- // decrement the return address stack depth.
-	switch RET[D+1] {
-	case L_ATOI: // convert a string of up to 16 hex digits to an integer. the input is in A[0]..A[0xF]. the result, if any, is in R[0]. if the string is invalid, R[0] is zero and R[1] is nonzero.
-		goto ATOI
-	case L_ENTRY: // entrypoint of the program.
-	// TODO: add initialization conditions here.
-	case L_EXIT: // end of the program. return the value in R[0].
-		goto EXIT
-	case L_FIB: // generalized fibonacci function: A[0]: n, A[1]: "current" value, A[2]: "previous" value. For ordinary fib(n), A[0]=n, set A[1] = 1, A[2] = 0.
-		goto FIB
-	case L_MUL: // multiply(A[0], A[1]) -> R[0].
-		goto MUL
-	case L_POWER_LOOP: // part of the power function: used as a "return label" for MUL, among others.
-		goto POWER_LOOP
-	case L_POWER: // A[0] ^ A[1] -> R[0].
-		goto POWER
-	case L_DIVMOD: // division and modulus, stored in R[0] and R[1] respectively.
-		goto DIV
-	case L_PRINT: // print A[0]..A[0xF] to the screen until a zero is encountered or 16 bytes are written. return the number of bytes written in R[0].
-		goto PRINT
-	case L_SCAN: // read up to 16 bytes from stdin and store them in R[0]..R[0xF]... a zero byte terminates the input.
-		goto SCAN
-	case L_ATOI_RETURN:
-		goto ATOI_AFTER_MUL
 
+	// check for gotwo "system calls".
+	if RET[D+1] == gotwo.GETB {
+		panic("todo")
+	}
+
+	// wait, it's all conditional jumps?
+	// --- always has been.
+
+	if RET[D+1] == _ATOI { // convert a string of up to 16 hex digits to an integer. the input is in A[0]..A[0xF]. the result, if any, is in R[0]. if the string is invalid, R[0] is zero and R[1] is nonzero.
+		goto ATOI
+	}
+	if RET[D+1] == _ENTRY { // entrypoint of the program.
+		panic("todo")
+		// TODO: add initialization conditions here.
+	}
+	if RET[D+1] == _EXIT { // end of the program. return the value in R[0].
+		goto EXIT
+	}
+	if RET[D+1] == _FIB { // generalized fibonacci function: A[0]: n, A[1]: "current" value, A[2]: "previous" value. For ordinary fib(n), A[0]=n, set A[1] = 1, A[2] = 0.
+		goto FIB
+	}
+	if RET[D+1] == _MUL { // multiply(A[0], A[1]) -> R[0].
+		goto MUL
+	}
+	if RET[D+1] == _POWL0 { // part of the power function: used as a "return label" for MUL, among others.
+		goto POW_L0
+	}
+	if RET[D+1] == _POW { // A[0] ^ A[1] -> R[0].
+		goto POW
+	}
+	if RET[D+1] == _DIVMOD { // division and modulus, stored in R[0] and R[1] respectively.
+		goto DIV
+	}
+	if RET[D+1] == _PRINT { // print A[0]..A[0xF] to the screen until a zero is encountered or 16 bytes are written. return the number of bytes written in R[0].
+		goto PRINT
+	}
+	if RET[D+1] == _SCAN { // read up to 16 bytes from stdin and store them in R[0]..R[0xF]... a zero byte terminates the input.
+		goto SCAN
+	}
+	if RET[D+1] == _ATOI_RETURN {
+		goto ATOI_AFTER_MUL
 	}
 
 	// --------- PROCEDURES ---------
@@ -178,9 +258,9 @@ ATOI_LOOP:
 		A[0] = R[total]
 		A[1] = 10
 		// push the return address and arguments onto the stack.
-		D++                    // one deeper
-		RET[D] = L_ATOI_RETURN // MUL should return to ATOI_RETURN.
-		goto MUL               // call the subroutine. when it returns, RET[D+1] will be L_ATOI_RETURN, continuing the loop.
+		D++                   // one deeper
+		RET[D] = _ATOI_RETURN // MUL should return to ATOI_RETURN.
+		goto MUL              // call the subroutine. when it returns, RET[D+1] will be _ATOI_RETURN, continuing the loop.
 	}
 ATOI_AFTER_MUL:
 	{
@@ -205,13 +285,13 @@ MUL: // multiply(A[0], A[1]) -> R[0].
 	{
 		const n, m = 0, 1
 		R[0] = 0 // clear the return value so we can begin accumulating.
-	MUL_LOOP:
+	MU_LOOP:
 		if A[m] == 0 {
 			goto RETURN
 		}
 		R[0] += A[n]
 		A[m]--
-		goto MUL_LOOP
+		goto MU_LOOP
 	}
 
 DIV: // left as an exercise for the reader.
@@ -220,7 +300,7 @@ DIV: // left as an exercise for the reader.
 		goto RETURN
 	}
 
-POWER:
+POW:
 	{
 		// power(n, m).
 		// calculate n^m, placing the result in R[0].
@@ -230,9 +310,9 @@ POWER:
 		A[base] = A[0]
 		A[exp] = A[1]
 	} // fallthrough to POWER_LOOP.
-POWER_LOOP: // loop over the exponent, multiplying the base by itself.
+POW_L0: // loop over the exponent, multiplying the base by itself.
 	{
-		const cur, base, exp = 15, 14, 13 // we know these aren't used by MUL, so they're O.K to reuse.
+		const cur, base, exp = 15, 14, 13 // we know these aren't used by MUL, so they're O.K to reuse. (in a later article, we'll use a more sophisticated system rather than "just knowing" which registers are safe).
 		A[cur] = R[0]                     // save the current result.
 		if A[exp] == 0 {
 			goto RETURN
@@ -243,15 +323,15 @@ POWER_LOOP: // loop over the exponent, multiplying the base by itself.
 		A[0] = A[cur]
 		A[1] = A[base]
 		// push the return address and arguments onto the stack.
-		D++                   // one deeper
-		RET[D] = L_POWER_LOOP // MUL should return to POWER_LOOP.
-		goto MUL              // call the subroutine. when it returns, RET[D+1] will be L_POWER_LOOP, continuing the loop.
+		D++             // one deeper
+		RET[D] = _POWL0 // MUL should return to POWER_LOOP.
+		goto MUL        // call the subroutine. when it returns, RET[D+1] will be _POWER_LOOP, continuing the loop.
 	}
 
 FIB: // generalized fibonacci function: A[0]: n, A[1]: "current" value, A[2]: "previous" value. For ordinary fib(n), A[0]=n, set A[1] = 1, A[2] = 0.
 	{
 		const n, cur, prev, tmp = 0, 1, 2, 3
-	FIB_LOOP:
+	FIB_L0:
 		if A[n] == 0 {
 			R[0] = A[cur]
 			goto RETURN
@@ -260,7 +340,7 @@ FIB: // generalized fibonacci function: A[0]: n, A[1]: "current" value, A[2]: "p
 		A[cur] = A[prev] + A[cur]
 		A[prev] = A[tmp]
 		A[n]--
-		goto FIB_LOOP
+		goto FIB_L0
 	}
 
 PRINT: // print up to sixteen characters to the screen, specified by A[0]..A[0xF]. a zero byte terminates the string, and the number of bytes written is returned in R[0] (but you should already know that from the calling convention).
@@ -276,7 +356,7 @@ PRINT: // print up to sixteen characters to the screen, specified by A[0]..A[0xF
 		*/
 		const i = 0 // loop counter.
 
-	PRINTCHAR:
+	PRINT_L0: // get the next character.
 		if A[0] == 0 {
 			goto RETURN
 		}
@@ -287,7 +367,7 @@ PRINT: // print up to sixteen characters to the screen, specified by A[0]..A[0xF
 		R[i]++
 
 		if R[i] < 15 {
-			goto PRINTCHAR
+			goto PRINT_L0
 		}
 		// actually write the bytes via "system call."
 		_, _ = os.Stdout.Write(io[:A[i]]) // cheating: we allow os.Stdout.Write as a "system call".
@@ -317,4 +397,43 @@ EXIT: // exit the program with code specified in A[0].
 	{
 		os.Exit(A[0]) // "system call" to exit.
 	}
+}
+
+// gotwo "system calls" allow for basic interaction with the outside
+// world. GETB reads a byte from stdin and returns it as an integer.
+package gotwo
+
+import (
+	"bufio"
+	"os"
+)
+
+const (
+	_     = -iota
+	_GETB = iota
+	_EXIT
+	_PUTB
+)
+
+var buf = bufio.NewReader(os.Stdin)
+
+// GETB reads a byte from stdin and returns it as an integer.
+// If an error occurs, it returns -1; otherwise, it returns the byte read.
+func GETB() int {
+	n, err := buf.ReadByte()
+	if err != nil {
+		return -1
+	}
+	return int(n)
+}
+
+// EXIT exits the program with the given status code.
+func EXIT(code int) {
+	os.Exit(code)
+}
+
+// PUTB writes an integer to stdout as though it were a byte, discarding the high bits.
+// The behavior of negative numbers is undefined.
+func PUTB(b int) {
+	os.Stdout.Write([]byte{byte(b)})
 }

@@ -16,20 +16,114 @@
 ## 'gotwo': a restricted subset of go that will help us understand what a function is.
 
 ### 'gotwo' rules:
-- only two function calls: `main` and `println`.
-- `()` and `{}` may only be used for `main`, `if`, `print` and `println`.
-- no multiple assignment.
-- the only types are `int` and `bool`. bools are only valid in `if` statements.
-- flow control: no `for`, `else`, `select`, or `range`. `if` must be limited to a single `goto`. (that is, no implicit jumps)
-- declarations: no `:=` or `const`.
-- how do we do flow control? `goto` and `if`.
-- how do we do loops? `if` and `goto`.
-- example program 1: `gotwo/fib.go`
-- example program 2: `gotwo/prime.go`
-- how to define a subroutine: `goto` and `if`. but how can we get back to where we were?
-  - POINTER JUMPS: `goto` and `if` can only jump to a label: how do we jump to a specific line?
-- extending "gotwo" with pointer jumps: `gotwo/pointers.go`
-- this is how functions actually work: you jump to a label, and then you jump back.
+The golden rule:
+
+**`gotwo` code is go code**.
+
+ If it doesn't compile, it's not `gotwo`.
+
+Additionally, the following restrictions apply:
+
+### Files:
+A `gotwo` program must have exactly one file. It may have the `.go` or `.gotwo` extensions.
+
+### Packages:
+The package name must be `main`.
+
+### Imports:
+Only `gitlab.com/efronlicht/gotwo` is allowed.
+
+### Functions:
+Only `func main()` is allowed.
+
+### Variables:
+#### Types
+Only `int` and fixed-size arrays of `int` are allowed.
+
+#### Declaration
+All variables must be globals declared in a single block.
+
+#### control flow
+`if` and `goto` only. `if` must be immedately followed by `goto`.
+```go
+// GOOD: CONDITIONAL JUMP
+if A[0] >= 2 {
+  goto LABEL // correct: if is immediately followed by goto
+}
+```
+
+```go
+goto LABEL // correct: unconditional jumps can be anywhere
+```
+
+```go
+// BAD
+if A[0] >= 2 {
+  R[0] = 1
+  goto LABEL // WRONG: if must be immediately followed by goto
+}
+
+```
+### Functions
+Only the predefined functions in `gitlab.com/efronlicht/gotwo` are allowed. These allow for basic I/O.
+
+| function | description | 
+| -------- | ----------- |
+| `GETB()` -> `b` | reads a byte from stdin |
+| `PUTB(b)` | writes a byte to stdout |
+| `EXIT(code)` | exits the program |
+
+
+
+### blocks `{}` and `const`
+blocks may be declared anywhere, and may contain `const` declarations of `int` values.
+#### example:
+```go
+IS_ASCII: // check if all bytes in A are ASCII (in [0, 127])
+  {
+    const MASK = 0x80
+    R[0] = 1 // false: has a high bit set
+    if A[0] & MASK != 0 {
+      goto RET
+    }
+    if A[1] & MASK != 0 {
+      goto RET
+    }
+    /* some code omitted */
+    if A[15] & MASK != 0 {
+      goto RET
+    }
+    R[0] = 0 // true: all bytes are ASCII
+    goto RET
+  }
+```
+  
+
+
+##### conditional jump
+```go
+if A[0] >= 2 {
+  goto LABEL
+}
+```
+
+##### unconditional jump
+```go
+goto LABEL
+```
+
+#### Operators:
+The following operators are allowed:
+| operator | description |
+| -------- | ----------- |
+| = | assignment |
+| `+` `-` `<<` `>>` `&` `\|` `^` | simple arithmetic and bitwise operators |
+| `==` `!=` `<` `>` `<=` `>=` | comparison operators |
+
+
+
+
+
 - the SPECIFIC VARIABLES you store the return address, where to put the return value, and the arguments are called the ABI (application binary interface)
 - now we can see what calling a function involves:
     - copy current arguments somewhere so they're not overwritten by the function (this is more complicated than we'll go into here - look into "stack frames" if you want to know more)
